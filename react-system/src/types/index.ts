@@ -1,0 +1,128 @@
+// ========== 菜单相关 ==========
+export interface MenuItem {
+  key: string
+  label: string
+  path?: string
+  icon?: string
+  children?: MenuItem[]
+  hasChildren?: boolean
+  menuType?: string
+  status?: number
+}
+
+export interface BusinessMenu extends MenuItem {
+  hasChildren: boolean
+  children: MenuItem[]
+}
+
+export interface NavMenu {
+  key: string
+  label: string
+  path?: string
+  icon?: string
+  menuType?: string
+  status?: number
+  children?: NavMenu[]
+  hasChildren?: boolean
+}
+
+// ========== 收藏相关 ==========
+export interface Favorite {
+  menuKey: string
+  menuLabel: string
+  menuPath?: string
+  sort?: number
+}
+
+// ========== 自定义导航 ==========
+export interface CustomNavMenu {
+  key: string
+  label: string
+  path?: string
+  icon?: string
+  [key: string]: unknown
+}
+
+// ========== 用户相关 ==========
+export interface UserInfo {
+  username?: string
+  avatar?: string
+  role?: string
+}
+
+// ========== 域相关 ==========
+export interface Domain {
+  id: number
+  domainName: string
+}
+
+// ========== 标签页 ==========
+export interface AppTab {
+  key: string
+  title: string
+  path: string
+}
+
+// ========== 表格/列表相关 ==========
+export interface PaginationConfig {
+  current: number
+  pageSize: number
+  total: number
+}
+
+export interface ColumnField {
+  key: string
+  label: string
+  visible: boolean
+  width?: number
+  fixed?: 'left' | 'right'
+  [key: string]: any
+}
+
+// ========== 筛选视图 ==========
+export interface FilterScheme {
+  id: string
+  name: string
+  filterOrder?: string[]
+}
+
+export interface FilterOption {
+  key: string
+  label: string
+  type?: string
+  options?: { label: string; value: any }[]
+}
+
+export interface FilterItem {
+  key: string
+  label: string
+  type: string
+  options?: { label: string; value: any }[]
+}
+
+// ========== API 响应 ==========
+export interface ApiResponse<T = any> {
+  code: number
+  message?: string
+  data: T
+  total?: number
+}
+
+export interface PaginatedData<T> {
+  records: T[]
+  total: number
+  current?: number
+  size?: number
+}
+
+// ========== 主题 ==========
+export type ThemeMode = 'light' | 'dark'
+
+// ========== 状态码 ==========
+export const STATUS_CODES = {
+  MATERIAL_PENDING: 'pending',
+  MATERIAL_APPROVED: 'approved',
+  MATERIAL_REJECTED: 'rejected',
+  MENU_ENABLED: 1,
+  MENU_DISABLED: 0,
+} as const

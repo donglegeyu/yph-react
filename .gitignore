@@ -1,0 +1,32 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+*.swp
+**/tsconfig.tsbuildinfo
+**/tsconfig.node.tsbuildinfo
+**/vite.config.d.ts
+**/vite.config.js
+
+# Trae config
+.trae/
+CLAUDE.md
+
+# Storybook
+storybook-static/
+
+# Build outputs
+material-system-server/target/
+material-system/dist/
+
+# Temporary files
+*.tmp
+*.temp
+*未命名*
+opencode.json
+
+# Auto-generated documentation
+# 注意: docs/generated 目录保留，因为 GitHub Actions 需要提交这些文件
+# 但其中的临时文件可以忽略
+docs/generated/changelog.txt
+

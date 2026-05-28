@@ -1,0 +1,157 @@
+{
+  "generated_at": "0",
+  "total": 19,
+  "components": [
+    {
+      "name": "ColorScale",
+      "path": "ColorScale.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "ListPageTemplate",
+      "path": "ListPageTemplate.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "PageTitle",
+      "path": "PageTitle.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "SmartListTemplate",
+      "path": "SmartListTemplate.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "AccessibilityChecker",
+      "path": "AccessibilityChecker.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "ActionCell",
+      "path": "ActionCell.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "ColumnSettingsPanel",
+      "path": "ColumnSettingsPanel.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "FilterForm",
+      "path": "FilterForm.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "GlobalSelect",
+      "path": "GlobalSelect.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true
+    },
+    {
+      "name": "SectionTitle",
+      "path": "SectionTitle.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "IconSelect",
+      "path": "IconSelect.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "FilterOptionsDrawer",
+      "path": "FilterOptionsDrawer.vue",
+      "type": "common",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "MoreMenuDrawer",
+      "path": "layout/MoreMenuDrawer.vue",
+      "type": "layout",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "MainLayout",
+      "path": "layout/MainLayout.vue",
+      "type": "layout",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "SecondSidebar",
+      "path": "layout/SecondSidebar.vue",
+      "type": "layout",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "FirstSidebar",
+      "path": "layout/FirstSidebar.vue",
+      "type": "layout",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "BuildingView",
+      "path": "layout/BuildingView.vue",
+      "type": "layout",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "CustomNavPanel",
+      "path": "layout/CustomNavPanel.vue",
+      "type": "layout",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    },
+    {
+      "name": "TabBar",
+      "path": "layout/TabBar.vue",
+      "type": "layout",
+      "has_template": true,
+      "has_script": true,
+      "has_style": true
+    }
+  ]
+}

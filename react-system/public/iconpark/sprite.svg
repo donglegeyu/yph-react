@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="home" viewBox="0 0 48 48" fill="none">
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M9 18v24h30V18L24 6 9 18Z"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M19 29v13h10V29H19Z"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M9 42h30"/>
+  </symbol>
+
+  <symbol id="star" viewBox="0 0 48 48" fill="none">
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="m23.999 5-6.113 12.478L4 19.49l10.059 9.834L11.654 43 24 36.42 36.345 43 33.96 29.325 44 19.491l-13.809-2.013L24 5Z"/>
+  </symbol>
+
+  <symbol id="folder-open" viewBox="0 0 48 48" fill="none">
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M4 9v32l5-20h30.5v-6a2 2 0 0 0-2-2H24l-5-6H6a2 2 0 0 0-2 2Z"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="m40 41 4-20H8.812L4 41h36Z"/>
+  </symbol>
+
+  <symbol id="shopping-cart-add" viewBox="0 0 48 48" fill="none">
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M39 32H13L8 12h36l-5 20Z"/>
+    <circle stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" r="3" cy="39" cx="13"/>
+    <circle stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" r="3" cy="39" cx="39"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M22 22h8v8h-8z"/>
+  </symbol>
+
+  <symbol id="tag" viewBox="0 0 48 48" fill="none">
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M8 44V6a2 2 0 0 1 2-2h28a2 2 0 0 1 2 2v38l-16-8.273L8 44Z"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M16 18h16"/>
+  </symbol>
+
+  <symbol id="setting" viewBox="0 0 48 48" fill="none">
+    <circle stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" r="4" cy="12" cx="12"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M12 16v8m0 12v4"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M38.667 13.333A14.667 14.667 0 0 1 44 24c0 8.284-6.716 15-15 15a14.667 14.667 0 0 1-10.667-4.333"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M24 44c8.284 0 15-6.716 15-15a14.667 14.667 0 0 0-10.667-4.333"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M38.667 13.333A14.667 14.667 0 0 0 24 9.333"/>
+  </symbol>
+
+  <symbol id="buy" viewBox="0 0 48 48" fill="none">
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M4 6h4l4.8 24h24l3.2-18H12"/>
+    <circle stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" r="4" cy="40" cx="20"/>
+    <circle stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" r="4" cy="40" cx="36"/>
+  </symbol>
+
+  <symbol id="list" viewBox="0 0 48 48" fill="none">
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="M16 12h20M16 24h20M16 36h20M8 12h4M8 24h4M8 36h4"/>
+  </symbol>
+
+  <symbol id="search" viewBox="0 0 48 48" fill="none">
+    <circle stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" r="10" cy="20" cx="18"/>
+    <path stroke-linejoin="round" stroke-width="1.5" stroke="currentColor" d="m30 30 10 10"/>
+  </symbol>
+</svg>

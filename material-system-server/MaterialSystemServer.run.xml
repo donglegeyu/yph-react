@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="MaterialSystemServer" type="SpringBoot">
+    <module name="material-system-server" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.material.server.MaterialSystemServerApplication" />
+    <option name="ALTERNATIVE_JRE_PATH" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

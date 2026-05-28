@@ -1,0 +1,275 @@
+# GitHub Actions - 文档自动同步
+# ⚠️ 注意：此工作流只自动更新文档，不自动提交代码
+# 代码提交由用户手动操作，确保提交内容可控
+
+name: 文档同步（只更新文档，不自动提交）
+
+on:
+  # 代码推送时触发
+  push:
+    branches:
+      - '**'  # 所有分支
+    paths:
+      # 代码变更
+      - 'material-system/src/**'
+      - 'material-system-server/src/**'
+      # 文档变更
+      - 'docs/**'
+      # Memory 变更
+      - '.workbuddy/memory/**'
+  # 手动触发
+  workflow_dispatch:
+
+jobs:
+  # ==================== 1. 检测代码变更 ====================
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has_code_changes: ${{ steps.detect.outputs.has_code_changes }}
+      has_docs_changes: ${{ steps.detect.outputs.has_docs_changes }}
+      has_memory_changes: ${{ steps.detect.outputs.has_memory_changes }}
+      code_changed_files: ${{ steps.detect.outputs.code_changed_files }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 检测代码变更
+        id: detect
+        run: |
+          echo "检测代码变更..."
+          CHANGED_FILES=$(git diff --name-only HEAD~1)
+          echo "变更文件："
+          echo "$CHANGED_FILES"
+
+          # 检查是否有代码变更
+          CODE_CHANGED=$(echo "$CHANGED_FILES" | grep -E "^(material-system/src/|material-system-server/src/)" || echo "")
+          DOCS_CHANGED=$(echo "$CHANGED_FILES" | grep -E "^docs/" || echo "")
+          MEMORY_CHANGED=$(echo "$CHANGED_FILES" | grep -E "^\.workbuddy/memory/" || echo "")
+
+          echo "::set-output name=has_code_changes::${{ length(CODE_CHANGED) > 0 }}"
+          echo "::set-output name=has_docs_changes::${{ length(DOCS_CHANGED) > 0 }}"
+          echo "::set-output name=has_memory_changes::${{ length(MEMORY_CHANGED) > 0 }}"
+          echo "::set-output name=code_changed_files::$CODE_CHANGED"
+
+          echo ""
+          echo "=== 变更检测结果 ==="
+          echo "代码变更: ${{ length(CODE_CHANGED) > 0 }}"
+          echo "文档变更: ${{ length(DOCS_CHANGED) > 0 }}"
+          echo "Memory变更: ${{ length(MEMORY_CHANGED) > 0 }}"
+
+  # ==================== 2. 更新文档索引 ====================
+  update-docs:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_code_changes == 'true'
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 更新文档索引日期
+        run: |
+          echo "检测到代码变更，更新文档索引..."
+          DATE=$(date +%Y-%m-%d)
+
+          # 更新功能开发文档索引
+          if [ -f "docs/功能开发文档/功能开发文档.md" ]; then
+            echo "更新功能开发文档索引日期: $DATE"
+
+            # 更新所有子文档的索引日期
+            for doc in docs/功能开发文档/*.md; do
+              if [ -f "$doc" ]; then
+                sed -i "s/| 更新日期 | [^|]* |/| 更新日期 | $DATE |/g" "$doc" 2>/dev/null || true
+              fi
+            done
+            echo "✅ 功能开发文档索引已更新"
+          fi
+
+          # 更新项目文档索引
+          if [ -f "docs/项目文档/项目文档.md" ]; then
+            sed -i "s/| 更新日期 | [^|]* |/| 更新日期 | $DATE |/g" docs/项目文档/项目文档.md 2>/dev/null || true
+            echo "✅ 项目文档索引已更新"
+          fi
+
+      - name: 扫描新增文件
+        run: |
+          echo "扫描新增的代码文件..."
+          git fetch origin HEAD~5 --depth=5
+
+          # 查找新增的 Vue 组件
+          NEW_VUE=$(git diff --name-only --diff-filter=A HEAD~5 | grep "\.vue$" || echo "")
+          if [ -n "$NEW_VUE" ]; then
+            echo ""
+            echo "=== 新增的 Vue 组件 ==="
+            echo "$NEW_VUE"
+          fi
+
+          # 查找新增的 Java 类
+          NEW_JAVA=$(git diff --name-only --diff-filter=A HEAD~5 | grep "\.java$" || echo "")
+          if [ -n "$NEW_JAVA" ]; then
+            echo ""
+            echo "=== 新增的 Java 类 ==="
+            echo "$NEW_JAVA"
+          fi
+
+      - name: 生成变更报告
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          TIME=$(date +%H:%M)
+
+          # 创建变更报告
+          REPORT_FILE="docs/每日记录/${DATE}-变更报告.md"
+
+          cat > "$REPORT_FILE" << EOF
+# ${DATE} 代码变更报告
+
+> 生成时间：${TIME}
+> ⚠️ 此文件仅供查看，提交需手动操作
+
+## 代码变更
+
+变更的文件：
+\`\`\`
+$(git diff --name-only HEAD~1)
+\`\`\`
+
+## 需要手动提交的内容
+
+请检查以下变更后手动提交：
+
+### 1. 代码文件（material-system/src/ 或 material-system-server/src/）
+- 需要提交：是
+- 提交命令：\`git add <文件> && git commit -m "描述"\`
+
+### 2. 文档文件（docs/）
+- 需要提交：是（文档已自动更新）
+- 提交命令：\`git add docs/ && git commit -m "docs: 更新文档"\`
+
+### 3. Memory 索引（.workbuddy/memory/）
+- 需要提交：是（如果索引有更新）
+- 提交命令：\`git add .workbuddy/memory/ && git commit -m "docs: 更新 Memory"\`
+
+## 建议的提交信息
+
+\`\`\`bash
+# 提交所有变更
+git add -A
+git commit -m "feat: 你的变更描述"
+git push
+\`\`\`
+
+## 注意事项
+
+⚠️ **重要**：请确保变更内容正确后再提交！
+EOF
+
+          echo ""
+          echo "========================================="
+          echo "✅ 变更报告已生成: $REPORT_FILE"
+          echo "========================================="
+          echo ""
+          echo "⚠️ 文档已自动更新，但不会自动提交"
+          echo "请检查变更报告后手动提交"
+
+  # ==================== 3. 每日汇总（只生成报告） ====================
+  daily-summary:
+    runs-on: ubuntu-latest
+    # 每天 12:00 执行（UTC 4:00）
+    schedule:
+      - cron: '0 4 * * *'
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 生成每日汇总
+        run: |
+          echo "生成每日文档汇总..."
+          DATE=$(date +%Y-%m-%d)
+          TIME=$(date +%H:%M)
+
+          # 获取最近提交
+          LAST_COMMIT=$(git log -1 --format="%h %s" HEAD)
+          COMMIT_COUNT=$(git log --since="24 hours" --oneline | wc -l | tr -d ' ')
+          COMMIT_LIST=$(git log --since="24 hours" --format="%h %s" HEAD | head -10)
+
+          # 创建每日记录
+          cat > "docs/每日记录/${DATE}.md" << EOF
+# ${DATE} 每日记录
+
+> 生成时间：${TIME}
+> ⚠️ 此文件仅供查看，提交需手动操作
+
+## 今日提交
+
+最近提交：
+\`\`\`
+${LAST_COMMIT}
+\`\`\`
+
+24小时内提交数：${COMMIT_COUNT} 个
+
+最近提交列表：
+\`\`\`
+${COMMIT_LIST}
+\`\`\`
+
+## 待手动提交
+
+请检查是否有需要提交的内容：
+\`\`\`bash
+git status
+\`\`\`
+
+## 注意事项
+
+⚠️ **重要**：此文件由 GitHub Actions 自动生成
+如需提交，请手动执行：
+\`\`\`bash
+git add docs/每日记录/${DATE}.md
+git commit -m "docs: 每日记录 ${DATE}"
+git push
+\`\`\`
+EOF
+
+          echo ""
+          echo "========================================="
+          echo "✅ 每日汇总已生成: docs/每日记录/${DATE}.md"
+          echo "========================================="
+          echo ""
+          echo "⚠️ 每日汇总已生成，但不会自动提交"
+          echo "请检查后手动提交"
+
+  # ==================== 4. Memory 索引同步（只更新不提交） ====================
+  sync-memory:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_docs_changes == 'true'
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 同步 Memory 索引
+        run: |
+          echo "检测到文档变更，同步 Memory 索引..."
+          DATE=$(date +%Y-%m-%d)
+
+          # 更新 Memory 索引日期
+          if [ -f ".workbuddy/memory/MEMORY.md" ]; then
+            sed -i "s/| 更新日期 | [^|]* |/| 更新日期 | $DATE |/g" .workbuddy/memory/MEMORY.md 2>/dev/null || true
+            echo "✅ Memory 索引已更新"
+          fi
+
+          echo ""
+          echo "========================================="
+          echo "✅ Memory 索引已更新"
+          echo "========================================="
+          echo ""
+          echo "⚠️ 索引已更新，但不会自动提交"
+          echo "请手动提交："
+          echo "  git add .workbuddy/memory/MEMORY.md"
+          echo "  git commit -m \"docs: 更新 Memory 索引\""
+          echo "  git push"
