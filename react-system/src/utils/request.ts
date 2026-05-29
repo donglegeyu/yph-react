@@ -37,34 +37,34 @@ request.interceptors.response.use(
   },
 )
 
-export async function get<T = any>(
+export async function get<T = unknown>(
   url: string,
-  params?: Record<string, any>,
+  params?: Record<string, unknown>,
   config?: AxiosRequestConfig,
 ): Promise<ApiResponse<T>> {
   const res = await request.get<ApiResponse<T>>(url, { params, ...config })
   return res.data
 }
 
-export async function post<T = any>(
+export async function post<T = unknown>(
   url: string,
-  data?: any,
+  data?: unknown,
   config?: AxiosRequestConfig,
 ): Promise<ApiResponse<T>> {
   const res = await request.post<ApiResponse<T>>(url, data, config)
   return res.data
 }
 
-export async function put<T = any>(
+export async function put<T = unknown>(
   url: string,
-  data?: any,
+  data?: unknown,
   config?: AxiosRequestConfig,
 ): Promise<ApiResponse<T>> {
   const res = await request.put<ApiResponse<T>>(url, data, config)
   return res.data
 }
 
-export async function del<T = any>(
+export async function del<T = unknown>(
   url: string,
   config?: AxiosRequestConfig,
 ): Promise<ApiResponse<T>> {

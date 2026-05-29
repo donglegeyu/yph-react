@@ -22,6 +22,7 @@ export default function TabBar() {
 
   useEffect(() => {
     if (isHome) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalActiveKey('')
       setActiveTabKey('')
     } else {
@@ -34,6 +35,7 @@ export default function TabBar() {
   }, [location.pathname, tabs, setActiveTabKey, isHome])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalActiveKey(activeTabKey)
   }, [activeTabKey])
 

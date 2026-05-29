@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom'
 import { Suspense, useEffect } from 'react'
 import { CompanySpin } from '@donglegeyu/company-ui'
 import router from '@/router'
+import { useDarkMode } from '@/hooks/useDarkMode'
 
 async function loadSvgSprite() {
   try {
@@ -26,9 +27,15 @@ function AppInit() {
   return null
 }
 
+function ThemeInit() {
+  useDarkMode()
+  return null
+}
+
 export default function App() {
   return (
     <ThemeProvider>
+      <ThemeInit />
       <AppInit />
       <Suspense
         fallback={

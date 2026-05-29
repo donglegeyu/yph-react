@@ -1,0 +1,50 @@
+.filter-form {
+  background: #fff;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.38rem;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.filter-col {
+  margin-bottom: 0;
+}
+
+.btn-col {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.expand-btn {
+  width: auto;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  gap: 4px;
+  font-family: PingFang SC;
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 22px;
+  color: rgba(0, 0, 0, 0.88);
+  user-select: none;
+
+  &:hover {
+    color: rgba(0, 0, 0, 0.88);
+  }
+
+  .arrow-icon {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .expand-text {
+    color: rgba(0, 0, 0, 0.88);
+  }
+}

@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '@/store/app'
 import SvgIcon from '@/components/SvgIcon'
 import { CompanyPopover } from '@donglegeyu/company-ui'
+import MoreMenuDrawer from './MoreMenuDrawer'
+import CustomNavPanel from './CustomNavPanel'
 import type { Domain } from '@/types'
 import './FirstSidebar.scss'
 import logoImg from '@/assets/logo-dl.svg'
@@ -30,15 +33,17 @@ export default function FirstSidebar() {
   const selectFirstMenu = useAppStore((s) => s.selectFirstMenu)
   const promoteToNav = useAppStore((s) => s.promoteToNav)
 
-  const [activeKey, setActiveKey] = useState('home')
+  const [activeKey, setActiveKey] = useState(() => {
+    const path = window.location.pathname
+    if (path === '/home') return 'home'
+    if (path === '/favorites') return 'favorites'
+    return ''
+  })
   const [domainPopoverOpen, setDomainPopoverOpen] = useState(false)
   const [domains] = useState<Domain[]>([])
   const [currentDomainId, setCurrentDomainId] = useState<number | null>(null)
   const [moreDrawerOpen, setMoreDrawerOpen] = useState(false)
-  const [themeDrawerOpen, setThemeDrawerOpen] = useState(false)
-  const [selectedThemeColor, setSelectedThemeColor] = useState(
-    localStorage.getItem('theme:color') || '#F95914'
-  )
+  const [customNavVisible, setCustomNavVisible] = useState(false)
 
   const currentDomain = useMemo(
     () => domains.find((d) => d.id === currentDomainId),
@@ -78,6 +83,7 @@ export default function FirstSidebar() {
 
     const path = location.pathname
     if (path === '/home') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveKey('home')
       return
     }
@@ -93,14 +99,25 @@ export default function FirstSidebar() {
   }, [location.pathname])
 
   useEffect(() => {
-    const appStore = useAppStore.getState()
-    const newMenu = appStore.activeFirstMenu
+    const newMenu = useAppStore.getState().activeFirstMenu
     if (newMenu === 'home' || newMenu === 'favorites' || !newMenu) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveKey('')
     } else {
       setActiveKey(newMenu)
     }
   }, [])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      if (moreDrawerOpen && !target.closest('.more-menu-drawer') && !target.closest('.business-menu-item')) {
+        setMoreDrawerOpen(false)
+      }
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [moreDrawerOpen])
 
   const handleClick = useCallback(
     (menu: any) => {
@@ -153,11 +170,26 @@ export default function FirstSidebar() {
     [selectFirstMenu, promoteToNav]
   )
 
-  const handleThemeColorChange = useCallback((color: string) => {
-    setSelectedThemeColor(color)
-    localStorage.setItem('theme:color', color)
-    window.dispatchEvent(new CustomEvent('theme-color-change', { detail: { color } }))
+  const handleOpenCustomNav = useCallback(() => {
+    const state = useAppStore.getState()
+    if (!state.customNavMenus || state.customNavMenus.length === 0) {
+      useAppStore.setState({ customNavMenus: [...displayMenus] })
+    }
+    setCustomNavVisible(true)
+  }, [displayMenus])
+
+  const handleCustomNavUpdate = useCallback((selected: any[]) => {
+    useAppStore.setState({ customNavMenus: selected })
+    localStorage.setItem('app:customNavMenus', JSON.stringify(selected))
+    useAppStore.getState().saveCustomNavMenus(selected)
   }, [])
+
+  const handleThemeSettings = useCallback(() => {
+    setActiveKey('')
+    useAppStore.getState().setActiveKey('')
+    useAppStore.getState().setExpandedKeys([])
+    navigate('/component-preview')
+  }, [navigate])
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('token')
@@ -165,238 +197,179 @@ export default function FirstSidebar() {
     navigate('/login')
   }, [navigate])
 
-  const themeColors = [
-    { label: '橙色', value: '#F95914' },
-    { label: '蓝色', value: '#1890ff' },
-    { label: '绿色', value: '#52c41a' },
-    { label: '紫色', value: '#722ed1' },
-    { label: '红色', value: '#f5222d' },
-    { label: '金黄色', value: '#faad14' },
-  ]
-
   return (
-    <div className="first-sidebar">
-      <div className="brand-area">
-        <CompanyPopover
-          open={domainPopoverOpen}
-          onOpenChange={setDomainPopoverOpen}
-          trigger="click"
-          placement="right"
-          content={
-            <div style={{ width: 180, maxHeight: 300, overflow: 'auto' }}>
-              {domains.map((d) => (
+    <>
+      <div className="first-sidebar">
+        <div className="brand-area">
+          <CompanyPopover
+            open={domainPopoverOpen}
+            onOpenChange={setDomainPopoverOpen}
+            trigger="click"
+            placement="right"
+            content={
+              <div style={{ width: 180, maxHeight: 300, overflow: 'auto' }}>
+                {domains.map((d) => (
+                  <div
+                    key={d.id}
+                    className={`domain-popover-item${currentDomainId === d.id ? ' active' : ''}`}
+                    onClick={() => {
+                      setCurrentDomainId(d.id)
+                      localStorage.setItem('currentDomainId', String(d.id))
+                      setDomainPopoverOpen(false)
+                      useAppStore.getState().fetchMenus()
+                    }}
+                    style={{
+                      height: 40,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0 12px',
+                      cursor: 'pointer',
+                      borderRadius: 4,
+                    }}
+                  >
+                    <span style={{ fontSize: 14 }}>{d.domainName}</span>
+                    {currentDomainId === d.id && <SvgIcon href="check-one" size={16} />}
+                  </div>
+                ))}
+              </div>
+            }
+          >
+            <div className="logo-row">
+              <div className="logo">
+                <img className="logo-icon" src={logoImg} alt="logo" />
+              </div>
+              <div className="dropdown-icon">
+                <SvgIcon href="down-c" size={12} />
+              </div>
+            </div>
+          </CompanyPopover>
+          <div className="domain-name">
+            <span>{currentDomain?.domainName || '星际造梦'}</span>
+          </div>
+        </div>
+
+        <div className="system-menu-top">
+          {firstMenus.map((menu) => (
+            <div
+              key={menu.key}
+              className={`menu-item menu-item--normal${activeKey === menu.key ? ' active' : ''}`}
+              onClick={() => handleClick(menu)}
+              onMouseEnter={() => menu.key === 'favorites' && handleBusinessMenuEnter(menu)}
+              onMouseLeave={() => menu.key === 'favorites' && handleBusinessMenuLeave()}
+            >
+              <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
+              <span className="menu-label">{menu.label}</span>
+            </div>
+          ))}
+          {firstMenus.length > 1 && <div className="divider" />}
+        </div>
+
+        <div className="business-menus">
+          {displayMenus.map((menu: any) => (
+            <div
+              key={menu.key}
+              className={`business-menu-item${activeKey === menu.key ? ' active' : ''}`}
+              onClick={() => handleClick(menu)}
+              onMouseEnter={() => handleBusinessMenuEnter(menu)}
+              onMouseLeave={handleBusinessMenuLeave}
+            >
+              <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
+              <span className="menu-label">{menu.label}</span>
+            </div>
+          ))}
+          {hasMore && (
+            <div
+              className="business-menu-item more-btn"
+              onClick={() => setMoreDrawerOpen(true)}
+            >
+              <SvgIcon href="more-two" className="menu-icon" />
+              <span className="menu-label">更多</span>
+            </div>
+          )}
+        </div>
+
+        <div className="system-menu-bottom">
+          {systemBottomMenus.length > 0 && <div className="nav-divider" />}
+          {systemBottomMenus.map((menu) => (
+            <div key={menu.key} className="system-bottom-item" onClick={() => handleClick(menu)}>
+              <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
+              <span className="menu-label">{menu.label}</span>
+            </div>
+          ))}
+          <CompanyPopover
+            trigger="click"
+            placement="rightBottom"
+            content={
+              <div style={{ width: 160 }}>
                 <div
-                  key={d.id}
-                  className={`domain-popover-item${currentDomainId === d.id ? ' active' : ''}`}
-                  onClick={() => {
-                    setCurrentDomainId(d.id)
-                    localStorage.setItem('currentDomainId', String(d.id))
-                    setDomainPopoverOpen(false)
-                    useAppStore.getState().fetchMenus()
-                  }}
                   style={{
-                    height: 40,
+                    height: 38,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0 12px',
+                    padding: '4px 12px',
+                    gap: 6,
                     cursor: 'pointer',
                     borderRadius: 4,
                   }}
+                  onClick={handleThemeSettings}
                 >
-                  <span style={{ fontSize: 14 }}>{d.domainName}</span>
-                  {currentDomainId === d.id && <SvgIcon href="check-one" size={16} />}
+                  <SvgIcon href="theme" size={20} />
+                  <span style={{ fontSize: 14 }}>主题设置</span>
                 </div>
-              ))}
+                <div style={{ height: 1, background: '#f0f0f0', margin: '8px 0' }} />
+                <div
+                  style={{
+                    height: 38,
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '4px 12px',
+                    gap: 6,
+                    cursor: 'pointer',
+                    borderRadius: 4,
+                  }}
+                  onClick={handleLogout}
+                >
+                  <SvgIcon href="logout" size={20} />
+                  <span style={{ fontSize: 14 }}>退出登录</span>
+                </div>
+              </div>
+            }
+          >
+            <div className="person-info">
+              <div className="avatar">{userInfo.username?.charAt(0) || 'A'}</div>
+              <div className="name">{userInfo.username || 'admin'}</div>
             </div>
-          }
-        >
-          <div className="logo-row">
-            <div className="logo">
-              <img className="logo-icon" src={logoImg} alt="logo" />
-            </div>
-            <div className="dropdown-icon">
-              <SvgIcon href="down-c" size={12} />
-            </div>
-          </div>
-        </CompanyPopover>
-        <div className="domain-name">
-          <span>{currentDomain?.domainName || '星际造梦'}</span>
+          </CompanyPopover>
         </div>
-      </div>
-
-      <div className="system-menu-top">
-        {firstMenus.map((menu) => (
-          <div
-            key={menu.key}
-            className={`menu-item menu-item--normal${activeKey === menu.key ? ' active' : ''}`}
-            onClick={() => handleClick(menu)}
-            onMouseEnter={() => menu.key === 'favorites' && handleBusinessMenuEnter(menu)}
-            onMouseLeave={() => menu.key === 'favorites' && handleBusinessMenuLeave()}
-          >
-            <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
-            <span className="menu-label">{menu.label}</span>
-          </div>
-        ))}
-        {firstMenus.length > 1 && <div className="divider" />}
-      </div>
-
-      <div className="business-menus">
-        {displayMenus.map((menu: any) => (
-          <div
-            key={menu.key}
-            className={`business-menu-item${activeKey === menu.key ? ' active' : ''}`}
-            onClick={() => handleClick(menu)}
-            onMouseEnter={() => handleBusinessMenuEnter(menu)}
-            onMouseLeave={handleBusinessMenuLeave}
-          >
-            <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
-            <span className="menu-label">{menu.label}</span>
-          </div>
-        ))}
-        {hasMore && (
-          <div
-            className="business-menu-item more-btn"
-            onClick={() => setMoreDrawerOpen(true)}
-          >
-            <SvgIcon href="more-two" className="menu-icon" />
-            <span className="menu-label">更多</span>
-          </div>
-        )}
       </div>
 
       {moreDrawerOpen && (
-        <div className="custom-nav-overlay" onClick={() => setMoreDrawerOpen(false)}>
-          <div
-            className="more-panel"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: 600,
-              height: 500,
-              background: '#fff',
-              borderRadius: 8,
-              display: 'flex',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                width: 200,
-                borderRight: '1px solid #f0f0f0',
-                overflow: 'auto',
-                padding: '8px 16px',
-              }}
-            >
-              {moreMenus.map((menu: any) => (
-                <div
-                  key={menu.key}
-                  onClick={() => handleMoreSelect(menu)}
-                  style={{
-                    height: 40,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    cursor: 'pointer',
-                    borderRadius: 4,
-                    padding: '0 16px',
-                    color: '#333',
-                  }}
-                >
-                  <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
-                  <span>{menu.label}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-              <div style={{ color: '#999' }}>请选择左侧菜单</div>
-            </div>
-          </div>
-        </div>
+        <>
+          <div className="more-drawer-backdrop" onClick={() => setMoreDrawerOpen(false)} />
+          <MoreMenuDrawer
+            visible={moreDrawerOpen}
+            menus={moreMenus}
+            onClose={() => setMoreDrawerOpen(false)}
+            onSelect={handleMoreSelect}
+            onOpenCustomNav={handleOpenCustomNav}
+          />
+        </>
       )}
 
-      <div className="system-menu-bottom">
-        {systemBottomMenus.length > 0 && <div className="nav-divider" />}
-        {systemBottomMenus.map((menu) => (
-          <div key={menu.key} className="system-bottom-item" onClick={() => handleClick(menu)}>
-            <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
-            <span className="menu-label">{menu.label}</span>
-          </div>
-        ))}
-        <CompanyPopover
-          trigger="click"
-          placement="rightBottom"
-          content={
-            <div style={{ width: 160 }}>
-              <div
-                style={{
-                  height: 38,
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '4px 12px',
-                  gap: 6,
-                  cursor: 'pointer',
-                  borderRadius: 4,
-                }}
-                onClick={() => setThemeDrawerOpen(true)}
-              >
-                <SvgIcon href="theme" size={20} />
-                <span style={{ fontSize: 14 }}>主题设置</span>
-              </div>
-              <div style={{ height: 1, background: '#f0f0f0', margin: '8px 0' }} />
-              <div
-                style={{
-                  height: 38,
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '4px 12px',
-                  gap: 6,
-                  cursor: 'pointer',
-                  borderRadius: 4,
-                }}
-                onClick={handleLogout}
-              >
-                <SvgIcon href="logout" size={20} />
-                <span style={{ fontSize: 14 }}>退出登录</span>
-              </div>
-            </div>
-          }
-        >
-          <div className="person-info">
-            <div className="avatar">{userInfo.username?.charAt(0) || 'A'}</div>
-            <div className="name">{userInfo.username || 'admin'}</div>
-          </div>
-        </CompanyPopover>
-      </div>
-
-      {themeDrawerOpen && (
-        <div className="theme-drawer-overlay" onClick={() => setThemeDrawerOpen(false)}>
-          <div className="theme-drawer" onClick={(e) => e.stopPropagation()}>
-            <div className="theme-drawer-header">
-              <span className="theme-drawer-title">主题设置</span>
-              <SvgIcon
-                href="close"
-                className="theme-drawer-close"
-                onClick={() => setThemeDrawerOpen(false)}
-              />
-            </div>
-            <div className="theme-drawer-content">
-              <div className="theme-option-group">
-                <div className="theme-option-label">主题色</div>
-                <div className="theme-colors">
-                  {themeColors.map((color) => (
-                    <div
-                      key={color.value}
-                      className={`theme-color-item${selectedThemeColor === color.value ? ' active' : ''}`}
-                      style={{ backgroundColor: color.value }}
-                      onClick={() => handleThemeColorChange(color.value)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {customNavVisible && (
+        <>
+          <div className="more-drawer-backdrop" onClick={() => setCustomNavVisible(false)} />
+          <CustomNavPanel
+            visible={customNavVisible}
+            menus={businessMenus}
+            totalCount={visibleMenuCount}
+            selectedMenus={customNavMenus}
+            onClose={() => setCustomNavVisible(false)}
+            onUpdate={handleCustomNavUpdate}
+          />
+        </>
       )}
-    </div>
+    </>
   )
 }

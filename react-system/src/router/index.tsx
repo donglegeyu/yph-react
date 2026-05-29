@@ -1,60 +1,56 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import MainLayout from '@/components/layout/MainLayout'
 import { lazy } from 'react'
 
-// 懒加载页面
 const LoginView = lazy(() => import('@/pages/common/LoginView'))
 const HomeView = lazy(() => import('@/pages/home/HomeView'))
 const BuildingView = lazy(() => import('@/components/layout/BuildingView'))
 
-// 动态路由配置（后续可以从 API 加载）
-export const DYNAMIC_ROUTES: Record<string, string> = {
-  '/materials/create': '@/pages/create/MaterialCreate',
-  '/materials/:id': '@/pages/detail/MaterialDetail',
-  '/materials': '@/pages/list/MaterialList',
-  '/construction-library': '@/pages/common/ConstructionList',
-  '/construction-apply': '@/pages/common/ConstructionApplicationList',
-  '/tag-list': '@/pages/common/TagListView',
-  '/category-list': '@/pages/common/CategoryListView',
-  '/brand-list': '@/pages/common/BrandListView',
-  '/menu-management': '@/pages/common/MenuManagement',
-  '/component-preview': '@/pages/common/ComponentPreview',
-  '/domain-manage/create': '@/pages/form/DomainForm',
-  '/domain-manage/:id': '@/pages/form/DomainForm',
-  '/domain-manage': '@/pages/common/DomainManagement',
-  '/user-management': '@/pages/common/UserManagement',
-  '/permission-query': '@/pages/common/PermissionQuery',
-  '/dao-hang': '@/pages/common/JiuHaoHang',
-  '/purchase-demand/create': '@/pages/purchase/PurchaseDemandCreate',
-  '/purchase-demand/:id': '@/pages/purchase/PurchaseDemandDetail',
-  '/purchase-demand': '@/pages/purchase/PurchaseDemandList',
-  '/purchase-order': '@/pages/purchase/PurchaseOrderList',
-  '/purchase-order/create': '@/pages/purchase/PurchaseOrderCreate',
-  '/purchase-order/:id': '@/pages/purchase/PurchaseOrderDetail',
-  '/purchase-min-order': '@/pages/purchase/PurchaseMinOrder',
-  '/purchase-min-acceptance-period': '@/pages/purchase/PurchaseMinAcceptancePeriod',
-  '/purchase-return-address': '@/pages/purchase/PurchaseReturnAddress',
-  '/purchase-price': '@/pages/purchase/PurchasePrice',
-  '/purchase-price/apply': '@/pages/purchase/PurchasePriceApply',
-  '/sales-rebate-query': '@/pages/purchase/SalesRebateQuery',
-  '/sales-rebate/apply': '@/pages/purchase/SalesRebateApply',
-  '/purchase-contract': '@/pages/purchase/PurchaseContract',
-  '/purchase-return': '@/pages/purchase/PurchaseReturn',
-  '/purchase-return/review': '@/pages/purchase/PurchaseReturnReview',
-  '/purchase-return/agent': '@/pages/purchase/PurchaseReturnAgent',
-  '/purchase-return/bk': '@/pages/purchase/PurchaseReturnBK',
-  '/qrcode-apply': '@/pages/purchase/QrcodeApply',
-  '/statement-manage': '@/pages/purchase/StatementManage',
-  '/statement-manage/bk': '@/pages/purchase/StatementManageBK',
-  '/auto-reconcile-config': '@/pages/purchase/AutoReconcileConfig',
-  '/non-auto-reconcile-config': '@/pages/purchase/NonAutoReconcileConfig',
-  '/invoice-manage': '@/pages/purchase/InvoiceManage',
-  '/invoice-manage/bk': '@/pages/purchase/InvoiceManageBK',
-  '/advance-payment': '@/pages/purchase/AdvancePayment',
-  '/shop-statement': '@/pages/purchase/ShopStatement',
-  '/cost-deduction-config': '@/pages/purchase/CostDeductionConfig',
-  '/cost-deduction-adjust': '@/pages/purchase/CostDeductionAdjust',
-}
+const MaterialCreate = lazy(() => import('@/pages/create/MaterialCreate'))
+const MaterialDetail = lazy(() => import('@/pages/detail/MaterialDetail'))
+const MaterialList = lazy(() => import('@/pages/list/MaterialList'))
+const TagListView = lazy(() => import('@/pages/common/TagListView'))
+const CategoryListView = lazy(() => import('@/pages/common/CategoryListView'))
+const BrandListView = lazy(() => import('@/pages/common/BrandListView'))
+const MenuManagement = lazy(() => import('@/pages/common/MenuManagement'))
+const ComponentPreview = lazy(() => import('@/pages/common/ComponentPreview'))
+const DomainForm = lazy(() => import('@/pages/form/DomainForm'))
+const DomainManagement = lazy(() => import('@/pages/common/DomainManagement'))
+const UserManagement = lazy(() => import('@/pages/common/UserManagement'))
+const PermissionQuery = lazy(() => import('@/pages/common/PermissionQuery'))
+const JiuHaoHang = lazy(() => import('@/pages/common/JiuHaoHang'))
+const ConstructionList = lazy(() => import('@/pages/common/ConstructionList'))
+const ConstructionApplicationList = lazy(() => import('@/pages/common/ConstructionApplicationList'))
+const PurchaseDemandCreate = lazy(() => import('@/pages/purchase/PurchaseDemandCreate'))
+const PurchaseDemandDetail = lazy(() => import('@/pages/purchase/PurchaseDemandDetail'))
+const PurchaseDemandList = lazy(() => import('@/pages/purchase/PurchaseDemandList'))
+const PurchaseOrderList = lazy(() => import('@/pages/purchase/PurchaseOrderList'))
+const PurchaseOrderCreate = lazy(() => import('@/pages/purchase/PurchaseOrderCreate'))
+const PurchaseOrderDetail = lazy(() => import('@/pages/purchase/PurchaseOrderDetail'))
+const PurchaseMinOrder = lazy(() => import('@/pages/purchase/PurchaseMinOrder'))
+const PurchaseMinAcceptancePeriod = lazy(() => import('@/pages/purchase/PurchaseMinAcceptancePeriod'))
+const PurchaseReturnAddress = lazy(() => import('@/pages/purchase/PurchaseReturnAddress'))
+const PurchasePrice = lazy(() => import('@/pages/purchase/PurchasePrice'))
+const PurchasePriceApply = lazy(() => import('@/pages/purchase/PurchasePriceApply'))
+const SalesRebateQuery = lazy(() => import('@/pages/purchase/SalesRebateQuery'))
+const SalesRebateApply = lazy(() => import('@/pages/purchase/SalesRebateApply'))
+const PurchaseContract = lazy(() => import('@/pages/purchase/PurchaseContract'))
+const PurchaseReturn = lazy(() => import('@/pages/purchase/PurchaseReturn'))
+const PurchaseReturnReview = lazy(() => import('@/pages/purchase/PurchaseReturnReview'))
+const PurchaseReturnAgent = lazy(() => import('@/pages/purchase/PurchaseReturnAgent'))
+const PurchaseReturnBK = lazy(() => import('@/pages/purchase/PurchaseReturnBK'))
+const QrcodeApply = lazy(() => import('@/pages/purchase/QrcodeApply'))
+const StatementManage = lazy(() => import('@/pages/purchase/StatementManage'))
+const StatementManageBK = lazy(() => import('@/pages/purchase/StatementManageBK'))
+const AutoReconcileConfig = lazy(() => import('@/pages/purchase/AutoReconcileConfig'))
+const NonAutoReconcileConfig = lazy(() => import('@/pages/purchase/NonAutoReconcileConfig'))
+const InvoiceManage = lazy(() => import('@/pages/purchase/InvoiceManage'))
+const InvoiceManageBK = lazy(() => import('@/pages/purchase/InvoiceManageBK'))
+const AdvancePayment = lazy(() => import('@/pages/purchase/AdvancePayment'))
+const ShopStatement = lazy(() => import('@/pages/purchase/ShopStatement'))
+const CostDeductionConfig = lazy(() => import('@/pages/purchase/CostDeductionConfig'))
+const CostDeductionAdjust = lazy(() => import('@/pages/purchase/CostDeductionAdjust'))
 
 const routes: RouteObject[] = [
   {
@@ -65,22 +61,55 @@ const routes: RouteObject[] = [
     path: '/',
     element: <MainLayout />,
     children: [
-      {
-        index: true,
-        element: <Navigate to="/home" replace />,
-      },
-      {
-        path: 'home',
-        element: <HomeView />,
-      },
-      {
-        path: 'building',
-        element: <BuildingView />,
-      },
-      {
-        path: '*',
-        element: <BuildingView />,
-      },
+      { index: true, element: <Navigate to="/home" replace /> },
+      { path: 'home', element: <HomeView /> },
+      { path: 'building', element: <BuildingView /> },
+      { path: 'materials/create', element: <MaterialCreate /> },
+      { path: 'materials/:id', element: <MaterialDetail /> },
+      { path: 'materials', element: <MaterialList /> },
+      { path: 'construction-library', element: <ConstructionList /> },
+      { path: 'construction-apply', element: <ConstructionApplicationList /> },
+      { path: 'tag-list', element: <TagListView /> },
+      { path: 'category-list', element: <CategoryListView /> },
+      { path: 'brand-list', element: <BrandListView /> },
+      { path: 'menu-management', element: <MenuManagement /> },
+      { path: 'component-preview', element: <ComponentPreview /> },
+      { path: 'domain-manage/create', element: <DomainForm /> },
+      { path: 'domain-manage/:id', element: <DomainForm /> },
+      { path: 'domain-manage', element: <DomainManagement /> },
+      { path: 'user-management', element: <UserManagement /> },
+      { path: 'permission-query', element: <PermissionQuery /> },
+      { path: 'dao-hang', element: <JiuHaoHang /> },
+      { path: 'purchase-demand/create', element: <PurchaseDemandCreate /> },
+      { path: 'purchase-demand/:id', element: <PurchaseDemandDetail /> },
+      { path: 'purchase-demand', element: <PurchaseDemandList /> },
+      { path: 'purchase-order', element: <PurchaseOrderList /> },
+      { path: 'purchase-order/create', element: <PurchaseOrderCreate /> },
+      { path: 'purchase-order/:id', element: <PurchaseOrderDetail /> },
+      { path: 'purchase-min-order', element: <PurchaseMinOrder /> },
+      { path: 'purchase-min-acceptance-period', element: <PurchaseMinAcceptancePeriod /> },
+      { path: 'purchase-return-address', element: <PurchaseReturnAddress /> },
+      { path: 'purchase-price', element: <PurchasePrice /> },
+      { path: 'purchase-price/apply', element: <PurchasePriceApply /> },
+      { path: 'sales-rebate-query', element: <SalesRebateQuery /> },
+      { path: 'sales-rebate/apply', element: <SalesRebateApply /> },
+      { path: 'purchase-contract', element: <PurchaseContract /> },
+      { path: 'purchase-return', element: <PurchaseReturn /> },
+      { path: 'purchase-return/review', element: <PurchaseReturnReview /> },
+      { path: 'purchase-return/agent', element: <PurchaseReturnAgent /> },
+      { path: 'purchase-return/bk', element: <PurchaseReturnBK /> },
+      { path: 'qrcode-apply', element: <QrcodeApply /> },
+      { path: 'statement-manage', element: <StatementManage /> },
+      { path: 'statement-manage/bk', element: <StatementManageBK /> },
+      { path: 'auto-reconcile-config', element: <AutoReconcileConfig /> },
+      { path: 'non-auto-reconcile-config', element: <NonAutoReconcileConfig /> },
+      { path: 'invoice-manage', element: <InvoiceManage /> },
+      { path: 'invoice-manage/bk', element: <InvoiceManageBK /> },
+      { path: 'advance-payment', element: <AdvancePayment /> },
+      { path: 'shop-statement', element: <ShopStatement /> },
+      { path: 'cost-deduction-config', element: <CostDeductionConfig /> },
+      { path: 'cost-deduction-adjust', element: <CostDeductionAdjust /> },
+      { path: '*', element: <BuildingView /> },
     ],
   },
 ]

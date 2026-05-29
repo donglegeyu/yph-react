@@ -76,32 +76,64 @@ export interface ColumnField {
   visible: boolean
   width?: number
   fixed?: 'left' | 'right'
-  [key: string]: any
+  [key: string]: unknown
 }
 
 // ========== 筛选视图 ==========
 export interface FilterScheme {
   id: string
   name: string
+  filters?: Record<string, unknown>
   filterOrder?: string[]
+  userId?: string
+  createdAt?: string
 }
 
 export interface FilterOption {
   key: string
   label: string
   type?: string
-  options?: { label: string; value: any }[]
+  options?: { label: string; value: unknown }[]
 }
 
 export interface FilterItem {
   key: string
   label: string
   type: string
-  options?: { label: string; value: any }[]
+  placeholder?: string
+  options?: { label: string; value: unknown }[]
+}
+
+export interface DisplayItem {
+  key: string
+  label?: string
+  type: 'item' | 'button'
+  inputType?: string
+  placeholder?: string
+  options?: { label: string; value: unknown }[]
+}
+
+export interface FieldDefinition {
+  key: string
+  label: string
+  type?: 'input' | 'select' | 'date' | 'daterange' | 'item'
+  placeholder?: string
+  options?: { label: string; value: string | number }[]
+  width?: number
+  fixed?: 'left' | 'right'
+}
+
+export interface TreeConfig {
+  enabled: boolean
+  expandColumnKey?: string
+  levelField?: string
+  hasChildrenField?: string
+  levelIndent?: number
+  bodyCellSlot?: string
 }
 
 // ========== API 响应 ==========
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   code: number
   message?: string
   data: T

@@ -508,7 +508,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const menu = businessMenus.find((m) => m.key === firstKey)
     if (!menu) return
     const maxVisible = 6
-    let navList =
+    const navList =
       Array.isArray(customNavMenus) && customNavMenus.length > 0
         ? [...customNavMenus]
         : (businessMenus.slice(0, maxVisible) as unknown as CustomNavMenu[])

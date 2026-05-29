@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo } from 'react'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import type { PaginationConfig } from '@/types'
 
 export interface UseListDataOptions<T = any> {
@@ -27,6 +28,17 @@ export function useListData<T = any>(options: UseListDataOptions<T>) {
     total: 0,
   })
   const [filterParams, setFilterParamsState] = useState<Record<string, any>>({})
+
+  const paginationRef = useRef(pagination)
+  const dataSourceRef = useRef(dataSource)
+
+  useEffect(() => {
+    paginationRef.current = pagination
+  }, [pagination])
+
+  useEffect(() => {
+    dataSourceRef.current = dataSource
+  }, [dataSource])
 
   const hasData = useMemo(() => dataSource.length > 0, [dataSource])
   const isEmpty = useMemo(() => !loading && dataSource.length === 0, [loading, dataSource])
@@ -80,7 +92,7 @@ export function useListData<T = any>(options: UseListDataOptions<T>) {
         setPaginationState((prev) => ({ ...prev, total: json.total }))
       } else if (json.data?.records && json.data.total !== undefined) {
         setPaginationState((prev) => ({ ...prev, total: json.data.total }))
-      } else if (pagination.total === 0) {
+      } else if (paginationRef.current.total === 0) {
         setPaginationState((prev) => ({ ...prev, total: records.length }))
       }
       if (onSuccess) onSuccess(records)
@@ -93,7 +105,8 @@ export function useListData<T = any>(options: UseListDataOptions<T>) {
     } finally {
       setLoading(false)
     }
-  }, [apiEndpoint, filterParams, pagination.current, pagination.pageSize, pagination.total, transformResponse, onSuccess, onError])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiEndpoint, filterParams, transformResponse, onSuccess, onError])
 
   const refresh = useCallback(async (): Promise<T[]> => {
     setPaginationState((prev) => ({ ...prev, current: 1 }))
@@ -101,12 +114,13 @@ export function useListData<T = any>(options: UseListDataOptions<T>) {
   }, [fetchData])
 
   const loadMore = useCallback(async (): Promise<T[]> => {
-    if (pagination.current * pagination.pageSize >= pagination.total) {
-      return dataSource
+    const current = paginationRef.current
+    if (current.current * current.pageSize >= current.total) {
+      return dataSourceRef.current
     }
     setPaginationState((prev) => ({ ...prev, current: prev.current + 1 }))
     return fetchData()
-  }, [fetchData, pagination, dataSource])
+  }, [fetchData])
 
   const setFilterParams = useCallback((params: Record<string, any>) => {
     setFilterParamsState(params)

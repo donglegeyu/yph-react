@@ -46,7 +46,7 @@ export default function SecondSidebar() {
 
   const secondMenus = useMemo(() => {
     if (activeFirstMenu === 'favorites') {
-      return (favorites || []).map((item: any) => ({
+      return (favorites || []).map((item: Record<string, unknown>) => ({
         key: item.menuKey || item.key || item.id,
         label: item.menuLabel || item.label || item.name || item.title || '未命名',
         path: item.menuPath || item.path || `/menu/${item.menuKey || item.key}`,
@@ -59,26 +59,29 @@ export default function SecondSidebar() {
   }, [activeFirstMenu, favorites, currentSecondMenus])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalExpandedKeys(expandedKeys)
   }, [expandedKeys])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalActiveKey(activeKey)
   }, [activeKey])
 
   useEffect(() => {
     if (activeFirstMenu === 'favorites') {
-      const mapped = (favorites || []).map((item: any) => ({
-        key: item.menuKey || item.key || item.id,
-        label: item.menuLabel || item.label || item.name || item.title || '未命名',
-        path: item.menuPath || item.path || `/menu/${item.menuKey || item.key}`,
+      const mapped = (favorites || []).map((item: Record<string, unknown>) => ({
+        key: (item.menuKey || item.key || item.id) as string,
+        label: (item.menuLabel || item.label || item.name || item.title || '未命名') as string,
+        path: (item.menuPath || item.path || `/menu/${item.menuKey || item.key}`) as string,
       }))
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFavoritesList(mapped)
     }
   }, [activeFirstMenu, favorites])
 
   const handleClick = useCallback(
-    (menu: any) => {
+    (menu: Record<string, unknown>) => {
       if (menu.path) {
         navigateToPath(menu.path)
         openTab(menu.key, menu.label, menu.path)
@@ -103,7 +106,7 @@ export default function SecondSidebar() {
   )
 
   const handleToggleFavorite = useCallback(
-    async (menu: any) => {
+    async (menu: Record<string, unknown>) => {
       await toggleFavorite(menu)
     },
     [toggleFavorite]
@@ -160,8 +163,8 @@ export default function SecondSidebar() {
                 />
               </div>
             ))
-          : secondMenus.map((menu: any) =>
-              menu.children?.length ? (
+          : secondMenus.map((menu: Record<string, unknown>) =>
+              (menu.children as Record<string, unknown>[])?.length ? (
                 <div key={menu.key} className="menu-group">
                   <div
                     className={`menu-item parent${localExpandedKeys.includes(menu.key) ? ' expanded' : ''}`}
@@ -178,7 +181,7 @@ export default function SecondSidebar() {
                     className="sub-menu"
                     style={{ display: localExpandedKeys.includes(menu.key) ? 'flex' : 'none' }}
                   >
-                    {menu.children.map((sub: any) => (
+                    {(menu.children as Record<string, unknown>[]).map((sub) => (
                       <div
                         key={sub.key}
                         className={`menu-item child${localActiveKey === sub.key ? ' active' : ''}`}

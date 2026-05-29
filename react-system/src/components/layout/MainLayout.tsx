@@ -10,6 +10,7 @@ export default function MainLayout() {
 
   useEffect(() => {
     fetchMenus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

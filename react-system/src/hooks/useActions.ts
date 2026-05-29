@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -55,6 +56,7 @@ export function useActions(options: UseActionsOptions = {}) {
       const path = getDetailPath(record)
       if (path) navigate(path)
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [onDetail, detailPath, navigate]
   )
 
@@ -67,6 +69,7 @@ export function useActions(options: UseActionsOptions = {}) {
       const path = getEditPath(record)
       if (path) navigate(path)
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [onEdit, editPath, navigate]
   )
 

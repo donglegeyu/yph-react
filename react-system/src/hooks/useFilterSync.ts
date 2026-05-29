@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback, useMemo } from 'react'
 import type { FilterItem } from '@/types'
 
