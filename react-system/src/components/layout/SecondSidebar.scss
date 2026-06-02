@@ -53,6 +53,7 @@
     transition: all 0.2s ease;
     gap: 4px;
     border-radius: 4px;
+    position: relative;
 
     &:hover { background: #f5f5f5; }
 
@@ -60,23 +61,32 @@
       color: #F95914;
       background: #FFF7F0;
       font-weight: 500;
+
+      .menu-label { color: #F95914; }
+      .favorite-icon { opacity: 1; }
     }
 
     &.parent { font-size: 14px; font-weight: 500; }
-    &.child { padding-left: 38px; font-size: 13px; }
+    &.child { padding-left: 36px; font-size: 13px; }
     &.single { font-size: 14px; }
   }
 
   .menu-icon {
     width: 16px;
     height: 16px;
+    stroke: currentColor !important;
+    stroke-width: 4;
+    fill: none;
     flex-shrink: 0;
     color: inherit;
   }
 
   .menu-label {
     flex: 1;
+    font-family: PingFang SC;
     font-size: 14px;
+    font-weight: normal;
+    line-height: 22px;
     color: rgba(0, 0, 0, 0.88);
     white-space: nowrap;
     overflow: hidden;

@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS nav_menu (
 
 -- 插入默认菜单数据
 INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_type) VALUES
+('home', '首页', '/home', 'home', 0, 1, 0, '系统菜单-上'),
+('favorites', '收藏', '/favorites', 'star', 1, 1, 0, '系统菜单-上'),
 ('material-center', '材料中心', NULL, 'file', 1, 1, 0, '业务菜单'),
 ('material-apply', '材料申请', '/materials', NULL, 1, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='material-center') AS t), '业务菜单'),
 ('construction-library', '施工项库', '/construction-library', NULL, 2, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='material-center') AS t), '业务菜单'),

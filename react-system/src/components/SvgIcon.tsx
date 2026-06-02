@@ -10,7 +10,7 @@ export default function SvgIcon({ href, className, style, size = 16, onClick }: 
   return (
     <svg
       className={className}
-      style={{ width: size, height: size, color: 'inherit', ...style }}
+      style={{ width: size, height: size, ...style }}
       viewBox="0 0 48 48"
       onClick={onClick}
     >

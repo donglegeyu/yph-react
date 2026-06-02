@@ -668,7 +668,7 @@ export function generateExportHTML(state: ExportPageState): string {
     <!-- 一级导航 -->
     <aside class="first-sidebar">
       <div class="brand-area">
-        <div class="brand-name">星际造梦</div>
+        <div class="brand-name">星际VUE</div>
       </div>
       ${firstNavItems}
     </aside>

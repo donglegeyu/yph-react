@@ -125,10 +125,15 @@ const selectedMenu = ref<MenuItem | null>(null)
 const searchInputRef = ref<HTMLInputElement>()
 
 const iconMap: Record<string, string> = {
-  'commodity': 'tag',
-  'shopping': 'shopping-cart-add',
+  'shopping': 'shopping-cart-del',
+  'buy': 'shopping-cart-del',
   'goods': 'tag',
-  'buy': 'shopping-cart-add',
+  'file': 'file-cabinet',
+  'search': 'doc-search',
+  'user': 'people-top-card',
+  'safe': 'message-security',
+  'tool': 'setting',
+  'app': 'all-application',
 }
 
 function getIconName(icon?: string): string {

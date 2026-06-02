@@ -88,15 +88,23 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 const savedTabs = loadFromStorage<TabItem[]>(STORAGE_KEYS.TABS, [])
+// 去重：避免 localStorage 中残留重复 tab key
+const uniqueTabs = savedTabs.filter(
+  (tab, index, arr) => arr.findIndex((t) => t.key === tab.key) === index
+)
 const savedActiveTabKey = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB_KEY) || ''
 const savedFirstMenu = localStorage.getItem(STORAGE_KEYS.ACTIVE_FIRST_MENU) || 'home'
 const savedUserInfo = loadFromStorage<UserInfo>(STORAGE_KEYS.USER_INFO, { username: 'admin' })
 const savedCustomNavMenus = loadFromStorage<CustomNavMenu[]>(STORAGE_KEYS.CUSTOM_NAV_MENUS, [])
+// 去重自定义导航
+const uniqueCustomNav = savedCustomNavMenus.filter(
+  (m, i, arr) => arr.findIndex((x) => x.key === m.key) === i
+)
 const savedSecondSidebarFixed = localStorage.getItem('app:secondSidebarFixed')
 
 export const useAppStore = create<AppState>((set, get) => ({
   businessMenus: [],
-  customNavMenus: savedCustomNavMenus,
+  customNavMenus: uniqueCustomNav,
   firstMenus: [],
   systemBottomMenus: [],
   activeFirstMenu: savedFirstMenu,
@@ -105,7 +113,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   secondMenusMap: {},
   favorites: [],
   userInfo: savedUserInfo,
-  tabs: savedTabs,
+  tabs: uniqueTabs,
   activeTabKey: savedActiveTabKey,
   secondSidebarHovered: false,
   secondSidebarFixed: savedSecondSidebarFixed !== 'false',
@@ -331,26 +339,30 @@ export const useAppStore = create<AppState>((set, get) => ({
             hasChildren: !!(m.children && m.children.length > 0),
             children: m.children || [],
           }))
+          .filter((m, i, arr) => !m.key || arr.findIndex((x) => x.key === m.key) === i)
 
         const secondMenusMap: Record<string, MenuItem[]> = {}
         for (const menu of menus) {
           if (menu.children && menu.children.length > 0 && menu.status === 1) {
-            secondMenusMap[menu.key] = menu.children
+            const children = menu.children
               .filter((child: NavMenu) => child.status === 1)
               .map((child: NavMenu) => ({
-                key: child.key,
+                key: child.key || `_group_${child.label}`,
                 label: child.label,
                 path: child.path,
                 icon: child.icon || 'id-card-v-klbe0a04',
                 children: (child.children || [])
                   .filter((gc: NavMenu) => gc.status === 1)
                   .map((gc: NavMenu) => ({
-                    key: gc.key,
+                    key: gc.key || `_child_${gc.label}`,
                     label: gc.label,
                     path: gc.path,
                     icon: gc.icon,
-                  })),
+                  }))
+                  .filter((gc, i, arr) => !gc.key?.startsWith('_child_') || arr.findIndex((x) => x.key === gc.key) === i),
               }))
+              .filter((child, i, arr) => !child.key?.startsWith('_group_') || arr.findIndex((x) => x.key === child.key) === i)
+            secondMenusMap[menu.key] = children
           }
         }
 
@@ -375,8 +387,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       const json = await res.json()
       if (json.code === 200) {
         const data = json.data || []
-        set({ favorites: data })
-        localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(data))
+        const uniqueFavs = data.filter(
+          (f: Favorite, i: number, arr: Favorite[]) => arr.findIndex((x) => x.menuKey === f.menuKey) === i
+        )
+        set({ favorites: uniqueFavs })
+        localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(uniqueFavs))
       }
     } catch {
       const cached = localStorage.getItem(STORAGE_KEYS.FAVORITES)

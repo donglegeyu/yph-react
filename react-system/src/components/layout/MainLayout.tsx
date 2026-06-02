@@ -36,7 +36,7 @@ export default function MainLayout() {
         }}
       >
         <TabBar />
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
           <Outlet />
         </div>
       </div>

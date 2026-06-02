@@ -83,7 +83,7 @@ export default function ActionCell({
       {moreButtons.length > 0 && (
         <CompanyDropdown
           placement="bottomRight"
-          dropdownRender={() => (
+          popupRender={() => (
             <Menu
               onClick={(info) => {
                 const btn = moreButtons.find((b) => b.key === info.key)

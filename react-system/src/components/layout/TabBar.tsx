@@ -109,6 +109,7 @@ export default function TabBar() {
               <SvgIcon
                 href="close"
                 className="tab-close"
+                size={12}
                 onClick={(e) => {
                   e.stopPropagation()
                   handleCloseTab(tab.key)

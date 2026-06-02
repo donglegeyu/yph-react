@@ -1826,6 +1826,10 @@ function getColorScaleLabel(group: any): string {
   const prefix = getColorScalePrefix(group)
   const labelMap: Record<string, string> = {
     'primary': '主色 primary',
+    'success': '成功色 success',
+    'warning': '警告色 warning',
+    'error': '错误色 error',
+    'info': '信息色 info',
     'gray': '灰色 gray',
     'green': '绿色 green',
     'orange': '橙色 orange',

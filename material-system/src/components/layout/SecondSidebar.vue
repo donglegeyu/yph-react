@@ -332,9 +332,22 @@ const defaultIcons: Record<string, string> = {
   'default': 'id-card-v-klbe0a04',
 }
 
+// 图标名称映射（将后端返回的图标映射到本地/CDN存在的图标）
+const iconMap: Record<string, string> = {
+  'shopping': 'shopping-cart-del',
+  'buy': 'shopping-cart-del',
+  'goods': 'tag',
+  'file': 'file-cabinet',
+  'search': 'doc-search',
+  'user': 'people-top-card',
+  'safe': 'message-security',
+  'tool': 'setting',
+  'app': 'all-application',
+}
+
 // 获取菜单图标
 function getIcon(icon?: string): string {
-  if (icon) return icon
+  if (icon) return iconMap[icon] || icon
   return defaultIcons['default']
 }
 
@@ -374,10 +387,14 @@ const secondMenus = computed(() => {
     console.log('[secondMenus computed] favorites mapped:', mapped)
     return mapped
   }
-  return (currentSecondMenus.value || []).map((menu: any) => ({
-    ...menu,
-    icon: getIcon(menu.icon),
-  }))
+  // 隐藏只在菜单管理页面显示的内部链接菜单（不在二级面板展示）
+  const hideKeys = ['system-settings', 'component-preview']
+  return (currentSecondMenus.value || [])
+    .filter((menu: any) => !hideKeys.includes(menu.key) && !hideKeys.includes(menu.menuKey))
+    .map((menu: any) => ({
+      ...menu,
+      icon: getIcon(menu.icon),
+    }))
 })
 
 function toggleExpand(key: string) {
@@ -577,7 +594,7 @@ watch(() => route.path, (path) => {
   }
 
   &.child {
-    padding-left: 38px;
+    padding-left: 36px;
     font-size: 13px;
     height: 40px;
   }

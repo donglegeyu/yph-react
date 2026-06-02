@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <link rel="icon" type="image/svg+xml" href="/src/assets/vite.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>星际造梦</title>
+    <title>星际VUE</title>
     <!-- IconPark 图标库 (CDN) -->
     <script src="https://lf1-cdn-tos.bytegoofy.com/obj/iconpark/svg_43217_171.57d626ea470afdc06c519a374a29d06c.js"></script>
     <script>
@@ -28,7 +28,7 @@
         <path fill="currentColor" d="m23.999 5-6.113 12.478L4 19.49l10.059 9.834L11.654 43 24 36.42 36.345 43 33.96 29.325 44 19.491l-13.809-2.013L24 5Z"/>
       </symbol>
       <symbol id="down" viewBox="0 0 48 48" fill="none">
-        <path stroke-linejoin="round" stroke-linecap="round" stroke-width="4" stroke="currentColor" d="m24 33-9-9 9-9 9 9-9 9Z" data-follow-stroke="currentColor"/>
+        <path stroke-linejoin="round" stroke-linecap="round" stroke-width="4" stroke="currentColor" d="M16 18l8 8 8-8" data-follow-stroke="currentColor"/>
       </symbol>
       <symbol id="drag" viewBox="0 0 48 48" fill="none">
         <path stroke-linejoin="round" stroke-linecap="round" stroke-width="3" stroke="currentColor" d="M10 12h28M10 24h28M10 36h28" data-follow-stroke="currentColor"/>
@@ -76,10 +76,6 @@
       .child.active .favorite-icon use {
         fill: #F95914 !important;
         stroke: none !important;
-      }
-      /* 强制覆盖所有 stroke 属性 */
-      [stroke] {
-        stroke: inherit !important;
       }
       /* 强制 svg use 元素颜色 */
       svg use {

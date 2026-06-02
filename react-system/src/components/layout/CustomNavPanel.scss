@@ -132,8 +132,10 @@
       svg {
         width: 16px;
         height: 16px;
-        color: rgba(0, 0, 0, 0.88);
+        stroke: currentColor;
+        stroke-width: 4;
         fill: none;
+        color: rgba(0, 0, 0, 0.88);
       }
     }
 

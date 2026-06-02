@@ -47,13 +47,17 @@ export default function PurchaseOrderList() {
   const navigate = useNavigate()
 
   const { registerStatusMap, getStatusText, getStatusColor } = useStatusMap()
-  registerStatusMap({
-    draft: { text: '草稿', color: 'default' },
-    pending: { text: '审核中', color: 'status-pending' },
-    approved: { text: '已通过', color: 'status-approved' },
-    rejected: { text: '已拒绝', color: 'status-rejected' },
-    closed: { text: '已关闭', color: 'default' },
-  })
+
+  useEffect(() => {
+    registerStatusMap({
+      draft: { text: '草稿', color: 'default' },
+      pending: { text: '审核中', color: 'status-pending' },
+      approved: { text: '已通过', color: 'status-approved' },
+      rejected: { text: '已拒绝', color: 'status-rejected' },
+      closed: { text: '已关闭', color: 'default' },
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { formatDateTime } = useDateFormat()
 

@@ -286,15 +286,7 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  let menusLoaded = false
-  
   async function fetchMenus(forceRefresh = false) {
-    if (!forceRefresh && menusLoaded && businessMenus.value.length > 0) {
-      console.log('[fetchMenus] already loaded, still checking non-menu path')
-      // 即使菜单已加载，仍检查非菜单路径
-      clearStateForNonMenuPath()
-      return
-    }
     try {
       // 获取当前域ID
       const currentDomainId = localStorage.getItem('currentDomainId')
@@ -305,7 +297,6 @@ export const useAppStore = defineStore('app', () => {
       const res = await fetch(url)
       const json = await res.json()
       if (json.code === 200 && json.data && json.data.length > 0) {
-        menusLoaded = true
         const menus = json.data as NavMenu[]
         
         firstMenus.value = menus

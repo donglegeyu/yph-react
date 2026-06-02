@@ -70,7 +70,7 @@
       </div>
 
       <div class="copyright-area">
-        <p class="copyright-text">Copyright © 粤ICP备18161542号 版权所有：星际造梦责任有限公司</p>
+        <p class="copyright-text">Copyright © 粤ICP备18161542号 版权所有：星际VUE责任有限公司</p>
       </div>
     </div>
   </div>

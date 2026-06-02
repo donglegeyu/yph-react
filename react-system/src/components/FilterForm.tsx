@@ -1,9 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import { Row, Col, DatePicker } from 'antd'
+import { Row, Col, DatePicker, Form } from 'antd'
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
 import {
-  CompanyForm,
   CompanyInput,
   CompanySelect,
   CompanyDatePicker,
@@ -187,7 +186,7 @@ export default function FilterForm({
                 {...colSpans}
                 style={{ marginLeft: 'auto', display: 'flex', justifyContent: 'flex-end' }}
               >
-                <CompanyForm.Item className="filter-item">
+                <Form.Item className="filter-item">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <CompanyButton type="primary" onClick={handleSearch}>
                       查询
@@ -208,14 +207,14 @@ export default function FilterForm({
                       </span>
                     )}
                   </div>
-                </CompanyForm.Item>
+                </Form.Item>
               </Col>
             )
           }
 
           return (
             <Col key={item.key} {...colSpans} className="filter-col">
-              <CompanyForm.Item label={item.label} className="filter-item">
+              <Form.Item label={item.label} className="filter-item">
                 {item.inputType === 'input' && (
                   <CompanyInput
                     value={(formModel[item.key] as string) || ''}
@@ -266,7 +265,7 @@ export default function FilterForm({
                     presets={presets}
                   />
                 )}
-              </CompanyForm.Item>
+              </Form.Item>
             </Col>
           )
         })}

@@ -5,6 +5,25 @@ import SvgIcon from '@/components/SvgIcon'
 import './SecondSidebar.scss'
 import nullSvg from '@/assets/null.svg'
 
+const iconMap: Record<string, string> = {
+  commodity: 'tag',
+  shopping: 'shopping-cart-del',
+  buy: 'shopping-cart-del',
+  goods: 'tag',
+  file: 'file-cabinet',
+  search: 'doc-search',
+  user: 'people-top-card',
+  safe: 'message-security',
+  tool: 'setting',
+  app: 'all-application',
+}
+
+function getIconName(icon?: string): string {
+  return icon ? iconMap[icon] || icon : 'id-card-v-klbe0a04'
+}
+
+const hideKeys = ['system-settings', 'component-preview']
+
 interface FavoritesItem {
   key: string
   label: string
@@ -52,10 +71,12 @@ export default function SecondSidebar() {
         path: item.menuPath || item.path || `/menu/${item.menuKey || item.key}`,
       }))
     }
-    return currentSecondMenus.map((menu) => ({
-      ...menu,
-      icon: menu.icon || 'id-card-v-klbe0a04',
-    }))
+    return currentSecondMenus
+      .filter((menu) => !hideKeys.includes(menu.key) && !hideKeys.includes(menu.menuKey))
+      .map((menu) => ({
+        ...menu,
+        icon: menu.icon || 'id-card-v-klbe0a04',
+      }))
   }, [activeFirstMenu, favorites, currentSecondMenus])
 
   useEffect(() => {
@@ -170,7 +191,7 @@ export default function SecondSidebar() {
                     className={`menu-item parent${localExpandedKeys.includes(menu.key) ? ' expanded' : ''}`}
                     onClick={() => toggleExpandedKey(menu.key)}
                   >
-                    <SvgIcon href={menu.icon} className="menu-icon" />
+                    <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
                     <span className="menu-label">{menu.label}</span>
                     <SvgIcon
                       href="down"
@@ -207,7 +228,7 @@ export default function SecondSidebar() {
                   className={`menu-item single${localActiveKey === menu.key ? ' active' : ''}`}
                   onClick={() => handleClick(menu)}
                 >
-                  <SvgIcon href={menu.icon} className="menu-icon" />
+                  <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
                   <span className="menu-label">{menu.label}</span>
                   <SvgIcon
                     href={isFavorited(menu.key) ? 'star-fill' : 'star'}

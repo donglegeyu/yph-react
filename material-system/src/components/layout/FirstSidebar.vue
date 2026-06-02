@@ -33,7 +33,7 @@
       </a-popover>
       <!-- 域名称 -->
       <div class="domain-name">
-        <span>{{ currentDomain?.domainName || '星际造梦' }}</span>
+        <span>{{ currentDomain?.domainName || '星际VUE' }}</span>
       </div>
     </div>
 
@@ -307,10 +307,15 @@ watch(() => appStore.activeFirstMenu, (newFirstMenu) => {
 
 // 图标名称映射（将后端返回的图标映射到本地存在的图标）
 const iconMap: Record<string, string> = {
-  'commodity': 'tag',
-  'shopping': 'shopping-cart-add',
+  'shopping': 'shopping-cart-del',
+  'buy': 'shopping-cart-del',
   'goods': 'tag',
-  'buy': 'shopping-cart-add',
+  'file': 'file-cabinet',
+  'search': 'doc-search',
+  'user': 'people-top-card',
+  'safe': 'message-security',
+  'tool': 'setting',
+  'app': 'all-application',
 }
 
 // 默认菜单图标

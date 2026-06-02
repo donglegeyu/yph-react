@@ -3,8 +3,10 @@ package com.material.server.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.material.server.entity.NavMenu;
+import com.material.server.entity.SysDomain;
 import com.material.server.entity.SysDomainMenu;
 import com.material.server.mapper.NavMenuMapper;
+import com.material.server.mapper.SysDomainMapper;
 import com.material.server.mapper.SysDomainMenuMapper;
 import com.material.server.service.NavMenuService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> implements NavMenuService {
 
     private final SysDomainMenuMapper sysDomainMenuMapper;
+    private final SysDomainMapper sysDomainMapper;
 
     @Override
     public List<NavMenu> getTreeList() {
@@ -145,6 +148,8 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
 
     @Override
     public void batchDelete(List<Long> ids) {
+        sysDomainMenuMapper.delete(new LambdaQueryWrapper<SysDomainMenu>()
+                .in(SysDomainMenu::getMenuId, ids));
         removeBatchByIds(ids);
     }
 
@@ -158,5 +163,45 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
             return 0;
         }
         return (parent.getLevel() != null ? parent.getLevel() : 0) + 1;
+    }
+
+    @Override
+    public boolean save(NavMenu entity) {
+        boolean result = super.save(entity);
+        if (result && entity.getId() != null) {
+            syncMenuToDefaultDomain(entity);
+        }
+        return result;
+    }
+
+    @Override
+    public boolean removeById(java.io.Serializable id) {
+        boolean result = super.removeById(id);
+        if (result) {
+            sysDomainMenuMapper.delete(new LambdaQueryWrapper<SysDomainMenu>()
+                    .eq(SysDomainMenu::getMenuId, id));
+        }
+        return result;
+    }
+
+    private void syncMenuToDefaultDomain(NavMenu menu) {
+        LambdaQueryWrapper<SysDomain> domainQuery = new LambdaQueryWrapper<>();
+        domainQuery.eq(SysDomain::getStatus, 1)
+                   .eq(SysDomain::getIsDefault, 1);
+        List<SysDomain> defaultDomains = sysDomainMapper.selectList(domainQuery);
+
+        for (SysDomain domain : defaultDomains) {
+            LambdaQueryWrapper<SysDomainMenu> checkQuery = new LambdaQueryWrapper<>();
+            checkQuery.eq(SysDomainMenu::getDomainId, domain.getId())
+                      .eq(SysDomainMenu::getMenuId, menu.getId());
+            if (sysDomainMenuMapper.selectCount(checkQuery) == 0) {
+                SysDomainMenu domainMenu = new SysDomainMenu();
+                domainMenu.setDomainId(domain.getId());
+                domainMenu.setMenuId(menu.getId());
+                domainMenu.setCustomLabel(menu.getLabel());
+                domainMenu.setSort(menu.getSort());
+                sysDomainMenuMapper.insert(domainMenu);
+            }
+        }
     }
 }

@@ -46,12 +46,6 @@ export default function MaterialList() {
   const [columnSettingsDrawerVisible, setColumnSettingsDrawerVisible] = useState(false)
 
   const { registerStatusMap, getStatusText, getStatusColor } = useStatusMap()
-  registerStatusMap({
-    draft: { text: '草稿', color: 'default' },
-    pending: { text: '审核中', color: 'status-pending' },
-    approved: { text: '已通过', color: 'status-approved' },
-    rejected: { text: '已拒绝', color: 'status-rejected' },
-  })
 
   const { formatDateTime } = useDateFormat()
 
@@ -78,6 +72,12 @@ export default function MaterialList() {
           fixed: f.fixed,
         }))
     )
+    registerStatusMap({
+      draft: { text: '草稿', color: 'default' },
+      pending: { text: '审核中', color: 'status-pending' },
+      approved: { text: '已通过', color: 'status-approved' },
+      rejected: { text: '已拒绝', color: 'status-rejected' },
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -146,7 +146,7 @@ export default function MaterialList() {
         新增
       </CompanyButton>
       <CompanyDropdown
-        dropdownRender={() => (
+        popupRender={() => (
           <Menu
             onClick={handleExportMenuClick}
             items={[
@@ -244,7 +244,7 @@ export default function MaterialList() {
       <CompanyDrawer
         open={columnSettingsDrawerVisible}
         title="列设置"
-        width={380}
+        size={380}
         onClose={() => setColumnSettingsDrawerVisible(false)}
         footer={
           <div style={{ textAlign: 'right' }}>

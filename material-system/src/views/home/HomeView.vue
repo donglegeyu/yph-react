@@ -1,6 +1,6 @@
 <template>
   <div class="home-view">
-    <h1>欢迎使用星际造梦</h1>
+    <h1>欢迎使用星际VUE</h1>
     <div class="stats-grid">
       <a-card v-for="stat in stats" :key="stat.title" :title="stat.title">
         <template #extra>

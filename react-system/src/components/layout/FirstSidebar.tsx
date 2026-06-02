@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '@/store/app'
 import SvgIcon from '@/components/SvgIcon'
@@ -12,9 +13,15 @@ import logoImg from '@/assets/logo-dl.svg'
 
 const iconMap: Record<string, string> = {
   commodity: 'tag',
-  shopping: 'shopping-cart-add',
+  shopping: 'shopping-cart-del',
+  buy: 'shopping-cart-del',
   goods: 'tag',
-  buy: 'shopping-cart-add',
+  file: 'file-cabinet',
+  search: 'doc-search',
+  user: 'people-top-card',
+  safe: 'message-security',
+  tool: 'setting',
+  app: 'all-application',
 }
 
 function getIconName(icon?: string): string {
@@ -44,6 +51,18 @@ export default function FirstSidebar() {
   const [currentDomainId, setCurrentDomainId] = useState<number | null>(null)
   const [moreDrawerOpen, setMoreDrawerOpen] = useState(false)
   const [customNavVisible, setCustomNavVisible] = useState(false)
+  const [adminPopoverOpen, setAdminPopoverOpen] = useState(false)
+  const [themeDrawerVisible, setThemeDrawerVisible] = useState(false)
+  const [selectedThemeColor, setSelectedThemeColor] = useState(() => localStorage.getItem('theme:color') || '#F95914')
+
+  const themeColors = [
+    { label: '橙色', value: '#F95914' },
+    { label: '蓝色', value: '#1890ff' },
+    { label: '绿色', value: '#52c41a' },
+    { label: '紫色', value: '#722ed1' },
+    { label: '红色', value: '#f5222d' },
+    { label: '金黄色', value: '#faad14' },
+  ]
 
   const currentDomain = useMemo(
     () => domains.find((d) => d.id === currentDomainId),
@@ -185,11 +204,21 @@ export default function FirstSidebar() {
   }, [])
 
   const handleThemeSettings = useCallback(() => {
-    setActiveKey('')
+    setAdminPopoverOpen(false)
+    useAppStore.getState().openTab('theme-settings', '主题设置', '/component-preview')
+    useAppStore.getState().setActiveFirstMenu('')
     useAppStore.getState().setActiveKey('')
     useAppStore.getState().setExpandedKeys([])
+    useAppStore.setState({ secondSidebarHovered: false })
+    setActiveKey('')
     navigate('/component-preview')
   }, [navigate])
+
+  const handleThemeColorChange = useCallback((color: string) => {
+    setSelectedThemeColor(color)
+    localStorage.setItem('theme:color', color)
+    window.dispatchEvent(new CustomEvent('theme-color-change', { detail: { color } }))
+  }, [])
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('token')
@@ -298,6 +327,8 @@ export default function FirstSidebar() {
             </div>
           ))}
           <CompanyPopover
+            open={adminPopoverOpen}
+            onOpenChange={setAdminPopoverOpen}
             trigger="click"
             placement="rightBottom"
             content={
@@ -369,6 +400,35 @@ export default function FirstSidebar() {
             onUpdate={handleCustomNavUpdate}
           />
         </>
+      )}
+
+      {themeDrawerVisible && createPortal(
+        <div className="theme-drawer-overlay" onClick={(e) => { if (e.target === e.currentTarget) setThemeDrawerVisible(false) }}>
+          <div className="theme-drawer">
+            <div className="theme-drawer-header">
+              <span className="theme-drawer-title">主题设置</span>
+              <svg className="theme-drawer-close" viewBox="0 0 48 48" onClick={() => setThemeDrawerVisible(false)}>
+                <use href="#close" />
+              </svg>
+            </div>
+            <div className="theme-drawer-content">
+              <div className="theme-option-group">
+                <div className="theme-option-label">主题色</div>
+                <div className="theme-colors">
+                  {themeColors.map((color) => (
+                    <div
+                      key={color.value}
+                      className={`theme-color-item${selectedThemeColor === color.value ? ' active' : ''}`}
+                      style={{ backgroundColor: color.value }}
+                      onClick={() => handleThemeColorChange(color.value)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </>
   )

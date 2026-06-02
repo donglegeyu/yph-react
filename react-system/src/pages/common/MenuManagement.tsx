@@ -620,7 +620,7 @@ export default function MenuManagement() {
       <CompanyDrawer
         open={modalVisible}
         title={modalTitle}
-        width={360}
+        size={360}
         onClose={handleModalCancel}
         footer={
           <Space>
@@ -705,7 +705,7 @@ export default function MenuManagement() {
       <CompanyDrawer
         open={moveDrawerVisible}
         title="移动菜单"
-        width={420}
+        size={420}
         onClose={closeMoveDrawer}
         footer={
           <Space>

@@ -16,14 +16,14 @@
     <template #label>
       <div class="icon-selected" v-if="selectValue">
         <svg viewBox="0 0 48 48" class="icon-selected-preview">
-          <use :href="`#${selectValue}`" />
+          <use :href="`#${getIconName(selectValue)}`" />
         </svg>
       </div>
     </template>
     <a-select-option v-for="icon in filteredIconList" :key="icon.value" :value="icon.value">
       <div class="icon-option">
         <svg viewBox="0 0 48 48" class="icon-preview">
-          <use :href="`#${icon.value}`" />
+          <use :href="`#${getIconName(icon.value)}`" />
         </svg>
         <span class="icon-label">{{ icon.label }}</span>
       </div>
@@ -59,7 +59,7 @@
       <a-form-item label="预览">
         <div v-if="newIcon.svgUrl && newIcon.value" class="icon-preview-box">
           <svg viewBox="0 0 48 48" class="icon-preview-large">
-            <use :href="`#${newIcon.value}`" />
+            <use :href="`#${getIconName(newIcon.value)}`" />
           </svg>
           <span class="preview-tip">如果预览为空，说明图标标识不存在</span>
         </div>
@@ -105,6 +105,23 @@ const newIcon = reactive({
   value: '',
   svgUrl: ''
 })
+
+// 图标名称映射（将不存在的图标名映射到 CDN/本地存在的图标）
+const iconMap: Record<string, string> = {
+  'shopping': 'shopping-cart-del',
+  'buy': 'shopping-cart-del',
+  'goods': 'tag',
+  'file': 'file-cabinet',
+  'search': 'doc-search',
+  'user': 'people-top-card',
+  'safe': 'message-security',
+  'tool': 'setting',
+  'app': 'all-application',
+}
+
+function getIconName(icon: string): string {
+  return iconMap[icon] || icon
+}
 
 const loadedScripts = shallowRef<Set<string>>(new Set())
 

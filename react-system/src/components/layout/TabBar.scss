@@ -33,14 +33,40 @@
   transition: all 0.2s;
 
   &:hover {
-    background: #F5F5F5;
+    background: #F0EEED;
 
-    .tab-close { opacity: 1; }
+    .tab-label {
+      font-family: PingFang SC;
+      font-size: 14px;
+      font-weight: normal;
+      line-height: 22px;
+      color: var(--ant-color-text-heading);
+    }
+
+    .tab-close { z-index: 1; }
   }
 
   &.active {
     z-index: 2;
     background: #F0EEED;
+
+    .tab-label {
+      font-family: PingFang SC;
+      font-size: 14px;
+      font-weight: normal;
+      line-height: 22px;
+      color: var(--ant-color-text-heading);
+    }
+
+    .tab-close {
+      z-index: 1;
+    }
+  }
+
+  &.home-tab {
+    &.active .tab-label {
+      color: var(--ant-color-text-heading);
+    }
   }
 }
 
@@ -56,11 +82,6 @@
   height: 12px;
   flex-shrink: 0;
   color: rgba(0, 0, 0, 0.45);
-  opacity: 0;
-  transition: opacity 0.2s;
-
-  .tab-item:hover & { opacity: 1; }
-  .tab-item.active & { opacity: 1; }
 }
 
 .tab-actions {
@@ -68,4 +89,15 @@
   align-items: center;
   gap: 8px;
   margin-left: 12px;
+}
+
+.action-icon {
+  width: 18px;
+  height: 18px;
+  color: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+
+  &:hover {
+    color: rgba(0, 0, 0, 0.88);
+  }
 }

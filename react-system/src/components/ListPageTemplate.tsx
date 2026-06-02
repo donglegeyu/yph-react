@@ -238,7 +238,7 @@ export default function ListPageTemplate({
               <CompanyDropdown
                 open={viewDropdownOpen}
                 onOpenChange={setViewDropdownOpen}
-                dropdownRender={() => (
+                popupRender={() => (
                   <Menu
                     onClick={handleViewMenuClick}
                     items={viewDropdownItems}

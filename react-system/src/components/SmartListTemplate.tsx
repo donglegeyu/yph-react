@@ -794,7 +794,7 @@ export default function SmartListTemplate({
           <CompanyDropdown
             open={dropdownOpen}
             onOpenChange={setDropdownOpen}
-            dropdownRender={() => (
+            popupRender={() => (
               <Menu
                 onClick={handleMenuClick}
                 items={dropdownMenuItems}
@@ -900,7 +900,7 @@ export default function SmartListTemplate({
       <CompanyDrawer
         open={saveSchemeDialogVisible}
         title={isEditMode ? '编辑视图' : '新增视图'}
-        width={380}
+        size={380}
         onClose={handleDrawerClose}
         footer={
           <div style={{ textAlign: 'right' }}>
