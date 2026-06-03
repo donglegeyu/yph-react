@@ -265,6 +265,10 @@
   width: 100%;
 }
 
+.input-with-count .ant-input-affix-wrapper {
+  width: 100%;
+}
+
 .word-count {
   position: absolute;
   right: 8px;
@@ -275,4 +279,13 @@
   pointer-events: none;
   background: #fff;
   padding-left: 4px;
+}
+
+.ant-table {
+  border-radius: 0;
+}
+
+.ant-table-thead > tr > th {
+  border-top: none;
+  border-radius: 0;
 }

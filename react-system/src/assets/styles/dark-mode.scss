@@ -1,7 +1,7 @@
 // 深色模式样式
 // 基于 CSS 变量的深色模式
 
-[data-theme="dark"] {
+.dark-theme {
   // 基础背景色
   --color-bg-base: #000000;
   --color-bg-white: #1f1f1f;

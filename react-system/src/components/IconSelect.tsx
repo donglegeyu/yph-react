@@ -89,7 +89,7 @@ export default function IconSelect({ value, onChange }: IconSelectProps) {
                     height: 32,
                     borderRadius: 4,
                     cursor: 'pointer',
-                    background: value === icon ? 'var(--primary-color, #f95914)' : 'transparent',
+                    background: value === icon ? 'var(--ant-color-primary, #f95914)' : 'transparent',
                   }}
                   title={icon}
                 >

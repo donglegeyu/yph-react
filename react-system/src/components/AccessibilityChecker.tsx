@@ -76,9 +76,9 @@ function getApcaLevel(value: number): string {
 
 function getResultStyle(level: string): React.CSSProperties {
   if (level === 'Fail' || level === 'Not recommended') {
-    return { backgroundColor: 'var(--color-error-bg, #FFF2F0)' }
+    return { backgroundColor: 'var(--ant-color-error-bg, #FFF2F0)' }
   }
-  return { backgroundColor: 'var(--color-success-bg, #F6FFED)' }
+  return { backgroundColor: 'var(--ant-color-success-bg, #F6FFED)' }
 }
 
 export default function AccessibilityChecker({ tokenName, color }: Props) {

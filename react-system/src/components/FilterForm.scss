@@ -2,11 +2,55 @@
   background: #fff;
   padding: 0.625rem 0.75rem;
   border-radius: 0.38rem;
+
+  .ant-form-item {
+    margin-bottom: 0;
+  }
+
+  .ant-input,
+  .ant-select,
+  .ant-picker {
+    margin: 6px 0;
+  }
+
+  .ant-form-item-label > label {
+    margin: 6px 0;
+    height: 32px;
+    line-height: 32px;
+  }
+
+  .ant-select-selection-item {
+    color: rgba(0, 0, 0, 0.85);
+  }
 }
 
 .filter-item {
-  display: flex;
-  flex-direction: column;
+  width: 100%;
+
+  .ant-input,
+  .ant-select,
+  .ant-picker,
+  .ant-input-affix-wrapper {
+    width: 100%;
+  }
+}
+
+.filter-item .ant-form-item-label {
+  width: 80px;
+  flex-shrink: 0;
+
+  > label {
+    justify-content: flex-end;
+    width: 100%;
+  }
+}
+
+.filter-item .ant-form-item-control {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-item .ant-form-item-control-input-content {
   width: 100%;
 }
 
@@ -14,9 +58,27 @@
   margin-bottom: 0;
 }
 
-.btn-col {
+.filter-form .btn-col {
   display: flex;
   justify-content: flex-end;
+
+  .ant-form-item {
+    margin-bottom: 0;
+  }
+
+  .ant-space {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .ant-space-item {
+    margin: 6px 0;
+  }
+
+  .ant-btn {
+    margin: 6px 0;
+    box-shadow: none;
+  }
 }
 
 .expand-btn {
@@ -32,9 +94,20 @@
   line-height: 22px;
   color: rgba(0, 0, 0, 0.88);
   user-select: none;
+  cursor: pointer;
 
   &:hover {
     color: rgba(0, 0, 0, 0.88);
+  }
+
+  &:active {
+    color: rgba(0, 0, 0, 0.88) !important;
+  }
+
+  &:focus {
+    color: rgba(0, 0, 0, 0.88) !important;
+    outline: none !important;
+    box-shadow: none !important;
   }
 
   .arrow-icon {
@@ -45,6 +118,6 @@
   }
 
   .expand-text {
-    color: rgba(0, 0, 0, 0.88);
+    color: rgba(0, 0, 0, 0.88) !important;
   }
 }

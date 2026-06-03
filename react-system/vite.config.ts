@@ -5,6 +5,7 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [react()],
   resolve: {
+    dedupe: ['react', 'react-dom', 'antd', '@ant-design/icons'],
     alias: {
       '@': resolve(__dirname, 'src'),
     },

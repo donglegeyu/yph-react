@@ -164,18 +164,18 @@ export default function MaterialList() {
       <CompanyButton onClick={handleBatchImport}>
         导入
       </CompanyButton>
-      <CompanyButton
+      <div
+        className="icon-only-btn"
         onClick={() => setColumnSettingsDrawerVisible(true)}
-        style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
       >
         <SvgIcon href="setting" size={16} />
-      </CompanyButton>
-      <CompanyButton
+      </div>
+      <div
+        className="icon-only-btn"
         onClick={refresh}
-        style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
       >
         <SvgIcon href="refresh" size={16} />
-      </CompanyButton>
+      </div>
     </Space>
   )
 

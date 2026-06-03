@@ -10,7 +10,8 @@ import {
   CompanyCheckbox,
   CompanyMessage,
 } from '@donglegeyu/company-ui'
-import { Menu } from 'antd'
+import { Menu, ConfigProvider } from 'antd'
+import zhCN from 'antd/locale/zh_CN'
 import FilterForm from './FilterForm'
 import SvgIcon from './SvgIcon'
 import type {
@@ -95,6 +96,7 @@ export default function SmartListTemplate({
   titleActions,
   toolbarActions,
   toolbarRightActions,
+  bodyCell,
 }: SmartListTemplateProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [saveSchemeDialogVisible, setSaveSchemeDialogVisible] = useState(false)
@@ -236,6 +238,12 @@ export default function SmartListTemplate({
         key: field.key,
         width: field.width || 120,
         fixed: field.fixed,
+        render: bodyCell
+          ? (_: unknown, record: RecordType) => {
+              const result = bodyCell({ key: field.key, ...field } as unknown as Record<string, unknown>, record)
+              return result !== null ? result : record[field.key]
+            }
+          : undefined,
       })
     )
 
@@ -246,11 +254,19 @@ export default function SmartListTemplate({
         key: 'action',
         width: actionField.width || 148,
         fixed: 'right',
+        align: 'left',
+        onHeaderCell: () => ({ style: { paddingLeft: 24, paddingRight: 16 } }),
+        render: bodyCell
+          ? (_: unknown, record: RecordType) => {
+              const result = bodyCell({ key: actionField.key, ...actionField } as unknown as Record<string, unknown>, record)
+              return result !== null ? result : record[actionField.key]
+            }
+          : undefined,
       })
     }
 
     return regularColumns
-  }, [fields])
+  }, [fields, bodyCell])
 
   const loadSchemes = useCallback(async () => {
     try {
@@ -884,15 +900,17 @@ export default function SmartListTemplate({
 
         {paginationProp !== false && (
           <div className="pagination">
-            <CompanyPagination
-              current={paginationConfig.current}
-              pageSize={paginationConfig.pageSize}
-              total={paginationConfig.total}
-              showTotal={(total) => `共 ${total} 条`}
-              showSizeChanger
-              showQuickJumper
-              onChange={handlePageChange}
-            />
+            <ConfigProvider locale={zhCN}>
+              <CompanyPagination
+                current={paginationConfig.current}
+                pageSize={paginationConfig.pageSize}
+                total={paginationConfig.total}
+                showTotal={(total) => `共 ${total} 条`}
+                showSizeChanger
+                showQuickJumper
+                onChange={handlePageChange}
+              />
+            </ConfigProvider>
           </div>
         )}
       </div>
@@ -900,7 +918,7 @@ export default function SmartListTemplate({
       <CompanyDrawer
         open={saveSchemeDialogVisible}
         title={isEditMode ? '编辑视图' : '新增视图'}
-        size={380}
+        width={380}
         onClose={handleDrawerClose}
         footer={
           <div style={{ textAlign: 'right' }}>

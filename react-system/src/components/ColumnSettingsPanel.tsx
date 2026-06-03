@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Popover, Checkbox, Button } from 'antd'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 import SvgIcon from './SvgIcon'
+import './ColumnSettingsPanel.scss'
 
 export interface ColumnField {
   key: string
@@ -105,30 +106,29 @@ export default function ColumnSettingsPanel({
       trigger="click"
       placement="bottomLeft"
       arrow={false}
-      destroyTooltipOnHide
+      overlayClassName="column-settings-popover"
+      destroyOnHidden
       styles={{
-        body: {
-          width: 180,
-          maxHeight: 280,
-          padding: 0,
+        root: {
+          margin: '6px 0 0 0',
         },
       }}
       content={
-        <div className="column-settings-panel" style={{ width: 180, maxHeight: 280, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
-          <div style={{ flexShrink: 0, padding: '12px 8px 0 8px', boxSizing: 'border-box' }}>
-            <div className="search-wrapper" style={{ display: 'flex', alignItems: 'center', height: 32, padding: '0 8px', gap: 12, borderRadius: 4, background: 'rgba(0, 0, 0, 0.02)', border: '1px solid transparent', transition: 'all 0.2s', boxSizing: 'border-box' }}>
-              <SvgIcon href="search" size={16} style={{ stroke: 'rgba(0, 0, 0, 0.65)', strokeWidth: 1.5, fill: 'none', flexShrink: 0 }} />
+        <div className="column-settings-panel">
+          <div className="search-area">
+            <div className="search-wrapper">
+              <SvgIcon href="search" size={16} className="search-icon" />
               <input
                 ref={searchInputRef}
                 value={searchKeyword}
                 onChange={e => setSearchKeyword(e.target.value)}
                 placeholder="搜索字段名称"
-                style={{ flex: 1, height: 32, border: 'none', background: 'transparent', color: 'rgba(0, 0, 0, 0.85)', fontSize: 14, lineHeight: '32px', outline: 'none', fontFamily: '-apple-system, BlinkMacSystemFont, PingFang SC, Helvetica Neue, Helvetica, Arial, sans-serif', boxSizing: 'border-box' }}
+                className="search-input"
               />
             </div>
           </div>
 
-          <div className="field-list" style={{ flex: 1, overflowY: 'auto', padding: '8px 8px', margin: 0, minHeight: 0, boxSizing: 'border-box' }}>
+          <div className="field-list">
             {filteredFields.map((field, index) => (
               <div
                 key={field.key}
@@ -138,12 +138,9 @@ export default function ColumnSettingsPanel({
                 onDragOver={handleDragOver}
                 onDrop={e => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
-                style={{ display: 'flex', flexDirection: 'column', padding: '4px 8px', cursor: 'move', transition: 'background-color 0.2s', boxSizing: 'border-box' }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f5f5f5'; e.currentTarget.style.borderRadius = '4px' }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderRadius = '0' }}
               >
-                <div className="field-row" style={{ display: 'flex', alignItems: 'center', width: '100%', boxSizing: 'border-box' }}>
-                  <SvgIcon href="drag" size={12} style={{ marginRight: 8, color: 'rgba(0, 0, 0, 0.45)', flexShrink: 0, cursor: 'grab' }} />
+                <div className="field-row">
+                  <SvgIcon href="drag" size={12} className="drag-icon" />
                   <Checkbox
                     checked={field.visible}
                     onChange={(e: CheckboxChangeEvent) => handleFieldToggle(field.key, e.target.checked)}
@@ -154,13 +151,13 @@ export default function ColumnSettingsPanel({
               </div>
             ))}
             {filteredFields.length === 0 && (
-              <div className="no-data" style={{ padding: 20, textAlign: 'center', color: '#999', fontSize: 14 }}>
+              <div className="no-data">
                 暂无数据
               </div>
             )}
           </div>
 
-          <div className="action-buttons" style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: 8, padding: 12, borderTop: '1px solid #f0f0f0', boxSizing: 'border-box' }}>
+          <div className="action-buttons">
             <Button size="small" onClick={handleReset}>重置</Button>
             <Button type="primary" size="small" onClick={handleConfirm}>确定</Button>
           </div>
@@ -168,7 +165,7 @@ export default function ColumnSettingsPanel({
       }
     >
       {children || (
-        <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: 4, border: '1px solid #d9d9d9', background: '#fff' }}>
+        <div className="icon-only-btn" style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: 4, border: '1px solid #d9d9d9', background: '#fff' }}>
           <SvgIcon href="setting" size={16} />
         </div>
       )}

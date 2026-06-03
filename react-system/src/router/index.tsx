@@ -1,7 +1,17 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
+import { createBrowserRouter, Navigate, useRouteError, type RouteObject } from 'react-router-dom'
 import MainLayout from '@/components/layout/MainLayout'
 import { lazy } from 'react'
+
+function RouteErrorBoundary() {
+  const error = useRouteError()
+  return (
+    <div style={{ padding: '48px', textAlign: 'center' }}>
+      <h2 style={{ fontSize: 18, color: 'rgba(0,0,0,0.88)', marginBottom: 12 }}>页面出错了</h2>
+      <p style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)' }}>{String(error)}</p>
+    </div>
+  )
+}
 
 const LoginView = lazy(() => import('@/pages/common/LoginView'))
 const HomeView = lazy(() => import('@/pages/home/HomeView'))
@@ -56,10 +66,12 @@ const routes: RouteObject[] = [
   {
     path: '/login',
     element: <LoginView />,
+    errorElement: <RouteErrorBoundary />,
   },
   {
     path: '/',
     element: <MainLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Navigate to="/home" replace /> },
       { path: 'home', element: <HomeView /> },

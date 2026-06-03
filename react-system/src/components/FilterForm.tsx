@@ -58,12 +58,12 @@ export default function FilterForm({
   }, [colSpans])
 
   const needExpand = useMemo(() => {
-    return items.length > colsPerRow
+    return items.length > 2 * colsPerRow
   }, [items.length, colsPerRow])
 
   const visibleItems = useMemo(() => {
     if (expanded) return items
-    const maxItems = colsPerRow - 1
+    const maxItems = 2 * colsPerRow - 1
     return items.slice(0, maxItems)
   }, [expanded, items, colsPerRow])
 
@@ -183,8 +183,8 @@ export default function FilterForm({
             return (
               <Col
                 key="btn"
-                {...colSpans}
-                style={{ marginLeft: 'auto', display: 'flex', justifyContent: 'flex-end' }}
+                className="btn-col"
+                style={{ marginLeft: 'auto' }}
               >
                 <Form.Item className="filter-item">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -198,12 +198,11 @@ export default function FilterForm({
                       <span
                         onClick={() => setExpanded(!expanded)}
                         className="expand-btn"
-                        style={{ cursor: 'pointer' }}
                       >
                         <span className="expand-text">
                           {expanded ? '收起' : '展开'}
                         </span>
-                        <SvgIcon href={expanded ? 'up' : 'down'} size={14} />
+                        <SvgIcon href={expanded ? 'up' : 'down'} size={14} className="arrow-icon" />
                       </span>
                     )}
                   </div>

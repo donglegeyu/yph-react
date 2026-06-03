@@ -1,9 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Menu, Space, Form, Tag, Input, Select, Switch, Button, Tabs } from 'antd'
-import {
-  CompanyTabs,
-  CompanyMessage,
-} from '@donglegeyu/company-ui'
+import { CompanyMessage } from '@donglegeyu/company-ui'
 import PageTitle from '@/components/PageTitle'
 import ActionCell from '@/components/ActionCell'
 import type { ActionButton } from '@/components/ActionCell'
@@ -29,25 +26,24 @@ interface BusinessComponent {
   name: string
   enName: string
   group: string
-  tokens: { name: string; token: string; type: string }[]
 }
 
 const businessComponents: BusinessComponent[] = [
-  { key: 'icon-select', name: '图标选择器', enName: 'IconSelect', group: '基础', tokens: [{ name: '边框色', token: '--color-border', type: 'color' }, { name: '文本色', token: '--color-text', type: 'color' }] },
-  { key: 'filter-form', name: '筛选表单', enName: 'FilterForm', group: '筛选', tokens: [{ name: '主色', token: '--primary-color', type: 'color' }, { name: '边框色', token: '--color-border', type: 'color' }] },
-  { key: 'filter-options-drawer', name: '新增视图', enName: 'FilterOptionsDrawer', group: '筛选', tokens: [{ name: '主色', token: '--primary-color', type: 'color' }, { name: '边框色', token: '--color-border', type: 'color' }] },
-  { key: 'smart-list-template', name: '智能列表模板', enName: 'SmartListTemplate', group: '列表', tokens: [{ name: '主色', token: '--primary-color', type: 'color' }, { name: '边框色', token: '--color-border', type: 'color' }] },
-  { key: 'column-settings-panel', name: '列设置面板', enName: 'ColumnSettingsPanel', group: '列表', tokens: [{ name: '边框色', token: '--color-border', type: 'color' }, { name: '文本色', token: '--color-text', type: 'color' }] },
-  { key: 'list-page-template', name: '列表页模板', enName: 'ListPageTemplate', group: '列表', tokens: [{ name: '主色', token: '--primary-color', type: 'color' }, { name: '边框色', token: '--color-border', type: 'color' }] },
-  { key: 'action-cell', name: '操作按钮', enName: 'ActionCell', group: '列表', tokens: [{ name: '主色', token: '--primary-color', type: 'color' }, { name: '主色悬停', token: '--primary-hover', type: 'color' }, { name: '成功色', token: '--color-success', type: 'color' }] },
-  { key: 'color-scale', name: '色阶', enName: 'ColorScale', group: '基础', tokens: [{ name: '主色', token: '--primary-color', type: 'color' }, { name: '文本色', token: '--color-text', type: 'color' }] },
-  { key: 'page-title', name: '页面标题', enName: 'PageTitle', group: '基础', tokens: [{ name: '文本色', token: '--color-text', type: 'color' }] },
-  { key: 'label-item', name: '标签项', enName: 'LabelItem', group: '基础', tokens: [{ name: '文本色', token: '--color-text', type: 'color' }, { name: '次要文本', token: '--color-text-secondary', type: 'color' }, { name: '禁用文本', token: '--color-text-disabled', type: 'color' }] },
-  { key: 'accessibility-checker', name: '无障碍检查', enName: 'AccessibilityChecker', group: '基础', tokens: [{ name: '边框色', token: '--color-border-secondary', type: 'color' }, { name: '成功背景', token: '--color-success-bg', type: 'color' }, { name: '错误背景', token: '--color-error-bg', type: 'color' }] },
-  { key: 'form-page-template', name: '表单模板', enName: 'FormPageTemplate', group: '表单', tokens: [{ name: '主色', token: '--primary-color', type: 'color' }, { name: '边框色', token: '--color-border-secondary', type: 'color' }, { name: '背景色', token: '--color-bg-container', type: 'color' }, { name: '文本色', token: '--color-text', type: 'color' }] },
-  { key: 'section-title', name: '区域标题', enName: 'SectionTitle', group: '表单', tokens: [{ name: '主色', token: '--primary-color', type: 'color' }, { name: '文本色', token: '--color-text', type: 'color' }] },
-  { key: 'base-info-form', name: '多列表单', enName: 'BaseInfoForm', group: '表单', tokens: [{ name: '边框色', token: '--color-border', type: 'color' }, { name: '文本色', token: '--color-text', type: 'color' }, { name: '主色', token: '--primary-color', type: 'color' }] },
-  { key: 'form-footer-actions', name: '底部操作栏', enName: 'FormFooterActions', group: '表单', tokens: [{ name: '主色', token: '--primary-color', type: 'color' }, { name: '边框色', token: '--color-border-secondary', type: 'color' }] },
+  { key: 'icon-select', name: '图标选择器', enName: 'IconSelect', group: '基础' },
+  { key: 'filter-form', name: '筛选表单', enName: 'FilterForm', group: '筛选' },
+  { key: 'filter-options-drawer', name: '新增视图', enName: 'FilterOptionsDrawer', group: '筛选' },
+  { key: 'smart-list-template', name: '智能列表模板', enName: 'SmartListTemplate', group: '列表' },
+  { key: 'column-settings-panel', name: '列设置面板', enName: 'ColumnSettingsPanel', group: '列表' },
+  { key: 'list-page-template', name: '列表页模板', enName: 'ListPageTemplate', group: '列表' },
+  { key: 'action-cell', name: '操作按钮', enName: 'ActionCell', group: '列表' },
+  { key: 'color-scale', name: '色阶', enName: 'ColorScale', group: '基础' },
+  { key: 'page-title', name: '页面标题', enName: 'PageTitle', group: '基础' },
+  { key: 'label-item', name: '标签项', enName: 'LabelItem', group: '基础' },
+  { key: 'accessibility-checker', name: '无障碍检查', enName: 'AccessibilityChecker', group: '基础' },
+  { key: 'form-page-template', name: '表单模板', enName: 'FormPageTemplate', group: '表单' },
+  { key: 'section-title', name: '区域标题', enName: 'SectionTitle', group: '表单' },
+  { key: 'base-info-form', name: '多列表单', enName: 'BaseInfoForm', group: '表单' },
+  { key: 'form-footer-actions', name: '底部操作栏', enName: 'FormFooterActions', group: '表单' },
 ]
 
 const businessComponentGroups = [
@@ -75,27 +71,9 @@ const componentUpdateTimes: Record<string, string> = {
   'form-page-template': '2025-05-21 10:00',
 }
 
-const tokenValues: Record<string, string> = {
-  '--border-radius-base': '6px',
-  '--border-radius-sm': '4px',
-  '--border-radius-lg': '8px',
-  '--border-radius-round': '50%',
-  '--font-size': '14px',
-  '--font-size-sm': '12px',
-  '--font-size-lg': '16px',
-}
-
-const selectOptions = [
-  { label: '选项一', value: 'option1' },
-  { label: '选项二', value: 'option2' },
-  { label: '选项三', value: 'option3' },
-]
-
 export default function ComponentPreview() {
-  const [activeTab, setActiveTab] = useState('components')
   const [selectedBusinessComponent, setSelectedBusinessComponent] = useState('action-cell')
   const [businessTokenTabKey, setBusinessTokenTabKey] = useState('config')
-  const [applying, setApplying] = useState(false)
 
   const [businessNavWidth] = useState(200)
   const [tokensWidth, setTokensWidth] = useState(360)
@@ -187,7 +165,7 @@ export default function ComponentPreview() {
 
   const filterConfig = [
     { key: 'name', label: '名称', type: 'input' },
-    { key: 'status', label: '状态', type: 'select', options: selectOptions },
+    { key: 'status', label: '状态', type: 'select', options: [{ label: '选项一', value: 'option1' }, { label: '选项二', value: 'option2' }, { label: '选项三', value: 'option3' }] },
   ]
 
   const filterDrawerOptions: FilterOption[] = [
@@ -212,7 +190,7 @@ export default function ComponentPreview() {
     { key: 'quantity', label: '数量', type: 'input' as const },
     { key: 'unit', label: '单位', type: 'input' as const },
     { key: 'price', label: '单价', type: 'input' as const },
-    { key: 'createTime', label: '创建时间', type: 'date' as const },
+    { key: 'createTime', label: '创建时间', type: 'daterange' as const },
     { key: 'action', label: '操作', type: 'item' as const },
   ]
 
@@ -247,38 +225,9 @@ export default function ComponentPreview() {
     return comp.enName ? `${comp.name} ${comp.enName}` : comp.name
   }, [selectedBusinessComponent])
 
-  const currentBusinessTokens = useMemo(() => {
-    const comp = businessComponents.find(c => c.key === selectedBusinessComponent)
-    return comp?.tokens || []
-  }, [selectedBusinessComponent])
-
-  const businessColorTokens = useMemo(() => {
-    return currentBusinessTokens.filter(t => t.type === 'color')
-  }, [currentBusinessTokens])
-
-  const businessNumberTokens = useMemo(() => {
-    return currentBusinessTokens.filter(t => t.type === 'number')
-  }, [currentBusinessTokens])
-
   function getUpdateTime(componentKey: string): string {
     return componentUpdateTimes[componentKey] || '2024-01-01 00:00'
   }
-
-  function getTokenValue(token: string): string {
-    return tokenValues[token] || '-'
-  }
-
-  const handleReset = useCallback(() => {
-    CompanyMessage.success('已重置为默认')
-  }, [])
-
-  const handleApply = useCallback(async () => {
-    setApplying(true)
-    setTimeout(() => {
-      setApplying(false)
-      CompanyMessage.success('应用修改成功')
-    }, 1000)
-  }, [])
 
   const handleFilterDrawerSave = useCallback((data: { name: string }) => {
     CompanyMessage.success(`已保存视图: ${data.name}`)
@@ -580,8 +529,8 @@ export default function ComponentPreview() {
               <h3 className="component-title">{currentBusinessName}</h3>
               <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
               <h4>说明</h4>
-              <p style={{ color: 'var(--color-text-secondary)' }}>列表页模板，提供筛选、表格、分页等完整功能组合。</p>
-              <p style={{ color: 'var(--color-text-secondary)' }}>包含视图选择、视图保存、视图管理等功能。</p>
+              <p style={{ color: 'var(--ant-color-text-secondary)' }}>列表页模板，提供筛选、表格、分页等完整功能组合。</p>
+              <p style={{ color: 'var(--ant-color-text-secondary)' }}>包含视图选择、视图保存、视图管理等功能。</p>
             </div>
           </div>
         )
@@ -610,9 +559,9 @@ export default function ComponentPreview() {
                         excludeKeys={['action']}
                         onConfirm={handleSmartListColumnConfirm}
                       >
-                        <Button style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div className="icon-only-btn">
                           <SvgIcon href="setting" size={16} />
-                        </Button>
+                        </div>
                       </ColumnSettingsPanel>
                     </Space>
                   }
@@ -666,7 +615,7 @@ export default function ComponentPreview() {
               <h3 className="component-title">{currentBusinessName}</h3>
               <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
               <h4>基本用法</h4>
-              <div style={{ background: 'var(--color-bg-container)', padding: 16, borderRadius: 8 }}>
+              <div style={{ background: 'var(--ant-color-bg-container)', padding: 16, borderRadius: 8 }}>
                 <BaseInfoForm
                   value={demoBaseInfoFormData}
                   fields={demoBaseInfoFields}
@@ -690,7 +639,7 @@ export default function ComponentPreview() {
               <h3 className="component-title">{currentBusinessName}</h3>
               <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
               <h4>基本用法</h4>
-              <div style={{ position: 'relative', height: 80, background: 'var(--color-bg-container)', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ position: 'relative', height: 80, background: 'var(--ant-color-bg-container)', borderRadius: 8, overflow: 'hidden' }}>
                 <FormFooterActions
                   submitLoading={demoFooterSubmitLoading}
                   onSubmit={handleDemoFooterSubmit}
@@ -712,7 +661,7 @@ export default function ComponentPreview() {
               <h3 className="component-title">{currentBusinessName}</h3>
               <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
               <h4>基本用法</h4>
-              <div style={{ minHeight: 400, background: 'var(--color-bg-lighter, #F5F5F5)', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ minHeight: 400, background: 'var(--ant-color-bg-layout, #F5F5F5)', borderRadius: 4, overflow: 'hidden' }}>
                 <FormPageTemplate
                   title={demoPageTitle}
                   showBack={demoShowBack}
@@ -863,71 +812,11 @@ export default function ComponentPreview() {
     }
   }
 
-  const renderColorTokens = () => {
-    if (businessColorTokens.length > 0) {
-      return (
-        <div className="tokens-list">
-          {businessColorTokens.map(token => (
-            <div key={token.token} className="token-item">
-              <div className="token-color-preview" style={{ backgroundColor: `var(${token.token})` }} />
-              <div className="token-info">
-                <div className="token-name">{token.name}</div>
-                <div className="token-key">{token.token}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )
-    }
-    return <div className="tokens-empty">暂无该类型 Token</div>
-  }
-
-  const renderNumberTokens = () => {
-    if (businessNumberTokens.length > 0) {
-      return (
-        <div className="tokens-list">
-          {businessNumberTokens.map(token => (
-            <div key={token.token} className="token-item">
-              <div className="token-number-preview">{getTokenValue(token.token)}</div>
-              <div className="token-info">
-                <div className="token-name">{token.name}</div>
-                <div className="token-key">{token.token}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )
-    }
-    return <div className="tokens-empty">暂无该类型 Token</div>
-  }
-
   return (
     <div className="component-preview">
-      <PageTitle
-        title="主题设置"
-        actions={
-          <Space>
-            <Button onClick={handleReset}>重置为默认</Button>
-            <Button type="primary" loading={applying} onClick={handleApply}>应用修改</Button>
-          </Space>
-        }
-      />
+      <PageTitle title="主题设置" />
 
-      <CompanyTabs activeKey={activeTab} onChange={setActiveTab} items={[
-        { key: 'tokens', label: '全局样式' },
-        { key: 'components', label: '业务组件' },
-      ]} />
-
-      {activeTab === 'tokens' && (
-        <div className="tokens-panel">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, color: 'rgba(0, 0, 0, 0.25)', fontSize: 14 }}>
-            建设中
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'components' && (
-        <div className="components-layout" style={{ flex: 1, overflow: 'hidden' }}>
+        <div className="components-layout" style={{ height: '100%' }}>
           <div className="components-nav" style={{ width: businessNavWidth }}>
             <Menu
               selectedKeys={[selectedBusinessComponent]}
@@ -956,21 +845,10 @@ export default function ComponentPreview() {
                   label: '配置',
                   children: <div className="config-panel">{renderConfigPanel()}</div>,
                 },
-                {
-                  key: 'color',
-                  label: '颜色',
-                  children: renderColorTokens(),
-                },
-                {
-                  key: 'number',
-                  label: '数值',
-                  children: renderNumberTokens(),
-                },
               ]}
             />
           </div>
         </div>
-      )}
     </div>
   )
 }
