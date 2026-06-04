@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { API_ENDPOINTS } from '@/constants/api'
 import type { MenuItem, BusinessMenu, CustomNavMenu, UserInfo, Favorite, NavMenu } from '@/types'
 
+let hideSidebarTimer: ReturnType<typeof setTimeout> | null = null
+
 interface TabItem {
   key: string
   label: string
@@ -65,6 +67,9 @@ interface AppState {
   delayHideSidebar: () => void
   cancelHideSidebar: () => void
   selectFirstMenu: (key: string) => void
+  menusLoaded: boolean
+  loadSidebarPreference: () => Promise<void>
+  saveSidebarPreference: (fixed: boolean) => Promise<void>
 }
 
 const STORAGE_KEYS = {
@@ -118,6 +123,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   secondSidebarHovered: false,
   secondSidebarFixed: savedSecondSidebarFixed !== 'false',
   isFirstMenuHovering: false,
+  menusLoaded: false,
 
   setActiveFirstMenu: (key) => {
     set({ activeFirstMenu: key })
@@ -330,7 +336,8 @@ export const useAppStore = create<AppState>((set, get) => ({
               m.key !== 'home' &&
               m.key !== 'favorites' &&
               !m.menuType?.startsWith('系统菜单') &&
-              m.status === 1
+              m.status === 1 &&
+              (!m.parentId || m.parentId === 0)
           )
           .map((m: NavMenu) => ({
             key: m.key,
@@ -375,10 +382,22 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         await get().fetchFavorites()
         await get().fetchCustomNavMenus()
+
+        const { businessMenus: latestBusinessMenus, customNavMenus: currentCustomNav } = get()
+        if (Array.isArray(currentCustomNav) && currentCustomNav.length > 0) {
+          const customKeys = new Set(currentCustomNav.map((m) => m.key))
+          const newMenus = latestBusinessMenus.filter((m) => !customKeys.has(m.key))
+          if (newMenus.length > 0) {
+            const merged = [...currentCustomNav, ...newMenus.map((m) => ({ ...m, icon: m.icon || 'id-card-v-klbe0a04' }))]
+            set({ customNavMenus: merged })
+            localStorage.setItem(STORAGE_KEYS.CUSTOM_NAV_MENUS, JSON.stringify(merged))
+          }
+        }
       }
     } catch {
       // API unavailable
     }
+    set({ menusLoaded: true })
   },
 
   fetchFavorites: async () => {
@@ -589,12 +608,43 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   delayHideSidebar: () => {
-    setTimeout(() => {
+    if (hideSidebarTimer) clearTimeout(hideSidebarTimer)
+    hideSidebarTimer = setTimeout(() => {
       set({ secondSidebarHovered: false })
     }, 100)
   },
 
   cancelHideSidebar: () => {
+    if (hideSidebarTimer) {
+      clearTimeout(hideSidebarTimer)
+      hideSidebarTimer = null
+    }
     set({ secondSidebarHovered: true })
+  },
+
+  loadSidebarPreference: async () => {
+    try {
+      const res = await fetch(`${API_ENDPOINTS.USER_PREFERENCES}?key=sidebarFixed`)
+      const json = await res.json()
+      if (json.code === 200 && json.data !== null) {
+        const fixed = json.data === 'true'
+        set({ secondSidebarFixed: fixed })
+        localStorage.setItem('app:secondSidebarFixed', String(fixed))
+      }
+    } catch {
+      // fallback to localStorage
+    }
+  },
+
+  saveSidebarPreference: async (fixed) => {
+    try {
+      await fetch(API_ENDPOINTS.USER_PREFERENCES, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'sidebarFixed', value: String(fixed) }),
+      })
+    } catch {
+      // silently fail
+    }
   },
 }))

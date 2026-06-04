@@ -24,7 +24,7 @@ export interface BaseInfoFormProps {
 }
 
 export interface BaseInfoFormRef {
-  validate: () => Promise<void>
+  validate: () => Promise<boolean>
   form: FormInstance | null
 }
 
@@ -63,7 +63,13 @@ const BaseInfoForm = forwardRef<BaseInfoFormRef, BaseInfoFormProps>(({
     return 6
   }
 
+  const isUpdatingRef = useRef(false)
+
   useEffect(() => {
+    if (isUpdatingRef.current) {
+      isUpdatingRef.current = false
+      return
+    }
     if (prevValueRef.current !== value) {
       prevValueRef.current = value
       form.setFieldsValue(value)
@@ -71,6 +77,7 @@ const BaseInfoForm = forwardRef<BaseInfoFormRef, BaseInfoFormProps>(({
   }, [value, form])
 
   const handleValuesChange = (_changedValues: Record<string, any>, allValues: Record<string, any>) => {
+    isUpdatingRef.current = true
     const key = Object.keys(_changedValues)[0]
     if (key) {
       onFieldChange?.(key, _changedValues[key])
@@ -79,7 +86,7 @@ const BaseInfoForm = forwardRef<BaseInfoFormRef, BaseInfoFormProps>(({
   }
 
   useImperativeHandle(ref, () => ({
-    validate: () => form.validateFields().then(() => {}),
+    validate: () => form.validateFields().then(() => true).catch(() => false),
     form,
   }), [form])
 

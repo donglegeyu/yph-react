@@ -30,9 +30,13 @@ export default function TabBar() {
       if (tab) {
         setLocalActiveKey(tab.key)
         setActiveTabKey(tab.key)
+        const keys = Object.keys(secondMenusMap)
+        if (keys.length > 0) {
+          useAppStore.getState().syncMenuState(tab.key, tab.path)
+        }
       }
     }
-  }, [location.pathname, tabs, setActiveTabKey, isHome])
+  }, [location.pathname, tabs, setActiveTabKey, isHome, secondMenusMap])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

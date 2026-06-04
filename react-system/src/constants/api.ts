@@ -29,6 +29,10 @@ export const API_ENDPOINTS = {
   CONSTRUCTION_APPLICATIONS: `${API_BASE}/construction-applications`,
   CONSTRUCTION_VIEWS: `${API_BASE}/construction-views`,
 
+  // 工匠查询
+  CRAFTSMEN: `${API_BASE}/craftsmen`,
+  CRAFTSMAN_VIEWS: `${API_BASE}/craftsman-views`,
+
   // 域管理
   DOMAINS: `${API_BASE}/sys/domains`,
   DOMAIN_MENUS: `${API_BASE}/sys/domain-menus`,

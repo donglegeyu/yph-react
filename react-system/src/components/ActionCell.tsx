@@ -6,6 +6,7 @@ import {
 } from '@donglegeyu/company-ui'
 import { Menu, Space } from 'antd'
 import SvgIcon from './SvgIcon'
+import './ActionCell.scss'
 
 export interface ActionButton {
   key: string
@@ -65,7 +66,7 @@ export default function ActionCell({
             title={btn.confirmTitle || '确定？'}
             onConfirm={() => handleClick(btn)}
           >
-            <CompanyButton type="link" danger={btn.danger}>
+            <CompanyButton type="link" danger={btn.danger} className="action-btn">
               {btn.label}
             </CompanyButton>
           </CompanyPopconfirm>
@@ -74,6 +75,7 @@ export default function ActionCell({
             key={btn.key}
             type="link"
             danger={btn.danger}
+            className="action-btn"
             onClick={() => handleClick(btn)}
           >
             {btn.label}

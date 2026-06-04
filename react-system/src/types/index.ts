@@ -22,6 +22,7 @@ export interface NavMenu {
   icon?: string
   menuType?: string
   status?: number
+  parentId?: number
   children?: NavMenu[]
   hasChildren?: boolean
 }

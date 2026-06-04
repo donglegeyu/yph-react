@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '@/store/app'
 import SvgIcon from '@/components/SvgIcon'
 import './SecondSidebar.scss'
@@ -32,6 +32,7 @@ interface FavoritesItem {
 
 export default function SecondSidebar() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const activeFirstMenu = useAppStore((s) => s.activeFirstMenu)
   const activeKey = useAppStore((s) => s.activeKey)
@@ -48,6 +49,8 @@ export default function SecondSidebar() {
   const openTab = useAppStore((s) => s.openTab)
   const toggleFavorite = useAppStore((s) => s.toggleFavorite)
   const navigateToPath = useAppStore((s) => s.navigateToPath)
+  const menusLoaded = useAppStore((s) => s.menusLoaded)
+  const saveSidebarPreference = useAppStore((s) => s.saveSidebarPreference)
 
   const [localExpandedKeys, setLocalExpandedKeys] = useState<string[]>(expandedKeys)
   const [localActiveKey, setLocalActiveKey] = useState(activeKey)
@@ -80,9 +83,13 @@ export default function SecondSidebar() {
   }, [activeFirstMenu, favorites, currentSecondMenus])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalExpandedKeys(expandedKeys)
-  }, [expandedKeys])
+    if (activeFirstMenu && secondMenus.length > 0) {
+      const parentKeys = secondMenus
+        .filter((menu) => (menu.children as Record<string, unknown>[])?.length > 0)
+        .map((menu) => menu.key)
+      setLocalExpandedKeys(parentKeys)
+    }
+  }, [activeFirstMenu, secondMenus])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -100,6 +107,36 @@ export default function SecondSidebar() {
       setFavoritesList(mapped)
     }
   }, [activeFirstMenu, favorites])
+
+  useEffect(() => {
+    const path = location.pathname
+    if (path === '/home' || path === '/') return
+
+    let menuPath = path
+    let result = navigateToPath(path)
+
+    if (!result) {
+      const lastSlashIndex = path.lastIndexOf('/')
+      if (lastSlashIndex > 0) {
+        const parentPath = path.substring(0, lastSlashIndex)
+        const parentResult = navigateToPath(parentPath)
+        if (parentResult) {
+          menuPath = parentPath
+          result = parentResult
+        }
+      }
+    }
+
+    if (result) {
+      const menu = result.thirdMenu || result.secondMenu
+      if (menu) {
+        useAppStore.getState().openTab(menu.key, menu.label, menu.path)
+      }
+    } else {
+      useAppStore.getState().clearExpandedKeys()
+      setLocalActiveKey('')
+    }
+  }, [location.pathname])
 
   const handleClick = useCallback(
     (menu: Record<string, unknown>) => {
@@ -243,13 +280,13 @@ export default function SecondSidebar() {
               )
             )}
 
-        {activeFirstMenu === 'favorites' && favoritesList.length === 0 && (
+        {activeFirstMenu === 'favorites' && menusLoaded && favoritesList.length === 0 && (
           <div className="empty-tip">
             <img src={nullSvg} className="empty-img" alt="暂无收藏" />
             <span>暂无收藏</span>
           </div>
         )}
-        {activeFirstMenu !== 'favorites' && secondMenus.length === 0 && (
+        {activeFirstMenu !== 'favorites' && menusLoaded && secondMenus.length === 0 && (
           <div className="empty-tip">
             <img src={nullSvg} className="empty-img" alt="暂无菜单" />
             <span>暂无菜单</span>
@@ -263,7 +300,10 @@ export default function SecondSidebar() {
           className="collapse-btn"
           onClick={() => {
             const current = useAppStore.getState().secondSidebarFixed
-            useAppStore.setState({ secondSidebarFixed: !current })
+            const next = !current
+            useAppStore.setState({ secondSidebarFixed: next })
+            localStorage.setItem('app:secondSidebarFixed', String(next))
+            saveSidebarPreference(next)
           }}
           onMouseEnter={cancelHideSidebar}
           onMouseLeave={delayHideSidebar}

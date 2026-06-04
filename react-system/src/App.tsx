@@ -1,7 +1,6 @@
 import { ThemeProvider } from '@donglegeyu/company-ui'
 import { RouterProvider } from 'react-router-dom'
 import { Suspense, useEffect, Component, type ErrorInfo, type ReactNode } from 'react'
-import { CompanySpin } from '@donglegeyu/company-ui'
 import router from '@/router'
 
 class GlobalErrorBoundary extends Component<
@@ -97,20 +96,7 @@ export default function App() {
     <GlobalErrorBoundary>
       <ThemeProvider>
         <AppInit />
-        <Suspense
-          fallback={
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100vh',
-              }}
-            >
-              <CompanySpin size="large" />
-            </div>
-          }
-        >
+        <Suspense fallback={null}>
           <RouterProvider router={router} />
         </Suspense>
       </ThemeProvider>

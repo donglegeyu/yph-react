@@ -203,6 +203,17 @@ body {
   background: var(--layout-bg, #F5F5F5);
 }
 
+/* 列设置 Popover - 和 company-ui 组件库 demo 环境保持一致 */
+.column-settings-popover {
+  .ant-popover-inner {
+    padding: 12px 16px !important;
+  }
+  .search-input {
+    height: 100%;
+    min-width: 0;
+  }
+}
+
 /* Ant Design 主题覆盖 */
 .ant-btn {
   transition: all 0.3s;
@@ -277,12 +288,14 @@ body {
   color: #fff !important;
 }
 
+.ant-btn-variant-link:active,
 .ant-btn-link:active {
   color: var(--primary-color) !important;
   opacity: 1 !important;
 }
 
 /* 链接式按钮 */
+.ant-btn-variant-link,
 .ant-btn-link {
   color: var(--primary-color) !important;
   background: transparent !important;
@@ -295,6 +308,8 @@ body {
 }
 
 /* 删除按钮危险色覆盖 */
+.ant-btn-variant-link[class][danger],
+.ant-btn-variant-link.danger,
 .ant-btn-link[danger],
 .ant-btn-link.danger {
   color: var(--primary-color) !important;
@@ -427,7 +442,7 @@ body {
 }
 
 /* 表格操作列按钮样式 */
-.ant-table-cell .ant-btn,
+.ant-table-cell .ant-btn-variant-link,
 .ant-table-cell .ant-btn-link {
   height: 32px;
   display: flex;
@@ -441,7 +456,7 @@ body {
   background: transparent !important;
   border: none !important;
 
-  &:hover {
+  &:hover, &:focus {
     background: rgba(0, 0, 0, 0.04) !important;
     color: var(--primary-hover) !important;
   }
@@ -520,7 +535,7 @@ body {
   height: 32px;
   padding: 0;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 6px;
   border: 1px solid #d9d9d9;
   background: #fff;
   user-select: none;

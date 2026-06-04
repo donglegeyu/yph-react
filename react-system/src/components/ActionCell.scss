@@ -1,0 +1,31 @@
+.action-more-btn {
+  color: #F95914 !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 1 !important;
+}
+
+.action-more-btn:hover,
+.action-more-btn:focus,
+.action-more-btn:active {
+  color: var(--primary-hover) !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+  border: none !important;
+}
+
+.action-btn:hover,
+.action-btn:focus {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--primary-hover) !important;
+}
+
+.action-btn:active {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: var(--primary-hover) !important;
+}

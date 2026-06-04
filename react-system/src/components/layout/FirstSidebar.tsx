@@ -8,6 +8,7 @@ import { CompanyPopover } from '@donglegeyu/company-ui'
 import MoreMenuDrawer from './MoreMenuDrawer'
 import CustomNavPanel from './CustomNavPanel'
 import type { Domain } from '@/types'
+import { useDomains } from '@/hooks'
 import './FirstSidebar.scss'
 import logoImg from '@/assets/logo-dl.svg'
 
@@ -47,8 +48,10 @@ export default function FirstSidebar() {
     return ''
   })
   const [domainPopoverOpen, setDomainPopoverOpen] = useState(false)
-  const [domains] = useState<Domain[]>([])
+  const [domains, setDomains] = useState<Domain[]>([])
   const [currentDomainId, setCurrentDomainId] = useState<number | null>(null)
+  
+  const { fetchAllDomains } = useDomains()
   const [moreDrawerOpen, setMoreDrawerOpen] = useState(false)
   const [customNavVisible, setCustomNavVisible] = useState(false)
   const [adminPopoverOpen, setAdminPopoverOpen] = useState(false)
@@ -118,13 +121,15 @@ export default function FirstSidebar() {
   }, [location.pathname])
 
   useEffect(() => {
-    const newMenu = useAppStore.getState().activeFirstMenu
-    if (newMenu === 'home' || newMenu === 'favorites' || !newMenu) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveKey('')
-    } else {
-      setActiveKey(newMenu)
-    }
+    const unsub = useAppStore.subscribe((state) => {
+      const newMenu = state.activeFirstMenu
+      if (newMenu === 'home' || newMenu === 'favorites' || !newMenu) {
+        setActiveKey('')
+      } else {
+        setActiveKey(newMenu)
+      }
+    })
+    return unsub
   }, [])
 
   useEffect(() => {
@@ -137,6 +142,22 @@ export default function FirstSidebar() {
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [moreDrawerOpen])
+
+  useEffect(() => {
+    async function loadDomains() {
+      const domainList = await fetchAllDomains()
+      setDomains(domainList)
+      
+      const savedDomainId = localStorage.getItem('currentDomainId')
+      if (savedDomainId) {
+        setCurrentDomainId(Number(savedDomainId))
+      } else if (domainList.length > 0) {
+        setCurrentDomainId(domainList[0].id)
+        localStorage.setItem('currentDomainId', String(domainList[0].id))
+      }
+    }
+    loadDomains()
+  }, [fetchAllDomains])
 
   const handleClick = useCallback(
     (menu: any) => {
@@ -243,9 +264,12 @@ export default function FirstSidebar() {
                     className={`domain-popover-item${currentDomainId === d.id ? ' active' : ''}`}
                     onClick={() => {
                       setCurrentDomainId(d.id)
+                      setActiveKey('home')
                       localStorage.setItem('currentDomainId', String(d.id))
                       setDomainPopoverOpen(false)
+                      useAppStore.setState({ activeFirstMenu: 'home', activeKey: '', expandedKeys: [], secondSidebarHovered: false })
                       useAppStore.getState().fetchMenus()
+                      navigate('/home')
                     }}
                     style={{
                       height: 40,

@@ -31,6 +31,7 @@ const UserManagement = lazy(() => import('@/pages/common/UserManagement'))
 const PermissionQuery = lazy(() => import('@/pages/common/PermissionQuery'))
 const JiuHaoHang = lazy(() => import('@/pages/common/JiuHaoHang'))
 const ConstructionList = lazy(() => import('@/pages/common/ConstructionList'))
+const CraftsmanQuery = lazy(() => import('@/pages/common/CraftsmanQuery'))
 const ConstructionApplicationList = lazy(() => import('@/pages/common/ConstructionApplicationList'))
 const PurchaseDemandCreate = lazy(() => import('@/pages/purchase/PurchaseDemandCreate'))
 const PurchaseDemandDetail = lazy(() => import('@/pages/purchase/PurchaseDemandDetail'))
@@ -80,6 +81,7 @@ const routes: RouteObject[] = [
       { path: 'materials/:id', element: <MaterialDetail /> },
       { path: 'materials', element: <MaterialList /> },
       { path: 'construction-library', element: <ConstructionList /> },
+      { path: 'craftsman-search', element: <CraftsmanQuery /> },
       { path: 'construction-apply', element: <ConstructionApplicationList /> },
       { path: 'tag-list', element: <TagListView /> },
       { path: 'category-list', element: <CategoryListView /> },

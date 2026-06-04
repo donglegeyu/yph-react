@@ -7,9 +7,11 @@ import TabBar from './TabBar'
 
 export default function MainLayout() {
   const fetchMenus = useAppStore((s) => s.fetchMenus)
+  const loadSidebarPreference = useAppStore((s) => s.loadSidebarPreference)
 
   useEffect(() => {
     fetchMenus()
+    loadSidebarPreference()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

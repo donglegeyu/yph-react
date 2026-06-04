@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { Space, TreeSelect, Tree, Empty, Tag } from 'antd'
+import { Space, TreeSelect, Tree, Empty, Tag, Form, Radio, Menu } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import {
   CompanyTable,
@@ -8,17 +8,27 @@ import {
   CompanyInput,
   CompanySelect,
   CompanyInputNumber,
-  CompanyForm,
-  CompanyRadio,
   CompanyMessage,
   CompanyPopconfirm,
+  CompanyDropdown,
+  CompanyCheckbox,
 } from '@donglegeyu/company-ui'
 import FilterForm from '@/components/FilterForm'
 import ActionCell from '@/components/ActionCell'
+import IconSelect from '@/components/IconSelect'
 import SvgIcon from '@/components/SvgIcon'
 import { useAppStore } from '@/store/app'
 import { API_ENDPOINTS } from '@/constants/api'
+import PageErrorBoundary from '@/components/PageErrorBoundary'
 import type { FilterItem } from '@/types'
+
+interface ColumnField {
+  key: string
+  label: string
+  visible: boolean
+  width?: number
+  fixed?: 'left' | 'right'
+}
 
 interface MenuTreeItem {
   id: number
@@ -49,14 +59,6 @@ interface FlatMenuItem {
   levelText: string
 }
 
-interface ColumnField {
-  key: string
-  label: string
-  visible: boolean
-  width?: number
-  fixed?: 'left' | 'right'
-}
-
 interface MenuFormData {
   id: number | null
   key: string
@@ -79,6 +81,23 @@ interface MenuFilterParams {
   [key: string]: unknown
 }
 
+interface FilterScheme {
+  id: string
+  name: string
+  filters: Record<string, unknown>
+  filterOrder: string[]
+}
+
+interface FilterOptionItem {
+  key: string
+  label: string
+  checked: boolean
+  defaultValue: unknown
+  options?: { label: string; value: string | number }[]
+  type?: string
+  placeholder?: string
+}
+
 function getMenuType(key: string): string {
   if (key === 'home') return '系统菜单-上'
   if (key === 'favorites' || key === 'super-search') return '系统菜单-下'
@@ -87,6 +106,22 @@ function getMenuType(key: string): string {
 
 function getLevelText(level: number): string {
   return { 0: '一级', 1: '二级', 2: '三级' }[level] || '三级'
+}
+
+const iconMap: Record<string, string> = {
+  'shopping': 'shopping-cart-del',
+  'buy': 'shopping-cart-del',
+  'goods': 'tag',
+  'file': 'file-cabinet',
+  'search': 'doc-search',
+  'user': 'people-top-card',
+  'safe': 'message-security',
+  'tool': 'setting',
+  'app': 'all-application',
+}
+
+function getIconName(icon?: string): string {
+  return icon ? iconMap[icon] || icon : 'id-card-v-klbe0a04'
 }
 
 function flattenTree(
@@ -160,7 +195,7 @@ const DEFAULT_COLUMN_FIELDS: ColumnField[] = [
   { key: 'path', label: '路径', visible: true, width: 150 },
   { key: 'key', label: 'Key', visible: true, width: 150 },
   { key: 'sort', label: '排序', visible: true, width: 80 },
-  { key: 'action', label: '操作', visible: false, width: 220 },
+  { key: 'action', label: '操作', visible: true, width: 220 },
 ]
 
 const menuTypeOptions = [
@@ -209,6 +244,19 @@ export default function MenuManagement() {
   const [moveExpandedKeys, setMoveExpandedKeys] = useState<string[]>([])
   const [moveTreeData, setMoveTreeData] = useState<DataNode[]>([])
 
+  const [schemes, setSchemes] = useState<FilterScheme[]>([])
+  const [currentScheme, setCurrentScheme] = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [saveSchemeDialogVisible, setSaveSchemeDialogVisible] = useState(false)
+  const [newSchemeName, setNewSchemeName] = useState('')
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingSchemeId, setEditingSchemeId] = useState<string | null>(null)
+  const [hasModified, setHasModified] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
+  const [initializedFilterParams, setInitializedFilterParams] = useState<Record<string, unknown>>({})
+  const [dialogFilterOptions, setDialogFilterOptions] = useState<FilterOptionItem[]>([])
+  const [isRecordingBaseline, setIsRecordingBaseline] = useState(false)
+
   const filtered = useMemo(() => filterTree(rawMenuData, filterParams), [rawMenuData, filterParams])
   const dataSource = useMemo(() => flattenTree(filtered, expandedKeys), [filtered, expandedKeys])
   const visibleDataSource = useMemo(() => dataSource.filter(item => item.show !== false), [dataSource])
@@ -251,11 +299,25 @@ export default function MenuManagement() {
 
   const handleSearch = useCallback((data: Record<string, unknown>) => {
     setFilterParams(data as MenuFilterParams)
+    setHasSearched(true)
   }, [])
 
   const handleReset = useCallback(() => {
-    setFilterParams({})
-  }, [])
+    setIsRecordingBaseline(true)
+    if (!currentScheme || currentScheme === 'default') {
+      setFilterParams({})
+    } else {
+      const scheme = schemes.find(s => s.id === currentScheme)
+      if (scheme) {
+        setFilterParams(scheme.filters as MenuFilterParams)
+      } else {
+        setFilterParams({})
+      }
+    }
+    setHasModified(false)
+    setHasSearched(false)
+    setTimeout(() => setIsRecordingBaseline(false), 100)
+  }, [currentScheme, schemes])
 
   const toggleExpand = useCallback((record: FlatMenuItem) => {
     setExpandedKeys(prev =>
@@ -476,11 +538,311 @@ export default function MenuManagement() {
     setSelectedRowKeys(keys)
   }, [])
 
+  const loadSchemes = useCallback(async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.MENU_VIEWS)
+      const json = await res.json()
+      if (json.code === 200) {
+        setSchemes(json.data || [])
+      }
+    } catch {
+      setSchemes([])
+    }
+  }, [])
+
+  const handleSchemeChange = useCallback((schemeId: string) => {
+    setIsRecordingBaseline(true)
+    setInitializedFilterParams({})
+    setHasSearched(false)
+
+    if (!schemeId || schemeId === 'default') {
+      setCurrentScheme('default')
+      setFilterParams({})
+      setDropdownOpen(false)
+      setHasModified(false)
+      setTimeout(() => setIsRecordingBaseline(false), 300)
+      return
+    }
+
+    const scheme = schemes.find(s => s.id === schemeId)
+    if (scheme) {
+      const newParams: Record<string, unknown> = {}
+      if (scheme.filterOrder) {
+        scheme.filterOrder.forEach(key => {
+          if (scheme.filters && scheme.filters[key] !== undefined) {
+            newParams[key] = scheme.filters[key]
+          }
+        })
+      }
+      setFilterParams(newParams as MenuFilterParams)
+      setCurrentScheme(schemeId)
+      setDropdownOpen(false)
+      setHasModified(false)
+      setTimeout(() => setIsRecordingBaseline(false), 300)
+    }
+  }, [schemes])
+
+  const handleSave = useCallback(async () => {
+    if (!currentScheme || currentScheme === 'default') {
+      CompanyMessage.warning('请先选择一个视图再保存')
+      return
+    }
+    const scheme = schemes.find(s => s.id === currentScheme)
+    if (scheme) {
+      const updatedScheme = {
+        ...scheme,
+        filters: { ...filterParams },
+      }
+      try {
+        const res = await fetch(API_ENDPOINTS.MENU_VIEWS, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedScheme),
+        })
+        const json = await res.json()
+        if (json.code === 200) {
+          CompanyMessage.success('保存成功')
+          setHasModified(false)
+          setHasSearched(false)
+          setInitializedFilterParams(JSON.parse(JSON.stringify(filterParams)))
+          loadSchemes()
+        } else {
+          CompanyMessage.error('保存失败，请重试')
+        }
+      } catch {
+        CompanyMessage.error('保存失败，请重试')
+      }
+    }
+  }, [currentScheme, schemes, filterParams, loadSchemes])
+
+  const handleSaveAs = useCallback(() => {
+    setDropdownOpen(false)
+    setIsEditMode(false)
+    setEditingSchemeId(null)
+    setNewSchemeName('')
+    setHasSearched(false)
+    setDialogFilterOptions(
+      filterItems.map(item => ({
+        key: item.key,
+        label: item.label,
+        checked: false,
+        defaultValue: filterParams[item.key] || '',
+        options: item.options,
+        type: item.type,
+        placeholder: item.placeholder,
+      }))
+    )
+    setSaveSchemeDialogVisible(true)
+  }, [filterParams])
+
+  const handleDrawerClose = useCallback(() => {
+    setNewSchemeName('')
+    setSaveSchemeDialogVisible(false)
+    setIsEditMode(false)
+    setEditingSchemeId(null)
+  }, [])
+
+  const confirmSaveScheme = useCallback(async () => {
+    if (!newSchemeName.trim()) {
+      CompanyMessage.warning('请输入视图名称')
+      return
+    }
+    if (newSchemeName.length > 8) {
+      CompanyMessage.warning('视图名称不能超过8个字')
+      return
+    }
+    const nameExists = schemes.some(s => s.name === newSchemeName.trim() && s.id !== editingSchemeId)
+    if (nameExists) {
+      CompanyMessage.warning('视图名称已存在')
+      return
+    }
+    const selectedCount = dialogFilterOptions.filter(opt => opt.checked).length
+    if (selectedCount === 0) {
+      CompanyMessage.warning('请至少选择一个筛选条件')
+      return
+    }
+
+    const selectedFilters: Record<string, unknown> = {}
+    const filterOrder: string[] = []
+    dialogFilterOptions.forEach(opt => {
+      if (opt.checked) {
+        selectedFilters[opt.key] = opt.defaultValue || ''
+        filterOrder.push(opt.key)
+      }
+    })
+
+    const scheme = isEditMode && editingSchemeId
+      ? schemes.find(s => s.id === editingSchemeId)
+      : null
+
+    const schemeData = {
+      id: scheme?.id || Date.now().toString(),
+      name: newSchemeName.trim(),
+      filters: selectedFilters,
+      filterOrder,
+    }
+
+    try {
+      const res = await fetch(API_ENDPOINTS.MENU_VIEWS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(schemeData),
+      })
+      const json = await res.json()
+      if (json.code === 200) {
+        CompanyMessage.success('保存成功')
+        setCurrentScheme(schemeData.id)
+        setHasModified(false)
+        handleDrawerClose()
+        loadSchemes()
+      } else {
+        CompanyMessage.error('保存失败，请重试')
+      }
+    } catch {
+      CompanyMessage.error('保存失败，请重试')
+    }
+  }, [newSchemeName, schemes, editingSchemeId, dialogFilterOptions, isEditMode, handleDrawerClose, loadSchemes])
+
+  const handleEditScheme = useCallback((schemeId: string) => {
+    const scheme = schemes.find(s => s.id === schemeId)
+    if (!scheme) return
+    setDropdownOpen(false)
+    setIsEditMode(true)
+    setEditingSchemeId(schemeId)
+    setNewSchemeName(scheme.name)
+    setFilterParams({ ...(scheme.filters || {}) } as MenuFilterParams)
+    setDialogFilterOptions(
+      filterItems.map(item => {
+        const isChecked = !!(scheme.filterOrder && scheme.filterOrder.includes(item.key))
+        const defaultValue = scheme.filters?.[item.key]
+        return {
+          key: item.key,
+          label: item.label,
+          checked: isChecked,
+          defaultValue,
+          options: item.options,
+          type: item.type,
+          placeholder: item.placeholder,
+        }
+      })
+    )
+    setSaveSchemeDialogVisible(true)
+  }, [schemes, filterItems])
+
+  const handleDeleteScheme = useCallback(async (schemeId: string) => {
+    try {
+      const res = await fetch(`${API_ENDPOINTS.MENU_VIEWS}/${schemeId}`, {
+        method: 'DELETE',
+      })
+      const json = await res.json()
+      if (json.code === 200) {
+        if (currentScheme === schemeId) {
+          setCurrentScheme('default')
+        }
+        CompanyMessage.success('删除成功')
+        loadSchemes()
+      } else {
+        CompanyMessage.error('删除失败，请重试')
+      }
+    } catch {
+      CompanyMessage.error('删除失败，请重试')
+    }
+  }, [currentScheme, loadSchemes])
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData()
+    loadSchemes()
+    setIsRecordingBaseline(true)
+    setTimeout(() => setIsRecordingBaseline(false), 300)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!isRecordingBaseline && hasSearched) {
+      const allKeys = new Set([
+        ...Object.keys(initializedFilterParams),
+        ...Object.keys(filterParams),
+      ])
+      const changed = Array.from(allKeys).some(key =>
+        JSON.stringify(initializedFilterParams[key]) !== JSON.stringify(filterParams[key])
+      )
+      setHasModified(changed)
+    }
+    if (isRecordingBaseline) {
+      setInitializedFilterParams(JSON.parse(JSON.stringify(filterParams)))
+    }
+  }, [filterParams, isRecordingBaseline, hasSearched, initializedFilterParams])
+
+  const getDropdownButtonText = useCallback(() => {
+    if (!currentScheme || currentScheme === 'default') return '默认视图'
+    const scheme = schemes.find(s => s.id === currentScheme)
+    return scheme ? scheme.name : '默认视图'
+  }, [currentScheme, schemes])
+
+  const dropdownMenuItems = useMemo(
+    () => [
+      {
+        key: 'default',
+        label: (
+          <div className="scheme-option">
+            <span>默认视图</span>
+            <span style={{ fontSize: 12, color: 'rgba(0, 0, 0, 0.45)' }}>
+              （全量）
+            </span>
+          </div>
+        ),
+      },
+      ...schemes.map(scheme => ({
+        key: scheme.id,
+        label: (
+          <div className="scheme-option">
+            <span>{scheme.name}</span>
+            <span style={{ marginLeft: 0, fontSize: 12, color: 'rgba(0, 0, 0, 0.45)' }}>
+              （{scheme.filterOrder?.length || 0}）
+            </span>
+            <span className="action-icons" style={{ marginLeft: 'auto' }}>
+              <SvgIcon
+                href="writing-fluently"
+                size={14}
+                className="action-icon edit-icon"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleEditScheme(scheme.id)
+                }}
+              />
+              <span
+                className="action-icon delete-icon"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeleteScheme(scheme.id)
+                }}
+              >
+                ✕
+              </span>
+            </span>
+          </div>
+        ),
+      })),
+      { type: 'divider' as const },
+      {
+        key: 'add-view',
+        label: <span style={{ color: '#F95914' }}>+ 新增视图</span>,
+      },
+    ],
+    [schemes, handleEditScheme, handleDeleteScheme]
+  )
+
+  const handleMenuClick = useCallback(
+    (info: { key: string }) => {
+      if (info.key === 'add-view') {
+        handleSaveAs()
+      } else {
+        handleSchemeChange(info.key)
+      }
+    },
+    [handleSchemeChange, handleSaveAs]
+  )
 
   const getActionButtons = useCallback((record: FlatMenuItem) => {
     const buttons: { key: string; label: string; danger?: boolean; confirm?: boolean; confirmTitle?: string; onClick: () => void }[] = [
@@ -542,9 +904,9 @@ export default function MenuManagement() {
         ) : f.key === 'level' ? (_: unknown, record: FlatMenuItem) => (
           <>{record.levelText}</>
         ) : f.key === 'icon' ? (_: unknown, record: FlatMenuItem) => (
-          record.icon && record.level !== 2 ? (
+          record.level !== 2 ? (
             <div className="icon-cell">
-              <SvgIcon href={record.icon} size={16} />
+              <SvgIcon href={getIconName(record.icon)} size={16} />
             </div>
           ) : <>-</>
         ) : f.key === 'path' ? (_: unknown, record: FlatMenuItem) => (
@@ -556,10 +918,59 @@ export default function MenuManagement() {
   }, [columnFields, toggleAllExpand, allExpanded, expandedKeys, toggleExpand, getActionButtons])
 
   return (
+    <PageErrorBoundary>
     <div className="smart-list-template">
       <div className="page-header">
         <h2 className="page-title">菜单管理</h2>
-        <div className="page-header-actions" />
+        <div className="page-header-actions">
+          <div className="page-header-line" />
+          <CompanyDropdown
+            open={dropdownOpen}
+            onOpenChange={setDropdownOpen}
+            popupRender={() => (
+              <Menu
+                onClick={handleMenuClick}
+                items={dropdownMenuItems}
+                style={{ minWidth: 200 }}
+              />
+            )}
+          >
+            <CompanyButton
+              size="small"
+              type="text"
+              className="dropdown-text-btn"
+            >
+              {getDropdownButtonText()}
+              {hasModified && hasSearched && (
+                <span className="modified-tag-inline">已修改</span>
+              )}
+              <SvgIcon
+                href={dropdownOpen ? 'up' : 'down'}
+                size={16}
+                style={{ marginLeft: 4 }}
+              />
+            </CompanyButton>
+          </CompanyDropdown>
+
+          {hasModified && hasSearched && (
+            <>
+              <CompanyButton
+                size="small"
+                className="save-filter-btn"
+                onClick={handleSave}
+              >
+                保存
+              </CompanyButton>
+              <CompanyButton
+                size="small"
+                className="save-filter-btn"
+                onClick={handleSaveAs}
+              >
+                另存为
+              </CompanyButton>
+            </>
+          )}
+        </div>
       </div>
 
       <FilterForm
@@ -620,7 +1031,7 @@ export default function MenuManagement() {
       <CompanyDrawer
         open={modalVisible}
         title={modalTitle}
-        size={360}
+        width={360}
         onClose={handleModalCancel}
         footer={
           <Space>
@@ -629,29 +1040,29 @@ export default function MenuManagement() {
           </Space>
         }
       >
-        <CompanyForm layout="vertical">
-          <CompanyForm.Item label="菜单Key">
+        <Form layout="vertical">
+          <Form.Item label="菜单Key">
             <CompanyInput
               value={formData.key}
               onChange={(e) => setFormData(prev => ({ ...prev, key: e.target.value }))}
               placeholder="如: material-center"
             />
-          </CompanyForm.Item>
-          <CompanyForm.Item label="菜单名称">
+          </Form.Item>
+          <Form.Item label="菜单名称">
             <CompanyInput
               value={formData.label}
               onChange={(e) => setFormData(prev => ({ ...prev, label: e.target.value }))}
               placeholder="如: 材料中心"
             />
-          </CompanyForm.Item>
-          <CompanyForm.Item label="路径">
+          </Form.Item>
+          <Form.Item label="路径">
             <CompanyInput
               value={formData.path}
               onChange={(e) => setFormData(prev => ({ ...prev, path: e.target.value }))}
               placeholder="如: /materials"
             />
-          </CompanyForm.Item>
-          <CompanyForm.Item label="上级菜单">
+          </Form.Item>
+          <Form.Item label="上级菜单">
             <TreeSelect
               value={formData.parentId}
               onChange={(val) => setFormData(prev => ({ ...prev, parentId: val }))}
@@ -666,46 +1077,46 @@ export default function MenuManagement() {
               }
               style={{ width: '100%' }}
             />
-          </CompanyForm.Item>
-          <CompanyForm.Item label="图标">
-            <CompanyInput
+          </Form.Item>
+          <Form.Item label="图标">
+            <IconSelect
               value={formData.icon}
-              onChange={(e) => setFormData(prev => ({ ...prev, icon: e.target.value }))}
-              placeholder="图标标识"
+              placeholder="请选择图标"
+              onChange={(val) => setFormData(prev => ({ ...prev, icon: val }))}
             />
-          </CompanyForm.Item>
-          <CompanyForm.Item label="菜单类型">
+          </Form.Item>
+          <Form.Item label="菜单类型">
             <CompanySelect
               value={formData.menuType}
               onChange={(val) => setFormData(prev => ({ ...prev, menuType: val as string }))}
               options={menuTypeOptions}
               placeholder="请选择菜单类型"
             />
-          </CompanyForm.Item>
-          <CompanyForm.Item label="排序">
+          </Form.Item>
+          <Form.Item label="排序">
             <CompanyInputNumber
               value={formData.sort}
               onChange={(val) => setFormData(prev => ({ ...prev, sort: val || 0 }))}
               min={0}
               style={{ width: '100%' }}
             />
-          </CompanyForm.Item>
-          <CompanyForm.Item label="状态">
-            <CompanyRadio.Group
+          </Form.Item>
+          <Form.Item label="状态">
+            <Radio.Group
               value={formData.status}
               onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
             >
-              <CompanyRadio value={1}>启用</CompanyRadio>
-              <CompanyRadio value={0}>禁用</CompanyRadio>
-            </CompanyRadio.Group>
-          </CompanyForm.Item>
-        </CompanyForm>
+              <Radio value={1}>启用</Radio>
+              <Radio value={0}>禁用</Radio>
+            </Radio.Group>
+          </Form.Item>
+        </Form>
       </CompanyDrawer>
 
       <CompanyDrawer
         open={moveDrawerVisible}
         title="移动菜单"
-        size={420}
+        width={420}
         onClose={closeMoveDrawer}
         footer={
           <Space>
@@ -748,7 +1159,91 @@ export default function MenuManagement() {
           </div>
         )}
       </CompanyDrawer>
+
+      <CompanyDrawer
+        open={saveSchemeDialogVisible}
+        title={isEditMode ? '编辑视图' : '新增视图'}
+        width={380}
+        onClose={handleDrawerClose}
+        footer={
+          <div style={{ textAlign: 'right' }}>
+            <CompanyButton style={{ marginRight: 12 }} onClick={handleDrawerClose}>
+              取消
+            </CompanyButton>
+            <CompanyButton type="primary" onClick={confirmSaveScheme}>
+              保存
+            </CompanyButton>
+          </div>
+        }
+      >
+        <div style={{ padding: 0, overflow: 'visible' }}>
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ fontSize: 14, fontWeight: 400, color: 'rgba(0,0,0,0.88)', marginBottom: 8 }}>
+              视图名称 <span style={{ color: '#ff4d4f', marginLeft: 4 }}>*</span>
+            </div>
+            <CompanyInput
+              value={newSchemeName}
+              onChange={(e) => setNewSchemeName(e.target.value)}
+              placeholder="请输入视图名称（最多8个字）"
+              maxLength={8}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ fontSize: 14, fontWeight: 400, color: 'rgba(0,0,0,0.88)', marginBottom: 8 }}>筛选条件</div>
+            <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', marginBottom: 8 }}>请至少选择一个筛选条件，拖拽调整顺序</div>
+            {dialogFilterOptions.map((opt, index) => (
+              <div
+                key={opt.key}
+                className="field-item"
+                draggable
+                onDragStart={(e) => {
+                  const dragIdx = index
+                  e.dataTransfer.effectAllowed = 'move'
+                  const dataTransfer = e.dataTransfer
+                  dataTransfer.setData('text/plain', String(dragIdx))
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const fromIdx = Number(e.dataTransfer.getData('text/plain'))
+                  if (isNaN(fromIdx) || fromIdx === index) return
+                  setDialogFilterOptions(prev => {
+                    const items = [...prev]
+                    const [dragItem] = items.splice(fromIdx, 1)
+                    items.splice(index, 0, dragItem)
+                    return items
+                  })
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 0',
+                  borderBottom: '1px solid #f0f0f0',
+                  cursor: 'grab',
+                }}
+              >
+                <SvgIcon href="drag" size={12} style={{ flexShrink: 0, color: '#999' }} />
+                <CompanyCheckbox
+                  checked={opt.checked}
+                  onChange={(e) => {
+                    setDialogFilterOptions(prev =>
+                      prev.map((o, i) => (i === index ? { ...o, checked: e.target.checked } : o))
+                    )
+                  }}
+                  style={{ flexShrink: 0 }}
+                >
+                  {opt.label}
+                </CompanyCheckbox>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CompanyDrawer>
     </div>
+    </PageErrorBoundary>
   )
 }
 

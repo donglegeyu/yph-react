@@ -1,24 +1,33 @@
 import { useState, useCallback, useRef } from 'react'
-import type { ColumnField } from '@/types'
 
-export interface UseColumnSettingsOptions {
+interface BaseColumnField {
+  key: string
+  label: string
+  visible: boolean
+  width?: number
+  fixed?: 'left' | 'right'
+}
+
+export interface UseColumnSettingsOptions<T extends BaseColumnField = BaseColumnField> {
   pageKey: string
   apiEndpoint?: string
   storageType?: 'localStorage' | 'sessionStorage' | 'api'
-  onLoad?: (fields: ColumnField[]) => void
-  onSave?: (fields: ColumnField[]) => void
+  onLoad?: (fields: T[]) => void
+  onSave?: (fields: T[]) => void
 }
 
-export function useColumnSettings(options: UseColumnSettingsOptions) {
+export function useColumnSettings<T extends BaseColumnField = BaseColumnField>(
+  options: UseColumnSettingsOptions<T>
+) {
   const { pageKey, apiEndpoint, storageType = 'localStorage', onLoad, onSave } = options
 
-  const [columnFields, setColumnFields] = useState<ColumnField[]>([])
-  const [defaultFields, setDefaultFieldsState] = useState<ColumnField[]>([])
+  const [columnFields, setColumnFields] = useState<T[]>([])
+  const [defaultFields, setDefaultFieldsState] = useState<T[]>([])
   const [loading, setLoading] = useState(false)
 
   const storageKey = `column-settings-${pageKey}`
 
-  function mergeFields(savedFields: ColumnField[]) {
+  function mergeFields(savedFields: T[]) {
     setColumnFields((prev) => {
       const next = [...prev]
       savedFields.forEach((saved) => {
@@ -79,7 +88,7 @@ export function useColumnSettings(options: UseColumnSettingsOptions) {
     return saveToStorageRef.current()
   }, [])
 
-  const loadFromStorage = useCallback(async (): Promise<ColumnField[]> => {
+  const loadFromStorage = useCallback(async (): Promise<T[]> => {
     try {
       if (storageType === 'api' && apiEndpoint) {
         setLoading(true)
@@ -93,7 +102,7 @@ export function useColumnSettings(options: UseColumnSettingsOptions) {
             if (json.code === 200 && json.data) {
               const saved = JSON.parse(json.data)
               if (Array.isArray(saved) && saved.length > 0) {
-                mergeFields(saved)
+                mergeFields(saved as T[])
                 if (onLoad) onLoad(columnFields)
               }
             }
@@ -108,7 +117,7 @@ export function useColumnSettings(options: UseColumnSettingsOptions) {
           try {
             const parsed = JSON.parse(saved)
             if (Array.isArray(parsed) && parsed.length > 0) {
-              mergeFields(parsed)
+              mergeFields(parsed as T[])
               if (onLoad) onLoad(columnFields)
             }
           } catch {
@@ -123,7 +132,7 @@ export function useColumnSettings(options: UseColumnSettingsOptions) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageType, apiEndpoint, storageKey])
 
-  const initFields = useCallback((fields: ColumnField[]) => {
+  const initFields = useCallback((fields: T[]) => {
     setDefaultFieldsState(JSON.parse(JSON.stringify(fields)))
     setColumnFields(JSON.parse(JSON.stringify(fields)))
   }, [])
@@ -155,11 +164,11 @@ export function useColumnSettings(options: UseColumnSettingsOptions) {
     })
   }, [])
 
-  const getVisibleFields = useCallback((): ColumnField[] => {
+  const getVisibleFields = useCallback((): T[] => {
     return columnFields.filter((f) => f.visible)
   }, [columnFields])
 
-  const getHiddenFields = useCallback((): ColumnField[] => {
+  const getHiddenFields = useCallback((): T[] => {
     return columnFields.filter((f) => !f.visible)
   }, [columnFields])
 
@@ -177,7 +186,7 @@ export function useColumnSettings(options: UseColumnSettingsOptions) {
   }, [])
 
   const confirmChanges = useCallback(
-    (fields: ColumnField[]) => {
+    (fields: T[]) => {
       setColumnFields(JSON.parse(JSON.stringify(fields)))
       saveToStorage()
     },
