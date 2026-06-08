@@ -70,6 +70,8 @@ interface AppState {
   menusLoaded: boolean
   loadSidebarPreference: () => Promise<void>
   saveSidebarPreference: (fixed: boolean) => Promise<void>
+  saveCurrentDomainState: () => void
+  restoreDomainState: (domainId: number) => void
 }
 
 const STORAGE_KEYS = {
@@ -300,98 +302,132 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchMenus: async () => {
-    // forceRefresh not needed in React version - always refetch
     try {
       const currentDomainId = localStorage.getItem('currentDomainId')
-      const url = currentDomainId
-        ? `${API_ENDPOINTS.NAV_MENUS}?domainId=${currentDomainId}`
-        : API_ENDPOINTS.NAV_MENUS
 
-      const res = await fetch(url)
-      const json = await res.json()
-      if (json.code === 200 && json.data && json.data.length > 0) {
-        const menus = json.data as NavMenu[]
+      let domainMenus: NavMenu[] = []
+      let systemMenus: NavMenu[] = []
 
-        const firstMenus = menus
-          .filter((m: NavMenu) => m.menuType === '系统菜单-上' && m.status === 1)
-          .map((m: NavMenu) => ({
-            key: m.key,
-            label: m.label,
-            icon: m.icon || 'id-card-v-klbe0a04',
-            hasChildren: m.key === 'favorites',
-          }))
-
-        const systemBottomMenus = menus
-          .filter((m: NavMenu) => m.menuType === '系统菜单-下' && m.status === 1)
-          .map((m: NavMenu) => ({
-            key: m.key,
-            label: m.label,
-            icon: m.icon || 'id-card-v-klbe0a04',
-            hasChildren: false,
-          }))
-
-        const businessMenus = menus
-          .filter(
-            (m: NavMenu) =>
-              m.key !== 'home' &&
-              m.key !== 'favorites' &&
-              !m.menuType?.startsWith('系统菜单') &&
-              m.status === 1 &&
-              (!m.parentId || m.parentId === 0)
-          )
-          .map((m: NavMenu) => ({
-            key: m.key,
-            label: m.label,
-            icon: m.icon || 'id-card-v-klbe0a04',
-            hasChildren: !!(m.children && m.children.length > 0),
-            children: m.children || [],
-          }))
-          .filter((m, i, arr) => !m.key || arr.findIndex((x) => x.key === m.key) === i)
-
-        const secondMenusMap: Record<string, MenuItem[]> = {}
-        for (const menu of menus) {
-          if (menu.children && menu.children.length > 0 && menu.status === 1) {
-            const children = menu.children
-              .filter((child: NavMenu) => child.status === 1)
-              .map((child: NavMenu) => ({
-                key: child.key || `_group_${child.label}`,
-                label: child.label,
-                path: child.path,
-                icon: child.icon || 'id-card-v-klbe0a04',
-                children: (child.children || [])
-                  .filter((gc: NavMenu) => gc.status === 1)
-                  .map((gc: NavMenu) => ({
-                    key: gc.key || `_child_${gc.label}`,
-                    label: gc.label,
-                    path: gc.path,
-                    icon: gc.icon,
-                  }))
-                  .filter((gc, i, arr) => !gc.key?.startsWith('_child_') || arr.findIndex((x) => x.key === gc.key) === i),
-              }))
-              .filter((child, i, arr) => !child.key?.startsWith('_group_') || arr.findIndex((x) => x.key === child.key) === i)
-            secondMenusMap[menu.key] = children
-          }
+      if (currentDomainId) {
+        const [domainRes, systemRes] = await Promise.all([
+          fetch(`${API_ENDPOINTS.NAV_MENUS}?domainId=${currentDomainId}`),
+          fetch(API_ENDPOINTS.NAV_MENUS),
+        ])
+        const domainJson = await domainRes.json()
+        const systemJson = await systemRes.json()
+        if (domainJson.code === 200 && domainJson.data) {
+          domainMenus = domainJson.data as NavMenu[]
         }
+        if (systemJson.code === 200 && systemJson.data) {
+          systemMenus = (systemJson.data as NavMenu[]).filter(
+            (m: NavMenu) => m.menuType?.startsWith('系统菜单')
+          )
+        }
+      } else {
+        const res = await fetch(API_ENDPOINTS.NAV_MENUS)
+        const json = await res.json()
+        if (json.code === 200 && json.data) {
+          domainMenus = json.data as NavMenu[]
+        }
+      }
 
-        set({
-          businessMenus,
-          firstMenus,
-          systemBottomMenus,
-          secondMenusMap,
-        })
+      const menusRaw = [...systemMenus, ...domainMenus]
+      const seenIds = new Set<number>()
+      const menus: NavMenu[] = []
+      for (const m of menusRaw) {
+        if (!seenIds.has(m.id)) {
+          seenIds.add(m.id)
+          menus.push(m)
+        }
+      }
+      if (menus.length === 0) {
+        set({ menusLoaded: true })
+        return
+      }
 
-        await get().fetchFavorites()
-        await get().fetchCustomNavMenus()
+      const firstMenus = menus
+        .filter((m: NavMenu) => m.menuType === '系统菜单-上' && m.status === 1)
+        .map((m: NavMenu) => ({
+          key: m.key,
+          label: m.label,
+          icon: m.icon || 'id-card-v-klbe0a04',
+          hasChildren: m.key === 'favorites',
+        }))
 
-        const { businessMenus: latestBusinessMenus, customNavMenus: currentCustomNav } = get()
-        if (Array.isArray(currentCustomNav) && currentCustomNav.length > 0) {
-          const customKeys = new Set(currentCustomNav.map((m) => m.key))
-          const newMenus = latestBusinessMenus.filter((m) => !customKeys.has(m.key))
-          if (newMenus.length > 0) {
-            const merged = [...currentCustomNav, ...newMenus.map((m) => ({ ...m, icon: m.icon || 'id-card-v-klbe0a04' }))]
-            set({ customNavMenus: merged })
-            localStorage.setItem(STORAGE_KEYS.CUSTOM_NAV_MENUS, JSON.stringify(merged))
-          }
+      const systemBottomMenus = menus
+        .filter((m: NavMenu) => m.menuType === '系统菜单-下' && m.status === 1)
+        .map((m: NavMenu) => ({
+          key: m.key,
+          label: m.label,
+          icon: m.icon || 'id-card-v-klbe0a04',
+          hasChildren: false,
+        }))
+
+      const businessMenus = menus
+        .filter(
+          (m: NavMenu) =>
+            m.key !== 'home' &&
+            m.key !== 'favorites' &&
+            !m.menuType?.startsWith('系统菜单') &&
+            m.status === 1 &&
+            (!m.parentId || m.parentId === 0)
+        )
+        .map((m: NavMenu) => ({
+          key: m.key,
+          label: m.label,
+          icon: m.icon || 'id-card-v-klbe0a04',
+          hasChildren: !!(m.children && m.children.length > 0),
+          children: m.children || [],
+        }))
+        .filter((m, i, arr) => !m.key || arr.findIndex((x) => x.key === m.key) === i)
+
+      const secondMenusMap: Record<string, MenuItem[]> = {}
+      for (const menu of menus) {
+        if (menu.children && menu.children.length > 0 && menu.status === 1) {
+          const children = menu.children
+            .filter((child: NavMenu) => child.status === 1)
+            .map((child: NavMenu) => ({
+              key: child.key || `_group_${child.label}`,
+              label: child.label,
+              path: child.path,
+              icon: child.icon || 'id-card-v-klbe0a04',
+              children: (child.children || [])
+                .filter((gc: NavMenu) => gc.status === 1)
+                .map((gc: NavMenu) => ({
+                  key: gc.key || `_child_${gc.label}`,
+                  label: gc.label,
+                  path: gc.path,
+                  icon: gc.icon,
+                }))
+                .filter((gc, i, arr) => !gc.key?.startsWith('_child_') || arr.findIndex((x) => x.key === gc.key) === i),
+            }))
+            .filter((child, i, arr) => !child.key?.startsWith('_group_') || arr.findIndex((x) => x.key === child.key) === i)
+          secondMenusMap[menu.key] = children
+        }
+      }
+
+      set({
+        businessMenus,
+        firstMenus,
+        systemBottomMenus,
+        secondMenusMap,
+      })
+
+      await get().fetchFavorites()
+      await get().fetchCustomNavMenus()
+
+      const { businessMenus: latestBusinessMenus, customNavMenus: currentCustomNav } = get()
+      if (currentDomainId) {
+        const newCustomNav = latestBusinessMenus.map((m) => ({ ...m, icon: m.icon || 'id-card-v-klbe0a04' }))
+        set({ customNavMenus: newCustomNav })
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_NAV_MENUS, JSON.stringify(newCustomNav))
+      } else if (Array.isArray(currentCustomNav) && currentCustomNav.length > 0) {
+        const customKeys = new Set(currentCustomNav.map((m) => m.key))
+        const newMenus = latestBusinessMenus.filter((m) => !customKeys.has(m.key))
+        if (newMenus.length > 0) {
+          const merged = [...currentCustomNav, ...newMenus.map((m) => ({ ...m, icon: m.icon || 'id-card-v-klbe0a04' }))]
+          set({ customNavMenus: merged })
+          localStorage.setItem(STORAGE_KEYS.CUSTOM_NAV_MENUS, JSON.stringify(merged))
         }
       }
     } catch {
@@ -645,6 +681,61 @@ export const useAppStore = create<AppState>((set, get) => ({
       })
     } catch {
       // silently fail
+    }
+  },
+
+  saveCurrentDomainState: () => {
+    const currentDomainId = localStorage.getItem('currentDomainId')
+    if (!currentDomainId) return
+    const state = get()
+    const domainState = {
+      tabs: state.tabs,
+      activeTabKey: state.activeTabKey,
+      activeFirstMenu: state.activeFirstMenu,
+      activeKey: state.activeKey,
+      expandedKeys: state.expandedKeys,
+    }
+    localStorage.setItem(`app:domainState:${currentDomainId}`, JSON.stringify(domainState))
+  },
+
+  restoreDomainState: (domainId: number) => {
+    const saved = localStorage.getItem(`app:domainState:${domainId}`)
+    if (saved) {
+      try {
+        const domainState = JSON.parse(saved)
+        set({
+          tabs: domainState.tabs || [],
+          activeTabKey: domainState.activeTabKey || '',
+          activeFirstMenu: domainState.activeFirstMenu || 'home',
+          activeKey: domainState.activeKey || '',
+          expandedKeys: domainState.expandedKeys || [],
+          secondSidebarHovered: false,
+        })
+        localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(domainState.tabs || []))
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB_KEY, domainState.activeTabKey || '')
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_FIRST_MENU, domainState.activeFirstMenu || 'home')
+      } catch {
+        set({
+          tabs: [],
+          activeTabKey: '',
+          activeFirstMenu: 'home',
+          activeKey: '',
+          expandedKeys: [],
+          secondSidebarHovered: false,
+        })
+      }
+    } else {
+      set({
+        tabs: [],
+        activeTabKey: '',
+        activeFirstMenu: 'home',
+        activeKey: '',
+        expandedKeys: [],
+        secondSidebarHovered: false,
+      })
+      localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify([]))
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB_KEY, '')
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_FIRST_MENU, 'home')
     }
   },
 }))

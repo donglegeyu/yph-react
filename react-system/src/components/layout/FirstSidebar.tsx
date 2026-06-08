@@ -159,6 +159,14 @@ export default function FirstSidebar() {
     loadDomains()
   }, [fetchAllDomains])
 
+  const handleDomainPopoverOpenChange = useCallback(async (open: boolean) => {
+    if (open) {
+      const domainList = await fetchAllDomains()
+      setDomains(domainList)
+    }
+    setDomainPopoverOpen(open)
+  }, [fetchAllDomains])
+
   const handleClick = useCallback(
     (menu: any) => {
       if (menu.key === 'home') {
@@ -253,35 +261,37 @@ export default function FirstSidebar() {
         <div className="brand-area">
           <CompanyPopover
             open={domainPopoverOpen}
-            onOpenChange={setDomainPopoverOpen}
+            onOpenChange={handleDomainPopoverOpenChange}
             trigger="click"
             placement="right"
             content={
-              <div style={{ width: 180, maxHeight: 300, overflow: 'auto' }}>
+              <div className="domain-popover-content">
                 {domains.map((d) => (
                   <div
                     key={d.id}
                     className={`domain-popover-item${currentDomainId === d.id ? ' active' : ''}`}
                     onClick={() => {
+                      const appStore = useAppStore.getState()
+                      appStore.saveCurrentDomainState()
                       setCurrentDomainId(d.id)
-                      setActiveKey('home')
                       localStorage.setItem('currentDomainId', String(d.id))
                       setDomainPopoverOpen(false)
-                      useAppStore.setState({ activeFirstMenu: 'home', activeKey: '', expandedKeys: [], secondSidebarHovered: false })
-                      useAppStore.getState().fetchMenus()
-                      navigate('/home')
-                    }}
-                    style={{
-                      height: 40,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '0 12px',
-                      cursor: 'pointer',
-                      borderRadius: 4,
+                      appStore.fetchMenus().then(() => {
+                        appStore.restoreDomainState(d.id)
+                        const restored = useAppStore.getState()
+                        if (restored.activeTabKey && restored.tabs.length > 0) {
+                          const activeTab = restored.tabs.find((t: { key: string }) => t.key === restored.activeTabKey)
+                          if (activeTab) {
+                            navigate(activeTab.path)
+                            return
+                          }
+                        }
+                        setActiveKey('home')
+                        navigate('/home')
+                      })
                     }}
                   >
-                    <span style={{ fontSize: 14 }}>{d.domainName}</span>
+                    <span className="domain-label">{d.domainName}</span>
                     {currentDomainId === d.id && <SvgIcon href="check-one" size={16} />}
                   </div>
                 ))}

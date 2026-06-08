@@ -8,6 +8,7 @@ import SectionTitle from '@/components/SectionTitle'
 import BaseInfoForm, { type BaseInfoFormRef } from '@/components/BaseInfoForm'
 import IconSelect from '@/components/IconSelect'
 import FormFooterActions from '@/components/FormFooterActions'
+import { pinyin } from 'pinyin-pro'
 import { API_ENDPOINTS } from '@/constants/api'
 import './DomainForm.scss'
 
@@ -32,15 +33,15 @@ interface SystemMenu {
 }
 
 interface DomainMenu {
+  id?: number
   domainId: number
   menuId: number
-  menuName?: string
   customLabel: string
   sort: number
   originalLabel: string
   status: number
-  parentId: number
-  menuLevel: number
+  customParentId: number | null
+  customLevel: number | null
   icon?: string
 }
 
@@ -125,6 +126,7 @@ export default function DomainForm() {
   const [systemMenus, setSystemMenus] = useState<SystemMenu[]>([])
   const [domainMenus, setDomainMenus] = useState<DomainMenu[]>([])
   const [dataPermissions, setDataPermissions] = useState<DataPermission[]>([])
+  const [menuStatusMap, setMenuStatusMap] = useState<Map<number, number>>(new Map())
 
   const baseInfoFormRef = useRef<BaseInfoFormRef>(null)
 
@@ -171,7 +173,10 @@ export default function DomainForm() {
   }
 
   function generateDomainKey(domainName: string) {
-    return domainName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    return pinyin(domainName, { toneType: 'none', type: 'array' })
+      .join('-')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '')
   }
 
   // -------- Fetch functions --------
@@ -219,26 +224,28 @@ export default function DomainForm() {
       const json = await res.json()
       if (json.code === 200) {
         const sysMenuMap = collectAllMenus(systemMenus)
-        const menus = (json.data || []).map((m: any) => {
-          const sysMenu = sysMenuMap.get(m.menuId)
-          let parentId = m.parentId ?? 0
-          let menuLevel = m.menuLevel ?? 1
-          if (parentId === 0 && !m.menuLevel) {
-            const result = findParentAndLevel(systemMenus, m.menuId)
-            if (result) {
-              parentId = result.parentId
-              menuLevel = result.level
+        setMenuStatusMap(prev => {
+          const next = new Map(prev)
+          ;(json.data || []).forEach((m: any) => {
+            if (!next.has(Number(m.menuId))) {
+              next.set(Number(m.menuId), Number(m.status ?? 1))
             }
-          }
+          })
+          return next
+        })
+        const menus: DomainMenu[] = (json.data || []).map((m: any) => {
+          const menuId = Number(m.menuId)
+          const sysMenu = sysMenuMap.get(menuId)
           return {
-            domainId: 0,
-            menuId: m.menuId,
+            id: m.id ? Number(m.id) : undefined,
+            domainId: Number(m.domainId ?? 0),
+            menuId,
             customLabel: m.customLabel || '',
-            sort: m.sort ?? 0,
+            sort: Number(m.sort ?? 0),
             originalLabel: sysMenu?.label || '',
-            status: m.status ?? 1,
-            parentId,
-            menuLevel,
+            status: Number(m.status ?? 1),
+            customParentId: m.customParentId != null ? Number(m.customParentId) : null,
+            customLevel: m.customLevel != null ? Number(m.customLevel) : null,
             icon: sysMenu?.icon || '',
           }
         })
@@ -294,17 +301,68 @@ export default function DomainForm() {
 
   // -------- menuTreeData --------
   const menuTreeData = (() => {
-    const buildTree = (parentId: number = 0): any[] => {
-      return domainMenus
-        .filter(m => m.parentId === parentId)
-        .map(m => ({
-          ...m,
-          key: m.menuId,
-          menuName: m.customLabel || m.originalLabel,
-          children: buildTree(m.menuId),
-        }))
+    if (domainMenus.length === 0) return []
+
+    function getSystemMenu(menus: SystemMenu[], id: number): SystemMenu | undefined {
+      for (const menu of menus) {
+        if (menu.id === id) return menu
+        if (menu.children?.length) {
+          const found = getSystemMenu(menu.children, id)
+          if (found) return found
+        }
+      }
+      return undefined
     }
-    return buildTree()
+
+    function getSystemParentId(menuId: number): number {
+      const sysMenu = getSystemMenu(systemMenus, menuId)
+      return sysMenu?.parentId ?? 0
+    }
+
+    function getEffectiveParentId(dm: DomainMenu): number | null {
+      if (dm.customParentId != null) {
+        return dm.customParentId
+      }
+      const sysParentId = getSystemParentId(dm.menuId)
+      if (sysParentId === 0) return null
+      const parentDomainMenu = domainMenus.find(d => d.menuId === sysParentId)
+      if (parentDomainMenu?.id) return parentDomainMenu.id
+      return null
+    }
+
+    const buildTree = (parentId: number | null, depth: number): any[] => {
+      return domainMenus
+        .filter(dm => getEffectiveParentId(dm) === parentId)
+        .sort((a, b) => (a.sort || 0) - (b.sort || 0))
+        .map(dm => {
+          const sysMenu = getSystemMenu(systemMenus, dm.menuId)
+
+          if (!menuStatusMap.has(dm.menuId)) {
+            setMenuStatusMap(prev => {
+              const next = new Map(prev)
+              next.set(dm.menuId, dm.status)
+              return next
+            })
+          }
+
+          const children = buildTree(dm.id ?? dm.menuId, depth + 1)
+
+          return {
+            key: dm.menuId,
+            menuId: dm.menuId,
+            parentId: getEffectiveParentId(dm),
+            menuName: dm.customLabel || dm.originalLabel || sysMenu?.label || '',
+            menuLevel: depth,
+            status: menuStatusMap.get(dm.menuId) ?? dm.status,
+            icon: dm.icon || sysMenu?.icon || 'folder',
+            sort: dm.sort || 0,
+            originalLabel: sysMenu?.label || '',
+            ...(children.length > 0 ? { children } : {}),
+          }
+        })
+    }
+
+    return buildTree(null, 1)
   })()
 
   // -------- Drawer handlers --------
@@ -326,23 +384,38 @@ export default function DomainForm() {
 
     setDomainMenus(prev => {
       const newMenus = [...prev]
+      let nextId = Math.max(0, ...prev.map(m => m.id ?? 0)) + 1
       checkedKeys.forEach(id => {
         const menuId = Number(id)
         if (!existingMenuIds.has(menuId)) {
           const sysMenu = sysMenuMap.get(menuId)
           const parentResult = findParentAndLevel(systemMenus, menuId)
+          const sysParentMenuId = parentResult?.parentId || 0
+          let customParentId: number | null = null
+          if (sysParentMenuId !== 0) {
+            const parentDomainMenu = prev.find(d => d.menuId === sysParentMenuId)
+            if (parentDomainMenu?.id) customParentId = parentDomainMenu.id
+          }
           newMenus.push({
+            id: nextId++,
             domainId: 0,
             menuId,
             customLabel: '',
             sort: newMenus.length,
             originalLabel: sysMenu?.label || '',
             status: 1,
-            parentId: parentResult?.parentId || 0,
-            menuLevel: parentResult?.level || 1,
+            customParentId,
+            customLevel: parentResult?.level || null,
             icon: sysMenu?.icon || '',
           })
         }
+      })
+      setMenuStatusMap(prevMap => {
+        const next = new Map(prevMap)
+        newMenus.forEach(m => {
+          if (!next.has(m.menuId)) next.set(m.menuId, m.status)
+        })
+        return next
       })
       return newMenus
     })
@@ -367,6 +440,11 @@ export default function DomainForm() {
     setDomainMenus(prev =>
       prev.map(m => m.menuId === record.menuId ? { ...m, status } : m)
     )
+    setMenuStatusMap(prev => {
+      const next = new Map(prev)
+      next.set(record.menuId, status)
+      return next
+    })
   }
 
   function handleSortChange(record: any, sort: number | null) {
@@ -382,7 +460,12 @@ export default function DomainForm() {
   }
 
   function handleRemoveMenu(record: any) {
-    setDomainMenus(prev => prev.filter(m => m.menuId !== record.menuId))
+    const removedId = domainMenus.find(m => m.menuId === record.menuId)?.id
+    setDomainMenus(prev =>
+      prev
+        .filter(m => m.menuId !== record.menuId)
+        .map(m => m.customParentId != null && m.customParentId === removedId ? { ...m, customParentId: null } : m)
+    )
   }
 
   // -------- Permission handlers --------
@@ -494,64 +577,61 @@ export default function DomainForm() {
     setMoveExpandedKeys([])
   }
 
-  function updateChildrenLevel(parentId: number, parentLevel: number) {
-    setDomainMenus(prev => {
-      const updated = [...prev]
-      function walkChildren(pId: number, pLevel: number) {
-        for (const child of updated) {
-          if (child.parentId === pId) {
-            child.menuLevel = pLevel + 1
-            walkChildren(child.menuId, child.menuLevel)
-          }
-        }
-      }
-      walkChildren(parentId, parentLevel)
-      return [...updated]
-    })
-  }
-
   function confirmMove() {
     if (!moveTargetRecord || selectedMoveTargetId === null) return
 
     setDomainMenus(prev => {
-      const updated = prev.map(m => {
-        if (m.menuId === moveTargetRecord.menuId) {
-          let newLevel = 1
-          if (selectedMoveTargetId === 0) {
-            newLevel = 1
-          } else {
-            const parentMenu = prev.find(pm => pm.menuId === selectedMoveTargetId)
-            if (parentMenu) {
-              newLevel = (parentMenu.menuLevel || 1) + 1
-            } else {
-              const findParentLevel = (menus: SystemMenu[], targetId: number, level: number = 1): number => {
+      const targetDomainMenu = prev.find(m => m.menuId === moveTargetRecord.menuId)
+      if (!targetDomainMenu) return prev
+
+      let newCustomParentId: number | null = null
+      let newCustomLevel: number | null = null
+
+      if (selectedMoveTargetId === 0) {
+        newCustomParentId = null
+        newCustomLevel = 1
+      } else {
+        const parentDomainMenu = prev.find(m => m.menuId === selectedMoveTargetId)
+        if (parentDomainMenu) {
+          newCustomParentId = parentDomainMenu.id ?? null
+          const parentLevel = parentDomainMenu.customLevel ?? (() => {
+            const sysMenu = (() => {
+              function find(menus: SystemMenu[], id: number): SystemMenu | undefined {
                 for (const menu of menus) {
-                  if (menu.id === targetId) return level
+                  if (menu.id === id) return menu
                   if (menu.children?.length) {
-                    const found = findParentLevel(menu.children, targetId, level + 1)
-                    if (found > 0) return found
+                    const found = find(menu.children, id)
+                    if (found) return found
                   }
                 }
-                return 0
+                return undefined
               }
-              const parentLevel = findParentLevel(systemMenus, selectedMoveTargetId)
-              newLevel = parentLevel > 0 ? parentLevel + 1 : 1
-            }
-          }
-          return { ...m, parentId: selectedMoveTargetId, menuLevel: newLevel }
+              return find(systemMenus, parentDomainMenu.menuId)
+            })()
+            return sysMenu ? (sysMenu as any).level ?? 1 : 1
+          })()
+          newCustomLevel = parentLevel + 1
+        }
+      }
+
+      const updated = prev.map(m => {
+        if (m.menuId === moveTargetRecord.menuId) {
+          return { ...m, customParentId: newCustomParentId, customLevel: newCustomLevel }
         }
         return m
       })
 
-      function walkChildren(parentId: number, parentLevel: number) {
+      function walkChildren(parentMenuId: number, parentLevel: number) {
+        const parentDomainMenu = updated.find(m => m.menuId === parentMenuId)
+        const parentId = parentDomainMenu?.id
         for (let i = 0; i < updated.length; i++) {
-          if (updated[i].parentId === parentId) {
-            updated[i] = { ...updated[i], menuLevel: parentLevel + 1 }
-            walkChildren(updated[i].menuId, updated[i].menuLevel)
+          if (updated[i].customParentId === parentId && updated[i].menuId !== parentMenuId) {
+            updated[i] = { ...updated[i], customLevel: parentLevel + 1 }
+            walkChildren(updated[i].menuId, parentLevel + 1)
           }
         }
       }
-      walkChildren(moveTargetRecord.menuId, updated.find(m => m.menuId === moveTargetRecord.menuId)?.menuLevel || 1)
+      walkChildren(moveTargetRecord.menuId, newCustomLevel ?? 1)
 
       return updated
     })
@@ -599,8 +679,9 @@ export default function DomainForm() {
             domainId,
             menuId: m.menuId,
             customLabel: m.customLabel,
+            customLevel: m.customLevel,
+            customParentId: m.customParentId,
             sort: m.sort || i + 1,
-            status: m.status,
           }))),
         })
 
@@ -825,20 +906,21 @@ export default function DomainForm() {
           <CompanyCard className="domain-main-card">
             <div className="domain-section">
               <SectionTitle title="基础信息" />
-              <BaseInfoForm
-                ref={baseInfoFormRef}
-                value={formData}
-                fields={baseInfoFields}
-                layout="horizontal"
-                onFieldChange={(field, value) => {
-                  if (field === 'domainName' && !isEdit && value) {
-                    setFormData(prev => ({ ...prev, domainName: value, domainKey: generateDomainKey(value) }))
-                  } else {
-                    setFormData(prev => ({ ...prev, [field]: value }))
-                  }
-                }}
-                onChange={(allValues) => setFormData(prev => ({ ...prev, ...allValues }))}
-              />
+              <div className="basic-info-form">
+                <BaseInfoForm
+                  ref={baseInfoFormRef}
+                  value={formData}
+                  fields={baseInfoFields}
+                  layout="horizontal"
+                  onFieldChange={(field, value) => {
+                    if (field === 'domainName' && !isEdit && value) {
+                      setFormData(prev => ({ ...prev, domainName: value, domainKey: generateDomainKey(value) }))
+                    } else {
+                      setFormData(prev => ({ ...prev, [field]: value }))
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             <div className="domain-section">

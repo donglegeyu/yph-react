@@ -89,7 +89,7 @@ export default function SecondSidebar() {
         .map((menu) => menu.key)
       setLocalExpandedKeys(parentKeys)
     }
-  }, [activeFirstMenu, secondMenus])
+  }, [activeFirstMenu])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -226,7 +226,13 @@ export default function SecondSidebar() {
                 <div key={menu.key} className="menu-group">
                   <div
                     className={`menu-item parent${localExpandedKeys.includes(menu.key) ? ' expanded' : ''}`}
-                    onClick={() => toggleExpandedKey(menu.key)}
+                    onClick={() => {
+                      setLocalExpandedKeys(prev =>
+                        prev.includes(menu.key)
+                          ? prev.filter(k => k !== menu.key)
+                          : [...prev, menu.key]
+                      )
+                    }}
                   >
                     <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
                     <span className="menu-label">{menu.label}</span>

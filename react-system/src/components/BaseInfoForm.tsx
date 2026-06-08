@@ -63,21 +63,23 @@ const BaseInfoForm = forwardRef<BaseInfoFormRef, BaseInfoFormProps>(({
     return 6
   }
 
-  const isUpdatingRef = useRef(false)
-
   useEffect(() => {
-    if (isUpdatingRef.current) {
-      isUpdatingRef.current = false
-      return
-    }
     if (prevValueRef.current !== value) {
       prevValueRef.current = value
-      form.setFieldsValue(value)
+      const currentFormValues = form.getFieldsValue()
+      const diff: Record<string, any> = {}
+      for (const k of Object.keys(value)) {
+        if (value[k] !== currentFormValues[k]) {
+          diff[k] = value[k]
+        }
+      }
+      if (Object.keys(diff).length > 0) {
+        form.setFieldsValue(diff)
+      }
     }
   }, [value, form])
 
   const handleValuesChange = (_changedValues: Record<string, any>, allValues: Record<string, any>) => {
-    isUpdatingRef.current = true
     const key = Object.keys(_changedValues)[0]
     if (key) {
       onFieldChange?.(key, _changedValues[key])
