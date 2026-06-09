@@ -304,11 +304,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchMenus: async () => {
     try {
       const currentDomainId = localStorage.getItem('currentDomainId')
+      const isDefaultDomain = currentDomainId === '1'
 
       let domainMenus: NavMenu[] = []
       let systemMenus: NavMenu[] = []
 
-      if (currentDomainId) {
+      if (currentDomainId && !isDefaultDomain) {
         const [domainRes, systemRes] = await Promise.all([
           fetch(`${API_ENDPOINTS.NAV_MENUS}?domainId=${currentDomainId}`),
           fetch(API_ENDPOINTS.NAV_MENUS),
@@ -372,6 +373,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             m.status === 1 &&
             (!m.parentId || m.parentId === 0)
         )
+        .sort((a: NavMenu, b: NavMenu) => (a.sort ?? 0) - (b.sort ?? 0))
         .map((m: NavMenu) => ({
           key: m.key,
           label: m.label,
@@ -384,8 +386,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       const secondMenusMap: Record<string, MenuItem[]> = {}
       for (const menu of menus) {
         if (menu.children && menu.children.length > 0 && menu.status === 1) {
-          const children = menu.children
+          const children = [...menu.children]
             .filter((child: NavMenu) => child.status === 1)
+            .sort((a: NavMenu, b: NavMenu) => (a.sort ?? 0) - (b.sort ?? 0))
             .map((child: NavMenu) => ({
               key: child.key || `_group_${child.label}`,
               label: child.label,
@@ -393,6 +396,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               icon: child.icon || 'id-card-v-klbe0a04',
               children: (child.children || [])
                 .filter((gc: NavMenu) => gc.status === 1)
+                .sort((a: NavMenu, b: NavMenu) => (a.sort ?? 0) - (b.sort ?? 0))
                 .map((gc: NavMenu) => ({
                   key: gc.key || `_child_${gc.label}`,
                   label: gc.label,

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, type ReactNode } from 'react'
-import { CompanyButton, CompanyCard } from '@donglegeyu/company-ui'
+import { CompanyCard } from '@donglegeyu/company-ui'
 import PageTitle from './PageTitle'
+import FormFooterActions from './FormFooterActions'
 import './FormPageTemplate.scss'
 
 interface FormPageTemplateProps {
@@ -71,30 +72,22 @@ export default function FormPageTemplate({
 
           {showFooter && footerPosition === 'static' && (
             <div className="form-page-footer static">
-              <CompanyButton onClick={onCancel}>取消</CompanyButton>
-              <CompanyButton
-                type="primary"
-                loading={submitLoading}
-                onClick={onSubmit}
-                style={{ marginLeft: 8 }}
-              >
-                确定
-              </CompanyButton>
+              <FormFooterActions
+                submitLoading={submitLoading}
+                onSubmit={onSubmit}
+                onCancel={onCancel}
+              />
             </div>
           )}
         </div>
 
         {showFooter && footerPosition === 'fixed' && (
           <div className="form-page-footer fixed">
-            <CompanyButton onClick={onCancel}>取消</CompanyButton>
-            <CompanyButton
-              type="primary"
-              loading={submitLoading}
-              onClick={onSubmit}
-              style={{ marginLeft: 8 }}
-            >
-              确定
-            </CompanyButton>
+            <FormFooterActions
+              submitLoading={submitLoading}
+              onSubmit={onSubmit}
+              onCancel={onCancel}
+            />
           </div>
         )}
       </div>

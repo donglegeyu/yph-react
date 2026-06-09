@@ -1,45 +1,62 @@
 import { type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CompanyButton } from '@donglegeyu/company-ui'
+import './PageTitle.scss'
 
 interface PageTitleProps {
   title: string
-  description?: string
   showBack?: boolean
+  showBackText?: boolean
+  showDivider?: boolean
+  backText?: string
   backPath?: string
   className?: string
+  backIcon?: ReactNode
+  titleSuffix?: ReactNode
   actions?: ReactNode
 }
 
 export default function PageTitle({
   title,
-  description,
   showBack = false,
+  showBackText = true,
+  showDivider = true,
+  backText = '返回',
   backPath = '',
   className,
+  backIcon,
+  titleSuffix,
   actions,
 }: PageTitleProps) {
   const navigate = useNavigate()
 
+  const handleBack = () => {
+    if (backPath) {
+      navigate(backPath)
+    } else {
+      navigate(-1)
+    }
+  }
+
   return (
-    <div className={className} style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className={`page-title${className ? ` ${className}` : ''}`}>
+      <div className="left">
         {showBack && (
-          <CompanyButton
-            type="text"
-            onClick={() => navigate(backPath || -1 as unknown as string)}
-          >
-            ← 返回
-          </CompanyButton>
+          <>
+            <button type="button" className="back-btn" onClick={handleBack}>
+              {backIcon || (
+                <svg viewBox="0 0 1024 1024" style={{ width: 14, height: 14 }}>
+                  <path d="M609.344 226.906667L318.250667 512l291.093333 285.094667a42.666667 42.666667 0 0 1-60.330666 60.330666l-315.733334-309.12a42.666667 42.666667 0 0 1 0-60.330666l315.392-308.373333a42.666667 42.666667 0 0 1 60.672 24.32 42.666667 42.666667 0 0 1-0.341334 36.181333z" fill="currentColor" />
+                </svg>
+              )}
+              {showBackText && <span>{backText}</span>}
+            </button>
+            {showDivider && <span className="divider" />}
+          </>
         )}
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{title}</h2>
-        {actions && <div style={{ marginLeft: 'auto' }}>{actions}</div>}
+        <span className="title">{title}</span>
+        {titleSuffix && <span className="title-suffix">{titleSuffix}</span>}
       </div>
-      {description && (
-        <p style={{ margin: '4px 0 0', fontSize: 14, color: '#999' }}>
-          {description}
-        </p>
-      )}
+      {actions && <div className="actions">{actions}</div>}
     </div>
   )
 }

@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Tree, Input, Select, InputNumber, Table, Alert, Empty } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
-import { CompanyButton, CompanyCard, CompanyDrawer, CompanyMessage } from '@donglegeyu/company-ui'
+import { Tree, Input, Select, InputNumber, Table, Alert, Empty, Menu } from 'antd'
+import { SearchOutlined, MoreOutlined, UndoOutlined, PictureOutlined } from '@ant-design/icons'
+import { CompanyButton, CompanyCard, CompanyDrawer, CompanyDropdown, CompanyMessage } from '@donglegeyu/company-ui'
 import PageTitle from '@/components/PageTitle'
 import SectionTitle from '@/components/SectionTitle'
 import BaseInfoForm, { type BaseInfoFormRef } from '@/components/BaseInfoForm'
@@ -43,14 +43,6 @@ interface DomainMenu {
   customParentId: number | null
   customLevel: number | null
   icon?: string
-}
-
-interface DataPermission {
-  domainId: number
-  menuKey: string
-  filterType: 'all' | 'self' | 'custom'
-  filterField: string
-  filterValue?: string
 }
 
 interface DomainFormData {
@@ -125,12 +117,12 @@ export default function DomainForm() {
 
   const [systemMenus, setSystemMenus] = useState<SystemMenu[]>([])
   const [domainMenus, setDomainMenus] = useState<DomainMenu[]>([])
-  const [dataPermissions, setDataPermissions] = useState<DataPermission[]>([])
   const [menuStatusMap, setMenuStatusMap] = useState<Map<number, number>>(new Map())
 
   const baseInfoFormRef = useRef<BaseInfoFormRef>(null)
 
   const [drawerVisible, setDrawerVisible] = useState(false)
+  const [moreDropdownOpen, setMoreDropdownOpen] = useState(false)
   const [menuSearchKeyword, setMenuSearchKeyword] = useState('')
   const [expandedKeys, setExpandedKeys] = useState<(string | number)[]>([])
   const [checkedKeys, setCheckedKeys] = useState<(string | number)[]>([])
@@ -257,21 +249,6 @@ export default function DomainForm() {
       setLoading(false)
     }
   }, [systemMenus])
-
-  const fetchDataPermissions = useCallback(async (domainId: number) => {
-    setLoading(true)
-    try {
-      const res = await fetch(`${API_ENDPOINTS.DATA_PERMISSIONS}?domainId=${domainId}`)
-      const json = await res.json()
-      if (json.code === 200) {
-        setDataPermissions(json.data || [])
-      }
-    } catch {
-      CompanyMessage.error('加载数据权限失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   // -------- filteredTreeData --------
   const filteredTreeData = (() => {
@@ -468,16 +445,31 @@ export default function DomainForm() {
     )
   }
 
-  // -------- Permission handlers --------
-  function handleAddPermission() {
-    setDataPermissions(prev => [
-      ...prev,
-      { domainId: 0, menuKey: '', filterType: 'all', filterField: '' },
-    ])
+  function handleResetMenus() {
+    setMoreDropdownOpen(false)
+    const sysMenuMap = collectAllMenus(systemMenus)
+    setDomainMenus(prev =>
+      prev.map(m => {
+        const sysMenu = sysMenuMap.get(m.menuId)
+        if (sysMenu) {
+          return { ...m, customLabel: sysMenu.label }
+        }
+        return m
+      })
+    )
+    CompanyMessage.success('已重置菜单名称为系统默认，保存后生效')
   }
 
-  function handleRemovePermission(index: number) {
-    setDataPermissions(prev => prev.filter((_, i) => i !== index))
+  function handleResetIcons() {
+    setMoreDropdownOpen(false)
+    const sysMenuMap = collectAllMenus(systemMenus)
+    setDomainMenus(prev =>
+      prev.map(m => {
+        const sysMenu = sysMenuMap.get(m.menuId)
+        return { ...m, icon: sysMenu?.icon || '' }
+      })
+    )
+    CompanyMessage.success('已重置图标为系统默认，保存后生效')
   }
 
   // -------- Move drawer --------
@@ -684,12 +676,6 @@ export default function DomainForm() {
             sort: m.sort || i + 1,
           }))),
         })
-
-        await fetch(API_ENDPOINTS.DATA_PERMISSIONS_BATCH, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dataPermissions.map(p => ({ ...p, domainId }))),
-        })
       }
 
       CompanyMessage.success(isEdit ? '更新成功' : '创建成功')
@@ -723,10 +709,9 @@ export default function DomainForm() {
       Promise.all([
         fetchDomain(domainId),
         fetchDomainMenus(domainId),
-        fetchDataPermissions(domainId),
       ])
     }
-  }, [isEdit, params.id, systemMenus, fetchDomain, fetchDomainMenus, fetchDataPermissions])
+  }, [isEdit, params.id, systemMenus, fetchDomain, fetchDomainMenus])
 
   // -------- Column definitions --------
   const menuColumns = [
@@ -819,69 +804,6 @@ export default function DomainForm() {
     },
   ]
 
-  const permissionColumns = [
-    {
-      title: '菜单', key: 'menuKey', width: 200,
-      render: (_: any, record: DataPermission, index: number) => (
-        <Select
-          value={record.menuKey || undefined}
-          placeholder="选择菜单"
-          style={{ width: '100%' }}
-          onChange={(value) => {
-            setDataPermissions(prev =>
-              prev.map((p, i) => i === index ? { ...p, menuKey: value } : p)
-            )
-          }}
-          options={domainMenus.map(m => ({
-            value: String(m.menuId),
-            label: m.customLabel || m.originalLabel,
-          }))}
-        />
-      ),
-    },
-    {
-      title: '过滤类型', key: 'filterType', width: 120,
-      render: (_: any, record: DataPermission, index: number) => (
-        <Select
-          value={record.filterType}
-          style={{ width: '100%' }}
-          onChange={(value) => {
-            setDataPermissions(prev =>
-              prev.map((p, i) => i === index ? { ...p, filterType: value } : p)
-            )
-          }}
-          options={[
-            { value: 'all', label: '全部' },
-            { value: 'self', label: '仅本人' },
-            { value: 'custom', label: '自定义' },
-          ]}
-        />
-      ),
-    },
-    {
-      title: '过滤字段', key: 'filterField', width: 150,
-      render: (_: any, record: DataPermission, index: number) => (
-        <Input
-          value={record.filterField}
-          placeholder="过滤字段"
-          onChange={(e) => {
-            setDataPermissions(prev =>
-              prev.map((p, i) => i === index ? { ...p, filterField: e.target.value } : p)
-            )
-          }}
-        />
-      ),
-    },
-    {
-      title: '操作', key: 'action', width: 80,
-      render: (_: any, __: DataPermission, index: number) => (
-        <CompanyButton type="link" danger size="small" onClick={() => handleRemovePermission(index)}>
-          删除
-        </CompanyButton>
-      ),
-    },
-  ]
-
   // -------- Move tree title render --------
   const moveTreeTitleRender = useCallback((nodeData: any) => {
     const disabled = nodeData.disabled
@@ -934,6 +856,35 @@ export default function DomainForm() {
                   <CompanyButton type="primary" onClick={() => setDrawerVisible(true)}>
                     添加菜单
                   </CompanyButton>
+                  <CompanyDropdown
+                    open={moreDropdownOpen}
+                    onOpenChange={setMoreDropdownOpen}
+                    popupRender={() => (
+                      <Menu
+                        onClick={({ key }) => {
+                          if (key === 'reset-menus') handleResetMenus()
+                          if (key === 'reset-icons') handleResetIcons()
+                        }}
+                        items={[
+                          {
+                            key: 'reset-menus',
+                            icon: <UndoOutlined />,
+                            label: '重置菜单',
+                          },
+                          {
+                            key: 'reset-icons',
+                            icon: <PictureOutlined />,
+                            label: '重置图标',
+                          },
+                        ]}
+                        style={{ minWidth: 140 }}
+                      />
+                    )}
+                  >
+                    <CompanyButton>
+                      <MoreOutlined />
+                    </CompanyButton>
+                  </CompanyDropdown>
                 </div>
               )}
 
@@ -950,21 +901,6 @@ export default function DomainForm() {
                   size="small"
                 />
               )}
-            </div>
-
-            <div className="domain-section">
-              <SectionTitle title="数据权限规则" />
-              <div className="permission-config">
-                <Table
-                  columns={permissionColumns}
-                  dataSource={dataPermissions}
-                  pagination={false}
-                  size="small"
-                />
-                <CompanyButton type="dashed" block onClick={handleAddPermission} style={{ marginTop: 8 }}>
-                  + 添加规则
-                </CompanyButton>
-              </div>
             </div>
           </CompanyCard>
         </div>

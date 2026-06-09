@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useEffect, useState } from 'react'
 import { Form, Row, Col, Input, Select, InputNumber } from 'antd'
 import type { FormInstance } from 'antd'
+import './BaseInfoForm.scss'
 
 export interface FormField {
   name: string
@@ -37,21 +38,22 @@ const BaseInfoForm = forwardRef<BaseInfoFormRef, BaseInfoFormProps>(({
 }, ref) => {
   const [form] = Form.useForm()
   const [contentWidth, setContentWidth] = useState(1200)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<HTMLDivElement>(null)
   const prevValueRef = useRef(value)
 
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    const el = formRef.current
+    if (!el) return
 
     const updateWidth = () => {
-      const parentWidth = container.parentElement?.clientWidth || window.innerWidth
-      setContentWidth(parentWidth)
+      if (el) {
+        setContentWidth(el.clientWidth)
+      }
     }
 
     updateWidth()
     const observer = new ResizeObserver(updateWidth)
-    observer.observe(container.parentElement || container)
+    observer.observe(el)
 
     return () => observer.disconnect()
   }, [])
@@ -133,13 +135,12 @@ const BaseInfoForm = forwardRef<BaseInfoFormRef, BaseInfoFormProps>(({
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%' }}>
+    <div ref={formRef} className="base-info-form">
       <Form
         form={form}
         initialValues={value}
         layout={layout}
         onValuesChange={handleValuesChange}
-        style={{ width: '100%' }}
       >
         <Row gutter={24}>
           {fields.map((field) => (

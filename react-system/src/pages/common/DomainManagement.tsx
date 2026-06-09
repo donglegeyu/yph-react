@@ -5,12 +5,12 @@ import {
   CompanyButton,
   CompanyMessage,
   SmartListTemplate,
-  ActionCell,
-  ColumnSettingsPanel,
   SvgIcon,
   type FieldDefinition,
-  type ColumnField,
 } from '@donglegeyu/company-ui'
+import ActionCell from '@/components/ActionCell'
+import ColumnSettingsPanel from '@/components/ColumnSettingsPanel'
+import type { ColumnField } from '@/components/ColumnSettingsPanel'
 import { API_ENDPOINTS } from '@/constants/api'
 import { useListData } from '@/hooks'
 

@@ -65,13 +65,6 @@
 }
 
 .form-page-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 12px 16px;
-  background: #ffffff;
-  border-top: 1px solid var(--ant-color-border-secondary);
-  box-sizing: border-box;
-
   &.fixed {
     position: sticky;
     bottom: 0;

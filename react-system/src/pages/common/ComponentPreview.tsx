@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Menu, Space, Form, Tag, Input, Select, Switch, Button, Tabs } from 'antd'
-import { CompanyMessage } from '@donglegeyu/company-ui'
+import { CompanyMessage, CompanyButton } from '@donglegeyu/company-ui'
 import PageTitle from '@/components/PageTitle'
 import ActionCell from '@/components/ActionCell'
 import type { ActionButton } from '@/components/ActionCell'
@@ -439,16 +439,14 @@ export default function ComponentPreview() {
               <PageTitle
                 title={demoPageTitle}
                 showBack={showPageTitleBack}
+                titleSuffix={showPageTitleSuffix ? <Tag color="processing">{demoPageTitleSuffix}</Tag> : undefined}
                 actions={showPageTitleActions ? (
                   <Space>
-                    <Button>返回</Button>
-                    <Button type="primary">保存</Button>
+                    <CompanyButton>返回</CompanyButton>
+                    <CompanyButton type="primary">保存</CompanyButton>
                   </Space>
                 ) : undefined}
               />
-              {showPageTitleSuffix && (
-                <Tag color="blue" style={{ marginTop: -8, marginLeft: 100 }}>{demoPageTitleSuffix}</Tag>
-              )}
             </div>
             <div className="demo-code">
               <h4>使用示例</h4>
@@ -485,7 +483,7 @@ export default function ComponentPreview() {
               <h3 className="component-title">{currentBusinessName}</h3>
               <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
               <h4>基本用法</h4>
-              <Button onClick={() => setShowFilterDrawer(true)}>打开抽屉</Button>
+              <CompanyButton onClick={() => setShowFilterDrawer(true)}>打开抽屉</CompanyButton>
               <FilterOptionsDrawer
                 open={showFilterDrawer}
                 options={filterDrawerOptions}
@@ -512,7 +510,7 @@ export default function ComponentPreview() {
                 defaultFields={columnFields}
                 onConfirm={handleColumnConfirm}
               >
-                <Button>列设置</Button>
+                <CompanyButton>列设置</CompanyButton>
               </ColumnSettingsPanel>
             </div>
             <div className="demo-code">
@@ -552,7 +550,7 @@ export default function ComponentPreview() {
                   pagination={{ current: 1, pageSize: 10, total: 50 }}
                   toolbarActions={
                     <Space size={12}>
-                      <Button type="primary" onClick={() => CompanyMessage.info('点击了新增')}>新增</Button>
+                      <CompanyButton type="primary" onClick={() => CompanyMessage.info('点击了新增')}>新增</CompanyButton>
                       <ColumnSettingsPanel
                         fields={smartListColumnFields}
                         defaultFields={smartListColumnFields}

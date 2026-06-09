@@ -51,6 +51,7 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
     public List<NavMenu> getTreeListByDomainId(Long domainId) {
         LambdaQueryWrapper<SysDomainMenu> domainMenuQuery = new LambdaQueryWrapper<>();
         domainMenuQuery.eq(SysDomainMenu::getDomainId, domainId);
+        domainMenuQuery.orderByAsc(SysDomainMenu::getSort);
         List<SysDomainMenu> domainMenus = sysDomainMenuMapper.selectList(domainMenuQuery);
 
         if (domainMenus.isEmpty()) {
@@ -203,6 +204,31 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
             syncMenuToDefaultDomain(entity);
         }
         return result;
+    }
+
+    @Override
+    public boolean updateById(NavMenu entity) {
+        boolean result = super.updateById(entity);
+        if (result && entity.getId() != null) {
+            syncDefaultDomainLabel(entity);
+        }
+        return result;
+    }
+
+    private void syncDefaultDomainLabel(NavMenu menu) {
+        if (menu.getLabel() == null) return;
+        LambdaQueryWrapper<SysDomain> domainQuery = new LambdaQueryWrapper<>();
+        domainQuery.eq(SysDomain::getStatus, 1)
+                   .eq(SysDomain::getIsDefault, 1);
+        List<SysDomain> defaultDomains = sysDomainMapper.selectList(domainQuery);
+
+        for (SysDomain domain : defaultDomains) {
+            SysDomainMenu update = new SysDomainMenu();
+            update.setCustomLabel(menu.getLabel());
+            sysDomainMenuMapper.update(update, new LambdaQueryWrapper<SysDomainMenu>()
+                    .eq(SysDomainMenu::getDomainId, domain.getId())
+                    .eq(SysDomainMenu::getMenuId, menu.getId()));
+        }
     }
 
     @Override
