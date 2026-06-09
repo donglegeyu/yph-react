@@ -5,9 +5,9 @@ import SvgIcon from '@/components/SvgIcon'
 import './MoreMenuDrawer.scss'
 
 const iconMap: Record<string, string> = {
-  commodity: 'tag',
+  commodity: 'commodity',
   shopping: 'shopping-cart-del',
-  buy: 'shopping-cart-del',
+  buy: 'buy',
   goods: 'tag',
   file: 'file-cabinet',
   search: 'doc-search',
@@ -15,6 +15,29 @@ const iconMap: Record<string, string> = {
   safe: 'message-security',
   tool: 'setting',
   app: 'all-application',
+  'work-order': 'order',
+  alert: 'comments',
+  'check-circle': 'list',
+  phone: 'comments',
+  barcode: 'scan-setting',
+  edit: 'edit',
+  warning: 'comments',
+  'info-circle': 'comments',
+  wrench: 'setting',
+  package: 'box',
+  rule: 'config',
+  link: 'database-config',
+  'check-square': 'list',
+  clipboard: 'table',
+  layers: 'category-management',
+  team: 'people-top-card',
+  award: 'bookmark',
+  'file-application': 'doc-search',
+  'search-user': 'user-positioning',
+  list: 'list',
+  star: 'star',
+  home: 'home',
+  setting: 'setting',
 }
 
 function getIconName(icon?: string): string {

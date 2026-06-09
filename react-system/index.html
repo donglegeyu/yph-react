@@ -5,6 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>星际造梦</title>
+    <script src="https://lf1-cdn-tos.bytegoofy.com/obj/iconpark/svg_43217_171.57d626ea470afdc06c519a374a29d06c.js"></script>
+    <script>
+      (function() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/iconpark/sprite_nav.svg', true);
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            var div = document.createElement('div');
+            div.innerHTML = xhr.responseText;
+            div.style.display = 'none';
+            document.body.appendChild(div);
+          }
+        };
+        xhr.send();
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

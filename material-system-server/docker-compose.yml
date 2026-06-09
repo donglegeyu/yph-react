@@ -39,3 +39,4 @@ services:
 volumes:
   mysql-react-data:
     name: material-mysql-react-data
+    external: true
