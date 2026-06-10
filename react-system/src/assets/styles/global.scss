@@ -362,21 +362,23 @@ body {
   background: var(--color-bg-light) !important;
   font-weight: 600;
   border-top: none !important;
-  padding-left: 16px !important;
+  height: 46px !important;
+  padding: 7px 16px !important;
+}
+
+.ant-table-thead > tr > th.ant-table-cell-fix-end {
+  padding-left: 24px !important;
 }
 
 .ant-table-cell {
   padding: 12px 16px !important;
+  white-space: nowrap !important;
 }
 
-.ant-table-cell.ant-table-cell-fix-right-first {
-  padding-left: 16px !important;
-  padding-right: 16px !important;
-}
-
-/* 操作列容器左对齐 */
-.ant-table-cell.ant-table-cell-fix-right-first .ant-space {
-  justify-content: flex-start !important;
+/* 表格行高 46px */
+.ant-table-tbody > tr > td {
+  height: 46px !important;
+  padding: 7px 16px !important;
 }
 
 /* 状态标签样式 - Ghost Tag */
@@ -449,7 +451,7 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 0 8px;
+  padding: 0 8px !important;
   gap: 8px;
   border-radius: 6px;
   color: var(--primary-color) !important;
@@ -467,21 +469,7 @@ body {
   }
 }
 
-/* 表格单元格内容不换行 */
-.ant-table-cell {
-  white-space: nowrap !important;
-}
-
-/* 表格行高 46px */
-.ant-table-tbody > tr > td {
-  height: 46px !important;
-  padding: 7px 16px !important;
-}
-
-.ant-table-thead > tr > th {
-  height: 46px !important;
-  padding: 7px 16px !important;
-}
+/* 表格单元格内容不换行 + 行高 46px（已在上方统一设置，此处保留占位） */
 
 /* 强制隐藏 Ant Design Table 测量行，不影响列宽计算（最安全方案） */
 .ant-table {

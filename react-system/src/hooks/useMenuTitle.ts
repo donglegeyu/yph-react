@@ -7,6 +7,8 @@ export function useMenuTitle(): string | null {
 
   const title = useMemo(() => {
     const path = location.pathname
+    const labelByPath = useAppStore.getState().getMenuLabelByPath(path)
+    if (labelByPath) return labelByPath
     const key = path.split('/').filter(Boolean).pop()
     if (!key) return null
     return useAppStore.getState().getMenuLabelByKey(key)

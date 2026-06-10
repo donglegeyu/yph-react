@@ -1,13 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Tree, Input, Select, InputNumber, Table, Alert, Empty, Menu } from 'antd'
-import { SearchOutlined, MoreOutlined, UndoOutlined, PictureOutlined } from '@ant-design/icons'
-import { CompanyButton, CompanyCard, CompanyDrawer, CompanyDropdown, CompanyMessage } from '@donglegeyu/company-ui'
-import PageTitle from '@/components/PageTitle'
-import SectionTitle from '@/components/SectionTitle'
+import { SearchOutlined, DownOutlined } from '@ant-design/icons'
+import { CompanyButton, CompanyCard, CompanyDrawer, CompanyDropdown, CompanyMessage, FormPageTemplate, SectionTitle } from '@donglegeyu/company-ui'
 import BaseInfoForm, { type BaseInfoFormRef } from '@/components/BaseInfoForm'
 import IconSelect from '@/components/IconSelect'
-import FormFooterActions from '@/components/FormFooterActions'
 import { pinyin } from 'pinyin-pro'
 import { API_ENDPOINTS } from '@/constants/api'
 import './DomainForm.scss'
@@ -818,102 +815,93 @@ export default function DomainForm() {
   }, [])
 
   return (
-    <div className="domain-form">
-      <PageTitle title={pageTitle} showBack backPath="/domain-manage" className="domain-page-title" />
-      <div className="domain-wrapper">
-        <div
-          className={`domain-container${isScrolling ? ' scrolling' : ''}`}
-          onScroll={handleScroll}
-        >
-          <CompanyCard className="domain-main-card">
-            <div className="domain-section">
-              <SectionTitle title="基础信息" />
-              <div className="basic-info-form">
-                <BaseInfoForm
-                  ref={baseInfoFormRef}
-                  value={formData}
-                  fields={baseInfoFields}
-                  layout="horizontal"
-                  onFieldChange={(field, value) => {
-                    if (field === 'domainName' && !isEdit && value) {
-                      setFormData(prev => ({ ...prev, domainName: value, domainKey: generateDomainKey(value) }))
-                    } else {
-                      setFormData(prev => ({ ...prev, [field]: value }))
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="domain-section">
-              <SectionTitle title={`域内菜单配置${formData.isDefault !== 1 ? ' (' + domainMenus.length + ')' : ''}`} />
-              {formData.isDefault === 1 ? (
-                <div style={{ marginBottom: 16 }}>
-                  <Alert type="warning" showIcon message="默认域的域内菜单配置禁止修改，菜单数量、层级等与菜单管理的数据始终保持一致" />
-                </div>
-              ) : (
-                <div className="menu-config-header">
-                  <CompanyButton type="primary" onClick={() => setDrawerVisible(true)}>
-                    添加菜单
-                  </CompanyButton>
-                  <CompanyDropdown
-                    open={moreDropdownOpen}
-                    onOpenChange={setMoreDropdownOpen}
-                    popupRender={() => (
-                      <Menu
-                        onClick={({ key }) => {
-                          if (key === 'reset-menus') handleResetMenus()
-                          if (key === 'reset-icons') handleResetIcons()
-                        }}
-                        items={[
-                          {
-                            key: 'reset-menus',
-                            icon: <UndoOutlined />,
-                            label: '重置菜单',
-                          },
-                          {
-                            key: 'reset-icons',
-                            icon: <PictureOutlined />,
-                            label: '重置图标',
-                          },
-                        ]}
-                        style={{ minWidth: 140 }}
-                      />
-                    )}
-                  >
-                    <CompanyButton>
-                      <MoreOutlined />
-                    </CompanyButton>
-                  </CompanyDropdown>
-                </div>
-              )}
-
-              {formData.isDefault !== 1 && (
-                <Table
-                  className="domain-table-box"
-                  columns={menuColumns}
-                  dataSource={menuTreeData}
-                  pagination={false}
-                  rowKey={(record) => record.key}
-                  defaultExpandAllRows
-                  scroll={{ x: 'max-content' }}
-                  tableLayout="fixed"
-                  size="small"
-                />
-              )}
-            </div>
-          </CompanyCard>
+    <>
+    <FormPageTemplate
+      title={pageTitle}
+      showBack
+      onBack={() => navigate('/domain-manage')}
+      submitLoading={submitLoading}
+      onSubmit={handleSubmit}
+      onCancel={handleCancel}
+      submitText="确定"
+    >
+      <div className="domain-section">
+        <SectionTitle title="基础信息" />
+        <div className="basic-info-form">
+          <BaseInfoForm
+            ref={baseInfoFormRef}
+            value={formData}
+            fields={baseInfoFields}
+            layout="horizontal"
+            onFieldChange={(field, value) => {
+              if (field === 'domainName' && !isEdit && value) {
+                setFormData(prev => ({ ...prev, domainName: value, domainKey: generateDomainKey(value) }))
+              } else {
+                setFormData(prev => ({ ...prev, [field]: value }))
+              }
+            }}
+          />
         </div>
-
-        <FormFooterActions
-          submitLoading={submitLoading}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          submitText="确定"
-        />
       </div>
 
-      <CompanyDrawer
+      <div className="domain-section">
+        <SectionTitle title={`域内菜单配置${formData.isDefault !== 1 ? ' (' + domainMenus.length + ')' : ''}`} />
+        {formData.isDefault === 1 ? (
+          <div style={{ marginBottom: 16 }}>
+            <Alert type="warning" showIcon message="默认域的域内菜单配置禁止修改，菜单数量、层级等与菜单管理的数据始终保持一致" />
+          </div>
+        ) : (
+          <div className="menu-config-header" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <CompanyButton type="text" style={{ color: 'var(--ant-color-primary)', paddingLeft: 8, paddingRight: 8 }} onClick={() => setDrawerVisible(true)}>
+              添加菜单
+            </CompanyButton>
+            <CompanyDropdown
+              open={moreDropdownOpen}
+              onOpenChange={setMoreDropdownOpen}
+              popupRender={() => (
+                <Menu
+                  onClick={({ key }) => {
+                    if (key === 'reset-menus') handleResetMenus()
+                    if (key === 'reset-icons') handleResetIcons()
+                  }}
+                  items={[
+                    {
+                      key: 'reset-menus',
+                      label: '重置菜单',
+                    },
+                    {
+                      key: 'reset-icons',
+                      label: '重置图标',
+                    },
+                  ]}
+                  style={{ minWidth: 120 }}
+                />
+              )}
+            >
+              <CompanyButton type="text" style={{ color: 'var(--ant-color-primary)', paddingLeft: 8, paddingRight: 8 }}>
+                重置 <DownOutlined style={{ fontSize: 12 }} />
+              </CompanyButton>
+            </CompanyDropdown>
+          </div>
+        )}
+
+        {formData.isDefault !== 1 && (
+          <Table
+            className="domain-table-box"
+            columns={menuColumns}
+            dataSource={menuTreeData}
+            pagination={false}
+            rowKey={(record) => record.key}
+            defaultExpandAllRows
+            scroll={{ x: 'max-content' }}
+            tableLayout="fixed"
+            size="small"
+          />
+        )}
+      </div>
+    </FormPageTemplate>
+
+    <CompanyDrawer
         open={drawerVisible}
         title="添加菜单"
         width={380}
@@ -1005,6 +993,6 @@ export default function DomainForm() {
           </div>
         )}
       </CompanyDrawer>
-    </div>
+    </>
   )
 }

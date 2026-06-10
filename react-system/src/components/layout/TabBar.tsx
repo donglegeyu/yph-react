@@ -15,6 +15,7 @@ export default function TabBar() {
   const secondMenusMap = useAppStore((s) => s.secondMenusMap)
   const syncMenuState = useAppStore((s) => s.syncMenuState)
   const getMenuLabelByKey = useAppStore((s) => s.getMenuLabelByKey)
+  const getMenuLabelByPath = useAppStore((s) => s.getMenuLabelByPath)
 
   const [localActiveKey, setLocalActiveKey] = useState(activeTabKey)
 
@@ -44,11 +45,11 @@ export default function TabBar() {
   }, [activeTabKey])
 
   const getTabLabel = useCallback(
-    (key: string, fallback: string) => {
-      const label = getMenuLabelByKey(key)
+    (key: string, fallback: string, path?: string) => {
+      const label = getMenuLabelByKey(key) || (path ? getMenuLabelByPath(path) : null)
       return label || fallback
     },
-    [getMenuLabelByKey]
+    [getMenuLabelByKey, getMenuLabelByPath]
   )
 
   const goHome = useCallback(() => {
@@ -109,7 +110,7 @@ export default function TabBar() {
               className={`tab-item${localActiveKey === tab.key ? ' active' : ''}`}
               onClick={() => goTab(tab)}
             >
-              <span className="tab-label">{getTabLabel(tab.key, tab.label)}</span>
+              <span className="tab-label">{getTabLabel(tab.key, tab.label, tab.path)}</span>
               <SvgIcon
                 href="close"
                 className="tab-close"

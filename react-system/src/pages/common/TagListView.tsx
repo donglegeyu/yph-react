@@ -1,9 +1,10 @@
 import { useEffect, useCallback, useState } from 'react'
-import { Tag, Menu, Space } from 'antd'
+import { Menu, Space } from 'antd'
 import {
   CompanyButton,
   CompanyDropdown,
   CompanyMessage,
+  CompanyTag,
   SmartListTemplate,
   ActionCell,
   SvgIcon,
@@ -11,35 +12,62 @@ import {
   type ColumnField,
 } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
-import { useListData, useStatusMap, useDateFormat } from '@/hooks'
+import { useListData, useDateFormat } from '@/hooks'
 import { useColumnSettings } from '@/hooks/useColumnSettings'
+
+const statusColorMap: Record<string, string> = {
+  enabled: 'success',
+  disabled: 'default',
+}
+
+const statusTextMap: Record<string, string> = {
+  enabled: '启用',
+  disabled: '禁用',
+}
+
+const tagTypeTextMap: Record<string, string> = {
+  material: '材料标签',
+  construction: '施工标签',
+  general: '通用标签',
+}
 
 const fields: FieldDefinition[] = [
   { key: 'tagName', label: '标签名称', type: 'input', placeholder: '请输入标签名称', width: 180, fixed: 'left' },
   { key: 'tagCode', label: '标签编码', type: 'input', placeholder: '请输入标签编码', width: 150 },
+  { key: 'tagType', label: '标签类型', type: 'select', width: 120, options: [
+    { label: '全部', value: '' },
+    { label: '材料标签', value: 'material' },
+    { label: '施工标签', value: 'construction' },
+    { label: '通用标签', value: 'general' },
+  ]},
   { key: 'status', label: '状态', type: 'select', width: 100, options: [
     { label: '全部', value: '' },
     { label: '启用', value: 'enabled' },
     { label: '禁用', value: 'disabled' },
   ]},
+  { key: 'description', label: '标签描述', type: 'input', placeholder: '请输入标签描述', width: 200 },
+  { key: 'refCount', label: '关联数量', type: 'input', placeholder: '请输入关联数量', width: 100 },
   { key: 'createTime', label: '创建时间', type: 'daterange', width: 220 },
+  { key: 'updateTime', label: '更新时间', type: 'daterange', width: 220 },
   { key: 'action', label: '操作', width: 148, fixed: 'right' },
 ]
 
 const defaultColumnFields: ColumnField[] = [
   { key: 'tagName', label: '标签名称', visible: true, width: 180, fixed: 'left' },
   { key: 'tagCode', label: '标签编码', visible: true, width: 150 },
+  { key: 'tagType', label: '标签类型', visible: true, width: 120 },
   { key: 'status', label: '状态', visible: true, width: 100 },
+  { key: 'description', label: '标签描述', visible: true, width: 200 },
+  { key: 'refCount', label: '关联数量', visible: true, width: 100 },
   { key: 'createTime', label: '创建时间', visible: true, width: 220 },
+  { key: 'updateTime', label: '更新时间', visible: true, width: 220 },
 ]
 
 export default function TagListView() {
-  const { registerStatusMap, getStatusText, getStatusColor } = useStatusMap()
-
   const { formatDateTime } = useDateFormat()
 
   const { loading, dataSource, pagination, filterParams, setFilterParams, fetchData, refresh } = useListData({
-    apiEndpoint: API_ENDPOINTS.MATERIALS,
+    apiEndpoint: API_ENDPOINTS.TAGS,
     defaultPageSize: 100,
   })
 
@@ -53,10 +81,6 @@ export default function TagListView() {
 
   useEffect(() => {
     columnSettings.initFields(defaultColumnFields)
-    registerStatusMap({
-      enabled: { text: '启用', color: 'status-approved' },
-      disabled: { text: '禁用', color: 'status-rejected' },
-    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -71,7 +95,7 @@ export default function TagListView() {
 
   const handleDelete = useCallback(async (record: Record<string, unknown>) => {
     try {
-      const res = await fetch(`${API_ENDPOINTS.MATERIALS}/${record.id}`, {
+      const res = await fetch(`${API_ENDPOINTS.TAGS}/${record.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
       })
@@ -131,14 +155,18 @@ export default function TagListView() {
 
   const bodyCell = useCallback(
     (column: Record<string, unknown>, record: Record<string, unknown>) => {
+      if (column.key === 'tagType') {
+        return <>{tagTypeTextMap[record.tagType as string] || (record.tagType as string)}</>
+      }
       if (column.key === 'status') {
+        const status = record.status as string
         return (
-          <Tag className={getStatusColor(record.status as string)}>
-            {getStatusText(record.status as string)}
-          </Tag>
+          <CompanyTag color={statusColorMap[status] || 'default'}>
+            {statusTextMap[status] || status}
+          </CompanyTag>
         )
       }
-      if (column.key === 'createTime') {
+      if (column.key === 'createTime' || column.key === 'updateTime') {
         return <>{formatDateTime(record[column.key as string] as string)}</>
       }
       if (column.key === 'action') {
@@ -158,7 +186,7 @@ export default function TagListView() {
       }
       return null
     },
-    [getStatusText, getStatusColor, formatDateTime, handleDelete]
+    [formatDateTime, handleDelete]
   )
 
   useEffect(() => {
@@ -180,7 +208,6 @@ export default function TagListView() {
         setFilterParams({})
         fetchData({})
       }}
-      viewEndpoint={API_ENDPOINTS.MATERIAL_VIEWS}
       toolbarActions={toolbarActions}
       bodyCell={bodyCell}
       columnFields={columnFields}

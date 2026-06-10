@@ -25,6 +25,9 @@ export const API_ENDPOINTS = {
   // 采购订单
   PURCHASE_ORDERS: `${API_BASE}/purchase-orders`,
 
+  // 标签
+  TAGS: `${API_BASE}/tags`,
+
   // 施工申请
   CONSTRUCTION_APPLICATIONS: `${API_BASE}/construction-applications`,
   CONSTRUCTION_VIEWS: `${API_BASE}/construction-views`,
@@ -32,6 +35,9 @@ export const API_ENDPOINTS = {
   // 工匠查询
   CRAFTSMEN: `${API_BASE}/craftsmen`,
   CRAFTSMAN_VIEWS: `${API_BASE}/craftsman-views`,
+
+  // 安检结果查询
+  SECURITY_CHECKS: `${API_BASE}/security-checks`,
 
   // 域管理
   DOMAINS: `${API_BASE}/sys/domains`,

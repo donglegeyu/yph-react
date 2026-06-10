@@ -62,6 +62,8 @@ const AdvancePayment = lazy(() => import('@/pages/purchase/AdvancePayment'))
 const ShopStatement = lazy(() => import('@/pages/purchase/ShopStatement'))
 const CostDeductionConfig = lazy(() => import('@/pages/purchase/CostDeductionConfig'))
 const CostDeductionAdjust = lazy(() => import('@/pages/purchase/CostDeductionAdjust'))
+const SecurityCheckQuery = lazy(() => import('@/pages/common/SecurityCheckQuery'))
+const SecurityCheckDetail = lazy(() => import('@/pages/common/SecurityCheckDetail'))
 
 const routes: RouteObject[] = [
   {
@@ -123,6 +125,8 @@ const routes: RouteObject[] = [
       { path: 'shop-statement', element: <ShopStatement /> },
       { path: 'cost-deduction-config', element: <CostDeductionConfig /> },
       { path: 'cost-deduction-adjust', element: <CostDeductionAdjust /> },
+      { path: 'security-check-query', element: <SecurityCheckQuery /> },
+      { path: 'security-check-query/:id', element: <SecurityCheckDetail /> },
       { path: '*', element: <BuildingView /> },
     ],
   },

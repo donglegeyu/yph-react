@@ -63,6 +63,7 @@ interface AppState {
   promoteToNav: (firstKey: string) => void
   syncCustomNavOrder: (displayOrder: MenuItem[]) => void
   getMenuLabelByKey: (key: string) => string | null
+  getMenuLabelByPath: (path: string) => string | null
   clearStateForNonMenuPath: () => void
   delayHideSidebar: () => void
   cancelHideSidebar: () => void
@@ -259,7 +260,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     const exists = tabs.find((t) => t.key === key)
     let newTabs: TabItem[]
     if (exists) {
-      newTabs = tabs
+      if (exists.label !== label || exists.path !== path) {
+        newTabs = tabs.map((t) => (t.key === key ? { ...t, label, path } : t))
+      } else {
+        newTabs = tabs
+      }
       set({ activeTabKey: key })
     } else {
       newTabs = [...tabs, { key, label, path }]
@@ -620,6 +625,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (menu.children?.length) {
           const thirdMenu = menu.children.find((m) => m.key === key)
           if (thirdMenu) return thirdMenu.label
+        }
+      }
+    }
+    return null
+  },
+
+  getMenuLabelByPath: (path) => {
+    const { secondMenusMap } = get()
+    for (const seconds of Object.values(secondMenusMap)) {
+      const menu = seconds.find((m) => m.path === path)
+      if (menu) return menu.label
+      for (const m of seconds) {
+        if (m.children?.length) {
+          const child = m.children.find((c) => c.path === path)
+          if (child) return child.label
         }
       }
     }

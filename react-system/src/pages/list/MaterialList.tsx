@@ -13,7 +13,7 @@ import ActionCell from '@/components/ActionCell'
 import SvgIcon from '@/components/SvgIcon'
 import type { FieldDefinition } from '@/types'
 import { API_ENDPOINTS } from '@/constants/api'
-import { useListData, useStatusMap, useDateFormat, useColumnSettings } from '@/hooks'
+import { useListData, useStatusMap, useDateFormat, useColumnSettings, useMenuTitle } from '@/hooks'
 
 const fields: FieldDefinition[] = [
   { key: 'materialName', label: '材料名称', type: 'input', placeholder: '请输入材料名称', width: 180, fixed: 'left' },
@@ -48,6 +48,8 @@ export default function MaterialList() {
   const { registerStatusMap, getStatusText, getStatusColor } = useStatusMap()
 
   const { formatDateTime } = useDateFormat()
+
+  const menuTitle = useMenuTitle()
 
   const { loading, dataSource, pagination, filterParams, setFilterParams, fetchData, refresh } = useListData({
     apiEndpoint: API_ENDPOINTS.MATERIALS,
@@ -224,7 +226,7 @@ export default function MaterialList() {
   return (
     <>
       <SmartListTemplate
-        title="材料申请列表"
+        title={menuTitle || '材料申请列表'}
         fields={fields}
         dataSource={dataSource}
         loading={loading}

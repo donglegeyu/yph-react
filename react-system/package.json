@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.4",
-    "@donglegeyu/company-ui": "^1.1.1",
+    "@donglegeyu/company-ui": "file:../../company-ui/donglegeyu-company-ui-1.2.3.tgz",
     "antd": "^6.4.3",
     "axios": "^1.16.1",
     "dayjs": "^1.11.21",
