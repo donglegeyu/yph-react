@@ -3,15 +3,12 @@ import { Menu, Space, Form, Tag, Input, Select, Switch, Button, Tabs } from 'ant
 import {
   CompanyMessage,
   CompanyButton,
-  IconSelect,
   ActionCell,
   type ActionButton,
   PageTitle,
   FilterForm,
   ColumnSettingsPanel,
   type ColumnField,
-  FilterOptionsDrawer,
-  type FilterOption,
   SmartListTemplate,
   SectionTitle,
   BaseInfoForm,
@@ -20,8 +17,6 @@ import {
   FormPageTemplate,
   SvgIcon,
 } from '@donglegeyu/company-ui'
-import AccessibilityChecker from '@/components/AccessibilityChecker'
-import ColorScale from '@/components/ColorScale'
 import './ComponentPreview.scss'
 
 interface BusinessComponent {
@@ -32,17 +27,12 @@ interface BusinessComponent {
 }
 
 const businessComponents: BusinessComponent[] = [
-  { key: 'icon-select', name: '图标选择器', enName: 'IconSelect', group: '基础' },
   { key: 'filter-form', name: '筛选表单', enName: 'FilterForm', group: '筛选' },
-  { key: 'filter-options-drawer', name: '新增视图', enName: 'FilterOptionsDrawer', group: '筛选' },
   { key: 'smart-list-template', name: '智能列表模板', enName: 'SmartListTemplate', group: '列表' },
   { key: 'column-settings-panel', name: '列设置面板', enName: 'ColumnSettingsPanel', group: '列表' },
   { key: 'list-page-template', name: '列表页模板', enName: 'ListPageTemplate', group: '列表' },
   { key: 'action-cell', name: '操作按钮', enName: 'ActionCell', group: '列表' },
-  { key: 'color-scale', name: '色阶', enName: 'ColorScale', group: '基础' },
   { key: 'page-title', name: '页面标题', enName: 'PageTitle', group: '基础' },
-  { key: 'label-item', name: '标签项', enName: 'LabelItem', group: '基础' },
-  { key: 'accessibility-checker', name: '无障碍检查', enName: 'AccessibilityChecker', group: '基础' },
   { key: 'form-page-template', name: '表单模板', enName: 'FormPageTemplate', group: '表单' },
   { key: 'section-title', name: '区域标题', enName: 'SectionTitle', group: '表单' },
   { key: 'base-info-form', name: '多列表单', enName: 'BaseInfoForm', group: '表单' },
@@ -58,210 +48,26 @@ const businessComponentGroups = [
 
 const componentUpdateTimes: Record<string, string> = {
   'action-cell': '2024-01-15 10:30',
-  'icon-select': '2024-01-14 14:20',
   'filter-form': '2024-01-13 09:15',
-  'filter-options-drawer': '2024-01-12 16:45',
   'column-settings-panel': '2024-01-11 11:00',
-  'color-scale': '2024-01-10 15:30',
   'page-title': '2024-01-09 08:45',
   'list-page-template': '2024-01-08 13:20',
   'smart-list-template': '2024-01-07 17:10',
-  'label-item': '2024-01-06 10:00',
-  'accessibility-checker': '2024-01-05 14:30',
   'section-title': '2024-01-04 09:45',
   'base-info-form': '2025-05-21 10:00',
   'form-footer-actions': '2025-05-21 10:00',
   'form-page-template': '2025-05-21 10:00',
 }
 
-interface DesignToken {
-  id: number
-  categoryId: number
-  categoryCode: string
-  name: string
-  tokenKey: string
-  tokenType: string
-  defaultValue: string
-  currentValue: string
-  customValue?: string
-  description?: string
-  isAntDesignToken: boolean
-  antDesignTokenName?: string
-  sortOrder: number
-}
-
-interface TokenCategory {
-  id: number
-  name: string
-  code: string
-  sortOrder: number
-  tokenCount?: number
-}
-
-interface TokenGroup {
-  name: string
-  items: DesignToken[]
-}
-
-interface ColorInfo {
-  index: number
-  color: string
-  tokenName: string
-  groupKey: string
-}
-
-function isColorScaleGroup(group: TokenGroup): boolean {
-  if (group.items.length === 0) return false
-  const firstToken = group.items[0]
-  if (firstToken.categoryCode !== 'base-color') return false
-  return !!firstToken.tokenKey && /^--\w+-\d+$/.test(firstToken.tokenKey)
-}
-
-function getColorScalePrefix(group: TokenGroup): string {
-  if (group.items.length === 0) return 'primary'
-  const firstToken = group.items[0]
-  const match = firstToken.tokenKey.match(/^--(\w+)-\d+$/)
-  return match ? match[1] : 'primary'
-}
-
-function getColorScaleLabel(group: TokenGroup): string {
-  const prefix = getColorScalePrefix(group)
-  const labelMap: Record<string, string> = {
-    'primary': '主色 primary',
-    'success': '成功色 success',
-    'warning': '警告色 warning',
-    'error': '错误色 error',
-    'info': '信息色 info',
-    'gray': '灰色 gray',
-    'green': '绿色 green',
-    'orange': '橙色 orange',
-    'red': '红色 red',
-    'blue': '蓝色 blue',
-  }
-  return labelMap[prefix] || prefix
-}
-
-function getColorScaleBase(tokens: DesignToken[]): string {
-  if (tokens.length === 0) return '#F95914'
-  const firstToken = tokens[0]
-  const match = firstToken.tokenKey.match(/^--(\w+)-\d+$/)
-  if (!match) return '#F95914'
-  const prefix = match[1]
-  const baseTokenKey = `--${prefix}-color`
-  const baseToken = tokens.find(t => t.tokenKey === baseTokenKey)
-  if (baseToken) return baseToken.defaultValue
-  const scaleTokens = tokens.filter(t => t.tokenKey && /^--\w+-\d+$/.test(t.tokenKey))
-  const sortedTokens = [...scaleTokens].sort((a, b) => {
-    const aNum = parseInt(a.tokenKey.match(/\d+$/)?.[0] || '0')
-    const bNum = parseInt(b.tokenKey.match(/\d+$/)?.[0] || '0')
-    return aNum - bNum
-  })
-  return sortedTokens[5]?.defaultValue || sortedTokens[0]?.defaultValue || '#F95914'
-}
-
-function getColorScaleColors(tokens: DesignToken[]): string[] {
-  return tokens.map(t => (t.currentValue || t.defaultValue || '').toUpperCase())
-}
-
-function getColorScaleCustomColors(tokens: DesignToken[]): (string | undefined)[] {
-  return tokens.map(t => t.customValue || undefined)
-}
-
-function getTokensGrouped(tokens: DesignToken[], categoryCode: string): TokenGroup[] {
-  const categoryTokens = tokens.filter(t => t.categoryCode === categoryCode)
-
-  if (categoryCode === 'base-color') {
-    const groups: Record<string, DesignToken[]> = {}
-    for (const token of categoryTokens) {
-      const group = token.description || '其他'
-      if (!groups[group]) groups[group] = []
-      groups[group].push(token)
-    }
-    return Object.entries(groups).map(([name, items]) => ({ name, items }))
-  }
-
-  const groups: Record<string, DesignToken[]> = {}
-  for (const token of categoryTokens) {
-    let prefix = 'other'
-    if (token.tokenKey.startsWith('--primary')) prefix = 'primary'
-    else if (token.tokenKey.startsWith('--color-success')) prefix = 'color-success'
-    else if (token.tokenKey.startsWith('--color-warning')) prefix = 'color-warning'
-    else if (token.tokenKey.startsWith('--color-error')) prefix = 'color-error'
-    else if (token.tokenKey.startsWith('--color-info')) prefix = 'color-info'
-    else if (token.tokenKey.startsWith('--color-text')) prefix = 'color-text'
-    else if (token.tokenKey.startsWith('--color-bg')) prefix = 'color-bg'
-    else if (token.tokenKey.startsWith('--color-border')) prefix = 'color-border'
-
-    if (!groups[prefix]) groups[prefix] = []
-    groups[prefix].push(token)
-  }
-
-  const prefixNames: Record<string, string> = {
-    'primary': '主色',
-    'color-success': '成功色',
-    'color-warning': '警告色',
-    'color-error': '错误色',
-    'color-info': '信息色',
-    'color-text': '文本色',
-    'color-bg': '背景色',
-    'color-border': '边框色',
-  }
-
-  return Object.entries(groups).map(([prefix, items]) => ({
-    name: prefixNames[prefix] || prefix,
-    items,
-  }))
-}
-
 export default function ComponentPreview() {
   const [selectedBusinessComponent, setSelectedBusinessComponent] = useState('action-cell')
   const [businessTokenTabKey, setBusinessTokenTabKey] = useState('config')
-
-  const [designTokens, setDesignTokens] = useState<DesignToken[]>([])
-  const [_tokenCategories, setTokenCategories] = useState<TokenCategory[]>([])
-  const [tokensLoading, setTokensLoading] = useState(false)
-  const [selectedColorInfo, setSelectedColorInfo] = useState<ColorInfo | null>(null)
-  const [selectedGroupKey, setSelectedGroupKey] = useState('')
-
-  useEffect(() => {
-    async function loadTokens() {
-      setTokensLoading(true)
-      try {
-        const res = await fetch('/api/design-tokens')
-        const json = await res.json()
-        if (json.code === 200) {
-          const loaded: DesignToken[] = (json.data.tokens || []).map((t: DesignToken) => ({
-            ...t,
-            defaultValue: t.tokenType === 'color' && t.defaultValue ? t.defaultValue.toUpperCase() : t.defaultValue,
-            currentValue: t.tokenType === 'color' && t.currentValue ? t.currentValue.toUpperCase() : t.currentValue,
-          }))
-          setDesignTokens(loaded)
-          setTokenCategories(json.data.categories || [])
-        }
-      } catch (e) {
-        console.error('[ComponentPreview] loadTokens 失败:', e)
-      } finally {
-        setTokensLoading(false)
-      }
-    }
-    loadTokens()
-  }, [])
-
-  const baseColorGroups = useMemo(() => {
-    return getTokensGrouped(designTokens, 'base-color')
-  }, [designTokens])
 
   const [businessNavWidth] = useState(200)
   const [tokensWidth, setTokensWidth] = useState(360)
   const [isTokensDragging, setIsTokensDragging] = useState(false)
 
   const [demoMaxVisible, setDemoMaxVisible] = useState(2)
-  const [selectedIcon, setSelectedIcon] = useState('')
-  const [showFilterDrawer, setShowFilterDrawer] = useState(false)
-
-  const [demoLabelZh, setDemoLabelZh] = useState('材料名称')
-  const [demoContentZh, setDemoContentZh] = useState('不锈钢板')
-  const [demoContentEn, setDemoContentEn] = useState('Stainless Steel Plate')
 
   const [demoPageTitle, setDemoPageTitle] = useState('页面标题')
   const [showPageTitleActions, setShowPageTitleActions] = useState(true)
@@ -344,12 +150,6 @@ export default function ComponentPreview() {
     { key: 'status', label: '状态', type: 'select', options: [{ label: '选项一', value: 'option1' }, { label: '选项二', value: 'option2' }, { label: '选项三', value: 'option3' }] },
   ]
 
-  const filterDrawerOptions: FilterOption[] = [
-    { key: 'name', label: '名称', checked: true },
-    { key: 'status', label: '状态', checked: true, options: [{ label: '待审核', value: 'pending' }, { label: '已通过', value: 'approved' }, { label: '已拒绝', value: 'rejected' }] },
-    { key: 'dateRange', label: '日期范围', checked: false },
-  ]
-
   const columnFields: ColumnField[] = [
     { key: 'name', label: '名称', visible: true },
     { key: 'status', label: '状态', visible: true },
@@ -404,11 +204,6 @@ export default function ComponentPreview() {
   function getUpdateTime(componentKey: string): string {
     return componentUpdateTimes[componentKey] || '2024-01-01 00:00'
   }
-
-  const handleFilterDrawerSave = useCallback((data: { name: string }) => {
-    CompanyMessage.success(`已保存视图: ${data.name}`)
-    setShowFilterDrawer(false)
-  }, [])
 
   const handleColumnConfirm = useCallback((fields: ColumnField[]) => {
     CompanyMessage.success(`已更新 ${fields.length} 列`)
@@ -527,27 +322,6 @@ export default function ComponentPreview() {
           </div>
         )
 
-      case 'icon-select':
-        return (
-          <div className="component-demo">
-            <div className="demo-section">
-              <h3 className="component-title">{currentBusinessName}</h3>
-              <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
-              <h4>基本用法</h4>
-              <IconSelect value={selectedIcon} onChange={setSelectedIcon} />
-              {selectedIcon && (
-                <div className="selected-icon-display">
-                  选中图标：<strong>{selectedIcon}</strong>
-                </div>
-              )}
-            </div>
-            <div className="demo-section">
-              <h4>使用示例</h4>
-              <pre>{'<IconSelect value={selectedIcon} onChange={setSelectedIcon} />'}</pre>
-            </div>
-          </div>
-        )
-
       case 'filter-form':
         return (
           <div className="component-demo">
@@ -560,47 +334,6 @@ export default function ComponentPreview() {
                 onSearch={(data) => CompanyMessage.info(`搜索条件: ${JSON.stringify(data)}`)}
                 onReset={() => CompanyMessage.info('已重置筛选条件')}
               />
-            </div>
-          </div>
-        )
-
-      case 'label-item':
-        return (
-          <div className="component-demo">
-            <div className="demo-section">
-              <h3 className="component-title">{currentBusinessName}</h3>
-              <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
-              <h4>基本用法</h4>
-              <div className="label-item" style={{ maxWidth: 400 }}>
-                <div className="label-left">{demoLabelZh}</div>
-                <div className="label-center">
-                  <span className="zh-name">{demoContentZh}</span>
-                  {demoContentEn && <span className="separator"> / </span>}
-                  {demoContentEn && <span className="en-name">{demoContentEn}</span>}
-                </div>
-              </div>
-            </div>
-            <div className="demo-code">
-              <h4>使用示例</h4>
-              <pre>{`<div className="label-item">\n  <div className="label-left">材料名称</div>\n  <div className="label-center">\n    <span className="zh-name">不锈钢板</span>\n    <span className="separator"> / </span>\n    <span className="en-name">Stainless Steel Plate</span>\n  </div>\n</div>`}</pre>
-            </div>
-          </div>
-        )
-
-      case 'accessibility-checker':
-        return (
-          <div className="component-demo">
-            <div className="demo-section">
-              <h3 className="component-title">{currentBusinessName}</h3>
-              <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
-              <h4>基本用法</h4>
-              <div style={{ width: 560 }}>
-                <AccessibilityChecker tokenName="primary-5" color="#F95914" />
-              </div>
-            </div>
-            <div className="demo-code">
-              <h4>使用示例</h4>
-              <pre>{'<AccessibilityChecker\n  tokenName="primary-5"\n  color="#F95914"\n/>'}</pre>
             </div>
           </div>
         )
@@ -627,71 +360,6 @@ export default function ComponentPreview() {
             <div className="demo-code">
               <h4>使用示例</h4>
               <pre>{'<PageTitle title="页面标题">\n  <Space>\n    <Button>次要操作</Button>\n    <Button type="primary">主要操作</Button>\n  </Space>\n</PageTitle>'}</pre>
-            </div>
-          </div>
-        )
-
-      case 'color-scale':
-        return (
-          <div className="component-demo">
-            <div className="demo-section">
-              <h3 className="component-title">{currentBusinessName}</h3>
-              <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
-              <h4>基础色阶</h4>
-              <div style={{ width: 700 }}>
-                {tokensLoading ? (
-                  <div style={{ color: 'var(--color-text-secondary, #999)', padding: '20px 0' }}>加载中...</div>
-                ) : baseColorGroups.length === 0 ? (
-                  <div style={{ color: 'var(--color-text-secondary, #999)', padding: '20px 0' }}>暂无色阶数据</div>
-                ) : (
-                  baseColorGroups.map(group => {
-                    if (!isColorScaleGroup(group)) return null
-                    return (
-                      <ColorScale
-                        key={getColorScalePrefix(group)}
-                        label={getColorScaleLabel(group)}
-                        baseColor={getColorScaleBase(group.items)}
-                        colors={getColorScaleColors(group.items)}
-                        customColors={getColorScaleCustomColors(group.items)}
-                        highlightIndex={5}
-                        tokenPrefix={getColorScalePrefix(group)}
-                        selectedIndex={selectedColorInfo?.index ?? null}
-                        selectedGroupKey={selectedGroupKey}
-                        onSelect={(info) => {
-                          setSelectedColorInfo(info)
-                          setSelectedGroupKey(info.groupKey)
-                        }}
-                      />
-                    )
-                  })
-                )}
-              </div>
-            </div>
-            <div className="demo-code">
-              <h4>使用示例</h4>
-              <pre>{'<ColorScale\n  baseColor="#F95914"\n  colors={colors}\n  highlightIndex={5}\n  tokenPrefix="primary"\n/>'}</pre>
-            </div>
-          </div>
-        )
-
-      case 'filter-options-drawer':
-        return (
-          <div className="component-demo">
-            <div className="demo-section">
-              <h3 className="component-title">{currentBusinessName}</h3>
-              <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
-              <h4>基本用法</h4>
-              <CompanyButton onClick={() => setShowFilterDrawer(true)}>打开抽屉</CompanyButton>
-              <FilterOptionsDrawer
-                open={showFilterDrawer}
-                options={filterDrawerOptions}
-                onClose={() => setShowFilterDrawer(false)}
-                onSave={handleFilterDrawerSave}
-              />
-            </div>
-            <div className="demo-code">
-              <h4>使用示例</h4>
-              <pre>{'<FilterOptionsDrawer\n  open={open}\n  options={filterOptions}\n  onSave={handleSave}\n/>'}</pre>
             </div>
           </div>
         )
@@ -931,21 +599,6 @@ export default function ComponentPreview() {
                   </div>
                 </div>
               ))}
-            </Form.Item>
-          </Form>
-        )
-
-      case 'label-item':
-        return (
-          <Form layout="vertical">
-            <Form.Item label="左侧中文">
-              <Input value={demoLabelZh} onChange={(e) => setDemoLabelZh(e.target.value)} placeholder="请输入中文名称" />
-            </Form.Item>
-            <Form.Item label="中间中文">
-              <Input value={demoContentZh} onChange={(e) => setDemoContentZh(e.target.value)} placeholder="请输入内容中文" />
-            </Form.Item>
-            <Form.Item label="中间英文">
-              <Input value={demoContentEn} onChange={(e) => setDemoContentEn(e.target.value)} placeholder="请输入英文名称" />
             </Form.Item>
           </Form>
         )

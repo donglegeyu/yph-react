@@ -1,18 +1,19 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { Space, TreeSelect, Tree, Empty, Tag, Form, Radio, Menu } from 'antd'
 import type { DataNode } from 'antd/es/tree'
+import { Form, Drawer, Input, Select, InputNumber, TreeSelect, Radio } from 'antd'
 import {
   CompanyTable,
   CompanyButton,
-  CompanyDrawer,
-  CompanyInput,
-  CompanySelect,
-  CompanyInputNumber,
   CompanyMessage,
   CompanyPopconfirm,
   CompanyDropdown,
-  CompanyCheckbox,
+  CompanySpace,
+  CompanyTree,
+  CompanyEmpty,
+  CompanyTag,
+  CompanyMenu,
   FilterForm,
+  FilterOptionsDrawer,
   ActionCell,
   SvgIcon,
   IconSelect,
@@ -219,7 +220,7 @@ const DEFAULT_COLUMN_FIELDS: ColumnField[] = [
   { key: 'path', label: '路径', visible: true, width: 150 },
   { key: 'key', label: 'Key', visible: true, width: 150 },
   { key: 'sort', label: '排序', visible: true, width: 80 },
-  { key: 'action', label: '操作', visible: true, width: 220 },
+  { key: 'action', label: '操作', visible: true, width: 156, fixed: 'right' as const },
 ]
 
 const menuTypeOptions = [
@@ -666,29 +667,16 @@ export default function MenuManagement() {
     setEditingSchemeId(null)
   }, [])
 
-  const confirmSaveScheme = useCallback(async () => {
-    if (!newSchemeName.trim()) {
-      CompanyMessage.warning('请输入视图名称')
-      return
-    }
-    if (newSchemeName.length > 8) {
-      CompanyMessage.warning('视图名称不能超过8个字')
-      return
-    }
-    const nameExists = schemes.some(s => s.name === newSchemeName.trim() && s.id !== editingSchemeId)
+  const confirmSaveSchemeWith = useCallback(async (name: string, options: FilterOptionItem[]) => {
+    const nameExists = schemes.some(s => s.name === name.trim() && s.id !== editingSchemeId)
     if (nameExists) {
       CompanyMessage.warning('视图名称已存在')
-      return
-    }
-    const selectedCount = dialogFilterOptions.filter(opt => opt.checked).length
-    if (selectedCount === 0) {
-      CompanyMessage.warning('请至少选择一个筛选条件')
       return
     }
 
     const selectedFilters: Record<string, unknown> = {}
     const filterOrder: string[] = []
-    dialogFilterOptions.forEach(opt => {
+    options.forEach(opt => {
       if (opt.checked) {
         selectedFilters[opt.key] = opt.defaultValue || ''
         filterOrder.push(opt.key)
@@ -701,7 +689,7 @@ export default function MenuManagement() {
 
     const schemeData = {
       id: scheme?.id || Date.now().toString(),
-      name: newSchemeName.trim(),
+      name: name.trim(),
       filters: selectedFilters,
       filterOrder,
     }
@@ -725,7 +713,7 @@ export default function MenuManagement() {
     } catch {
       CompanyMessage.error('保存失败，请重试')
     }
-  }, [newSchemeName, schemes, editingSchemeId, dialogFilterOptions, isEditMode, handleDrawerClose, loadSchemes])
+  }, [schemes, editingSchemeId, isEditMode, handleDrawerClose, loadSchemes])
 
   const handleEditScheme = useCallback((schemeId: string) => {
     const scheme = schemes.find(s => s.id === schemeId)
@@ -922,9 +910,9 @@ export default function MenuManagement() {
             <span style={{ whiteSpace: 'nowrap' }}>{record.label}</span>
           </span>
         ) : f.key === 'status' ? (_: unknown, record: FlatMenuItem) => (
-          <Tag color={record.status === 1 ? 'success' : 'default'}>
+          <CompanyTag color={record.status === 1 ? 'success' : 'default'}>
             {record.status === 1 ? '启用' : '禁用'}
-          </Tag>
+          </CompanyTag>
         ) : f.key === 'level' ? (_: unknown, record: FlatMenuItem) => (
           <>{record.levelText}</>
         ) : f.key === 'icon' ? (_: unknown, record: FlatMenuItem) => (
@@ -952,7 +940,7 @@ export default function MenuManagement() {
             open={dropdownOpen}
             onOpenChange={setDropdownOpen}
             popupRender={() => (
-              <Menu
+              <CompanyMenu
                 onClick={handleMenuClick}
                 items={dropdownMenuItems}
                 style={{ minWidth: 200 }}
@@ -1010,7 +998,7 @@ export default function MenuManagement() {
       <div className="content-card">
         <div className="toolbar">
           <div className="toolbar-left">
-            <Space size={12}>
+            <CompanySpace size={12}>
               <CompanyButton type="primary" onClick={handleAdd}>新增菜单</CompanyButton>
               <CompanyButton onClick={handleBatchEnable} disabled={!selectedRowKeys.length}>批量启用</CompanyButton>
               <CompanyButton onClick={handleBatchDisable} disabled={!selectedRowKeys.length}>批量禁用</CompanyButton>
@@ -1031,11 +1019,11 @@ export default function MenuManagement() {
               >
                 <SvgIcon href="refresh" size={16} />
               </CompanyButton>
-            </Space>
+            </CompanySpace>
           </div>
         </div>
 
-        <div className="table-wrapper" style={{ flex: 1, overflow: 'auto' }}>
+        <div className="table-wrapper" style={{ flex: 1, overflow: 'hidden' }}>
           <CompanyTable
             dataSource={visibleDataSource}
             columns={visibleColumns}
@@ -1052,35 +1040,35 @@ export default function MenuManagement() {
         </div>
       </div>
 
-      <CompanyDrawer
+      <Drawer
         open={modalVisible}
         title={modalTitle}
         width={360}
         onClose={handleModalCancel}
         footer={
-          <Space>
+          <div style={{ textAlign: 'right' }}>
             <CompanyButton onClick={handleModalCancel}>取消</CompanyButton>
             <CompanyButton type="primary" onClick={handleModalOk}>确定</CompanyButton>
-          </Space>
+          </div>
         }
       >
         <Form layout="vertical">
           <Form.Item label="菜单Key">
-            <CompanyInput
+            <Input
               value={formData.key}
               onChange={(e) => setFormData(prev => ({ ...prev, key: e.target.value }))}
               placeholder="如: material-center"
             />
           </Form.Item>
           <Form.Item label="菜单名称">
-            <CompanyInput
+            <Input
               value={formData.label}
               onChange={(e) => setFormData(prev => ({ ...prev, label: e.target.value }))}
               placeholder="如: 材料中心"
             />
           </Form.Item>
           <Form.Item label="路径">
-            <CompanyInput
+            <Input
               value={formData.path}
               onChange={(e) => setFormData(prev => ({ ...prev, path: e.target.value }))}
               placeholder="如: /materials"
@@ -1110,7 +1098,7 @@ export default function MenuManagement() {
             />
           </Form.Item>
           <Form.Item label="菜单类型">
-            <CompanySelect
+            <Select
               value={formData.menuType}
               onChange={(val) => setFormData(prev => ({ ...prev, menuType: val as string }))}
               options={menuTypeOptions}
@@ -1118,7 +1106,7 @@ export default function MenuManagement() {
             />
           </Form.Item>
           <Form.Item label="排序">
-            <CompanyInputNumber
+            <InputNumber
               value={formData.sort}
               onChange={(val) => setFormData(prev => ({ ...prev, sort: val || 0 }))}
               min={0}
@@ -1135,15 +1123,15 @@ export default function MenuManagement() {
             </Radio.Group>
           </Form.Item>
         </Form>
-      </CompanyDrawer>
+      </Drawer>
 
-      <CompanyDrawer
+      <Drawer
         open={moveDrawerVisible}
         title="移动菜单"
         width={420}
         onClose={closeMoveDrawer}
         footer={
-          <Space>
+          <div style={{ textAlign: 'right' }}>
             <CompanyButton onClick={closeMoveDrawer}>取消</CompanyButton>
             <CompanyButton
               type="primary"
@@ -1152,7 +1140,7 @@ export default function MenuManagement() {
             >
               确认移动
             </CompanyButton>
-          </Space>
+          </div>
         }
       >
         {moveTargetRecord && (
@@ -1162,7 +1150,7 @@ export default function MenuManagement() {
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {moveTreeData.length > 0 ? (
-                <Tree
+                <CompanyTree
                   treeData={moveTreeData}
                   expandedKeys={moveExpandedKeys}
                   selectedKeys={selectedMoveTargetId !== null ? [String(selectedMoveTargetId)] : []}
@@ -1177,95 +1165,26 @@ export default function MenuManagement() {
                   onExpand={(keys) => setMoveExpandedKeys(keys as string[])}
                 />
               ) : (
-                <Empty description="暂无数据" />
+                <CompanyEmpty description="暂无数据" />
               )}
             </div>
           </div>
         )}
-      </CompanyDrawer>
+      </Drawer>
 
-      <CompanyDrawer
+      <FilterOptionsDrawer
         open={saveSchemeDialogVisible}
-        title={isEditMode ? '编辑视图' : '新增视图'}
-        width={380}
+        options={dialogFilterOptions}
+        isEdit={isEditMode}
+        editName={newSchemeName}
+        editId={editingSchemeId || undefined}
         onClose={handleDrawerClose}
-        footer={
-          <div style={{ textAlign: 'right' }}>
-            <CompanyButton style={{ marginRight: 12 }} onClick={handleDrawerClose}>
-              取消
-            </CompanyButton>
-            <CompanyButton type="primary" onClick={confirmSaveScheme}>
-              保存
-            </CompanyButton>
-          </div>
-        }
-      >
-        <div style={{ padding: 0, overflow: 'visible' }}>
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ fontSize: 14, fontWeight: 400, color: 'rgba(0,0,0,0.88)', marginBottom: 8 }}>
-              视图名称 <span style={{ color: '#ff4d4f', marginLeft: 4 }}>*</span>
-            </div>
-            <CompanyInput
-              value={newSchemeName}
-              onChange={(e) => setNewSchemeName(e.target.value)}
-              placeholder="请输入视图名称（最多8个字）"
-              maxLength={8}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ fontSize: 14, fontWeight: 400, color: 'rgba(0,0,0,0.88)', marginBottom: 8 }}>筛选条件</div>
-            <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', marginBottom: 8 }}>请至少选择一个筛选条件，拖拽调整顺序</div>
-            {dialogFilterOptions.map((opt, index) => (
-              <div
-                key={opt.key}
-                className="field-item"
-                draggable
-                onDragStart={(e) => {
-                  const dragIdx = index
-                  e.dataTransfer.effectAllowed = 'move'
-                  const dataTransfer = e.dataTransfer
-                  dataTransfer.setData('text/plain', String(dragIdx))
-                }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  const fromIdx = Number(e.dataTransfer.getData('text/plain'))
-                  if (isNaN(fromIdx) || fromIdx === index) return
-                  setDialogFilterOptions(prev => {
-                    const items = [...prev]
-                    const [dragItem] = items.splice(fromIdx, 1)
-                    items.splice(index, 0, dragItem)
-                    return items
-                  })
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 0',
-                  borderBottom: '1px solid #f0f0f0',
-                  cursor: 'grab',
-                }}
-              >
-                <SvgIcon href="drag" size={12} style={{ flexShrink: 0, color: '#999' }} />
-                <CompanyCheckbox
-                  checked={opt.checked}
-                  onChange={(e) => {
-                    setDialogFilterOptions(prev =>
-                      prev.map((o, i) => (i === index ? { ...o, checked: e.target.checked } : o))
-                    )
-                  }}
-                  style={{ flexShrink: 0 }}
-                >
-                  {opt.label}
-                </CompanyCheckbox>
-              </div>
-            ))}
-          </div>
-        </div>
-      </CompanyDrawer>
+        onSave={(data) => {
+          setNewSchemeName(data.name)
+          setDialogFilterOptions(data.options)
+          setTimeout(() => confirmSaveSchemeWith(data.name, data.options), 0)
+        }}
+      />
     </div>
     </PageErrorBoundary>
   )

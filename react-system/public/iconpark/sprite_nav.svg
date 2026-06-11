@@ -169,4 +169,7 @@
 <path stroke-linejoin="round" stroke-width="4" stroke="currentColor" d="M24 44c11.046 0 20-8.954 20-20S35.046 4 24 4 4 12.954 4 24s8.954 20 20 20Z" data-follow-stroke="currentColor"/>
 <path stroke-linejoin="round" stroke-linecap="round" stroke-width="4" stroke="currentColor" d="m33 21-9 9-9-9" data-follow-stroke="currentColor"/>
 </symbol>
+  <symbol id="density" viewBox="0 0 48 48" fill="none">
+<path stroke-linecap="round" stroke-width="4" stroke="currentColor" d="M8 10h32M8 20h32M8 30h32M8 40h32" data-follow-stroke="currentColor"/>
+</symbol>
 </svg>

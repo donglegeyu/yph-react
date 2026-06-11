@@ -1,15 +1,13 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, Space } from 'antd'
 import {
   ActionCell,
   CompanyButton,
   CompanyMessage,
   SmartListTemplate,
-  SvgIcon,
-  ColumnSettingsPanel,
   type ColumnField,
   type FieldDefinition,
+  CompanyTag,
 } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
 import { useListData } from '@/hooks'
@@ -38,7 +36,7 @@ const fields: FieldDefinition[] = [
     { label: '启用', value: 1 },
     { label: '禁用', value: 0 },
   ]},
-  { key: 'action', label: '操作', width: 148, fixed: 'right' },
+  { key: 'action', label: '操作', width: 156, fixed: 'right' },
 ]
 
 const defaultColumnFields: ColumnField[] = [
@@ -130,24 +128,9 @@ export default function DomainManagement() {
   }, [refresh])
 
   const toolbarActions = (
-    <Space size={12}>
-      <CompanyButton type="primary" onClick={handleAdd}>
-        新增域
-      </CompanyButton>
-      <ColumnSettingsPanel
-        fields={columnFields}
-        defaultFields={defaultColumnFields}
-        excludeKeys={[]}
-        onConfirm={handleColumnSettingsConfirm}
-        onReset={handleColumnSettingsReset}
-      />
-      <CompanyButton
-        onClick={refresh}
-        style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-      >
-        <SvgIcon href="refresh" size={16} />
-      </CompanyButton>
-    </Space>
+    <CompanyButton type="primary" onClick={handleAdd}>
+      新增域
+    </CompanyButton>
   )
 
   const bodyCell = useCallback(
@@ -168,9 +151,9 @@ export default function DomainManagement() {
 
       if (column.key === 'status') {
         return (
-          <Tag color={domainRecord.status === 1 ? 'success' : 'default'}>
+          <CompanyTag color={domainRecord.status === 1 ? 'success' : 'default'}>
             {domainRecord.status === 1 ? '启用' : '禁用'}
-          </Tag>
+          </CompanyTag>
         )
       }
 
