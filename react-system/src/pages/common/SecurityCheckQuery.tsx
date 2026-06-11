@@ -1,4 +1,6 @@
 import { useEffect, useCallback, useState } from 'react'
+import { ConfigProvider } from 'antd'
+import zhCN from 'antd/locale/zh_CN'
 import { DownOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -236,15 +238,18 @@ export default function SecurityCheckQuery() {
 
         {pagination.total > 0 && (
           <div className="scq-pagination">
-            <CompanyPagination
-              current={pagination.current}
-              pageSize={pagination.pageSize}
-              total={pagination.total}
-              onChange={handlePageChange}
-              showSizeChanger
-              showQuickJumper
-              showTotal={(total) => `共 ${total} 条`}
-            />
+            <ConfigProvider locale={zhCN}>
+              <CompanyPagination
+                size="small"
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                total={pagination.total}
+                onChange={handlePageChange}
+                showSizeChanger
+                showQuickJumper
+                showTotal={(total) => `共 ${total} 条`}
+              />
+            </ConfigProvider>
           </div>
         )}
       </div>

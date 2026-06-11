@@ -71,9 +71,182 @@ const componentUpdateTimes: Record<string, string> = {
   'form-page-template': '2025-05-21 10:00',
 }
 
+interface DesignToken {
+  id: number
+  categoryId: number
+  categoryCode: string
+  name: string
+  tokenKey: string
+  tokenType: string
+  defaultValue: string
+  currentValue: string
+  customValue?: string
+  description?: string
+  isAntDesignToken: boolean
+  antDesignTokenName?: string
+  sortOrder: number
+}
+
+interface TokenCategory {
+  id: number
+  name: string
+  code: string
+  sortOrder: number
+  tokenCount?: number
+}
+
+interface TokenGroup {
+  name: string
+  items: DesignToken[]
+}
+
+interface ColorInfo {
+  index: number
+  color: string
+  tokenName: string
+  groupKey: string
+}
+
+function isColorScaleGroup(group: TokenGroup): boolean {
+  if (group.items.length === 0) return false
+  const firstToken = group.items[0]
+  if (firstToken.categoryCode !== 'base-color') return false
+  return !!firstToken.tokenKey && /^--\w+-\d+$/.test(firstToken.tokenKey)
+}
+
+function getColorScalePrefix(group: TokenGroup): string {
+  if (group.items.length === 0) return 'primary'
+  const firstToken = group.items[0]
+  const match = firstToken.tokenKey.match(/^--(\w+)-\d+$/)
+  return match ? match[1] : 'primary'
+}
+
+function getColorScaleLabel(group: TokenGroup): string {
+  const prefix = getColorScalePrefix(group)
+  const labelMap: Record<string, string> = {
+    'primary': '主色 primary',
+    'success': '成功色 success',
+    'warning': '警告色 warning',
+    'error': '错误色 error',
+    'info': '信息色 info',
+    'gray': '灰色 gray',
+    'green': '绿色 green',
+    'orange': '橙色 orange',
+    'red': '红色 red',
+    'blue': '蓝色 blue',
+  }
+  return labelMap[prefix] || prefix
+}
+
+function getColorScaleBase(tokens: DesignToken[]): string {
+  if (tokens.length === 0) return '#F95914'
+  const firstToken = tokens[0]
+  const match = firstToken.tokenKey.match(/^--(\w+)-\d+$/)
+  if (!match) return '#F95914'
+  const prefix = match[1]
+  const baseTokenKey = `--${prefix}-color`
+  const baseToken = tokens.find(t => t.tokenKey === baseTokenKey)
+  if (baseToken) return baseToken.defaultValue
+  const scaleTokens = tokens.filter(t => t.tokenKey && /^--\w+-\d+$/.test(t.tokenKey))
+  const sortedTokens = [...scaleTokens].sort((a, b) => {
+    const aNum = parseInt(a.tokenKey.match(/\d+$/)?.[0] || '0')
+    const bNum = parseInt(b.tokenKey.match(/\d+$/)?.[0] || '0')
+    return aNum - bNum
+  })
+  return sortedTokens[5]?.defaultValue || sortedTokens[0]?.defaultValue || '#F95914'
+}
+
+function getColorScaleColors(tokens: DesignToken[]): string[] {
+  return tokens.map(t => (t.currentValue || t.defaultValue || '').toUpperCase())
+}
+
+function getColorScaleCustomColors(tokens: DesignToken[]): (string | undefined)[] {
+  return tokens.map(t => t.customValue || undefined)
+}
+
+function getTokensGrouped(tokens: DesignToken[], categoryCode: string): TokenGroup[] {
+  const categoryTokens = tokens.filter(t => t.categoryCode === categoryCode)
+
+  if (categoryCode === 'base-color') {
+    const groups: Record<string, DesignToken[]> = {}
+    for (const token of categoryTokens) {
+      const group = token.description || '其他'
+      if (!groups[group]) groups[group] = []
+      groups[group].push(token)
+    }
+    return Object.entries(groups).map(([name, items]) => ({ name, items }))
+  }
+
+  const groups: Record<string, DesignToken[]> = {}
+  for (const token of categoryTokens) {
+    let prefix = 'other'
+    if (token.tokenKey.startsWith('--primary')) prefix = 'primary'
+    else if (token.tokenKey.startsWith('--color-success')) prefix = 'color-success'
+    else if (token.tokenKey.startsWith('--color-warning')) prefix = 'color-warning'
+    else if (token.tokenKey.startsWith('--color-error')) prefix = 'color-error'
+    else if (token.tokenKey.startsWith('--color-info')) prefix = 'color-info'
+    else if (token.tokenKey.startsWith('--color-text')) prefix = 'color-text'
+    else if (token.tokenKey.startsWith('--color-bg')) prefix = 'color-bg'
+    else if (token.tokenKey.startsWith('--color-border')) prefix = 'color-border'
+
+    if (!groups[prefix]) groups[prefix] = []
+    groups[prefix].push(token)
+  }
+
+  const prefixNames: Record<string, string> = {
+    'primary': '主色',
+    'color-success': '成功色',
+    'color-warning': '警告色',
+    'color-error': '错误色',
+    'color-info': '信息色',
+    'color-text': '文本色',
+    'color-bg': '背景色',
+    'color-border': '边框色',
+  }
+
+  return Object.entries(groups).map(([prefix, items]) => ({
+    name: prefixNames[prefix] || prefix,
+    items,
+  }))
+}
+
 export default function ComponentPreview() {
   const [selectedBusinessComponent, setSelectedBusinessComponent] = useState('action-cell')
   const [businessTokenTabKey, setBusinessTokenTabKey] = useState('config')
+
+  const [designTokens, setDesignTokens] = useState<DesignToken[]>([])
+  const [_tokenCategories, setTokenCategories] = useState<TokenCategory[]>([])
+  const [tokensLoading, setTokensLoading] = useState(false)
+  const [selectedColorInfo, setSelectedColorInfo] = useState<ColorInfo | null>(null)
+  const [selectedGroupKey, setSelectedGroupKey] = useState('')
+
+  useEffect(() => {
+    async function loadTokens() {
+      setTokensLoading(true)
+      try {
+        const res = await fetch('/api/design-tokens')
+        const json = await res.json()
+        if (json.code === 200) {
+          const loaded: DesignToken[] = (json.data.tokens || []).map((t: DesignToken) => ({
+            ...t,
+            defaultValue: t.tokenType === 'color' && t.defaultValue ? t.defaultValue.toUpperCase() : t.defaultValue,
+            currentValue: t.tokenType === 'color' && t.currentValue ? t.currentValue.toUpperCase() : t.currentValue,
+          }))
+          setDesignTokens(loaded)
+          setTokenCategories(json.data.categories || [])
+        }
+      } catch (e) {
+        console.error('[ComponentPreview] loadTokens 失败:', e)
+      } finally {
+        setTokensLoading(false)
+      }
+    }
+    loadTokens()
+  }, [])
+
+  const baseColorGroups = useMemo(() => {
+    return getTokensGrouped(designTokens, 'base-color')
+  }, [designTokens])
 
   const [businessNavWidth] = useState(200)
   const [tokensWidth, setTokensWidth] = useState(360)
@@ -461,17 +634,39 @@ export default function ComponentPreview() {
             <div className="demo-section">
               <h3 className="component-title">{currentBusinessName}</h3>
               <div className="component-update-time">更新时间：{getUpdateTime(selectedBusinessComponent)}</div>
-              <h4>基本用法</h4>
-              <div style={{ width: 600 }}>
-                <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#262626' }}>
-                  主色 primary
-                </div>
-                <ColorScale baseColor="#F95914" steps={10} size={24} />
+              <h4>基础色阶</h4>
+              <div style={{ width: 700 }}>
+                {tokensLoading ? (
+                  <div style={{ color: 'var(--color-text-secondary, #999)', padding: '20px 0' }}>加载中...</div>
+                ) : baseColorGroups.length === 0 ? (
+                  <div style={{ color: 'var(--color-text-secondary, #999)', padding: '20px 0' }}>暂无色阶数据</div>
+                ) : (
+                  baseColorGroups.map(group => {
+                    if (!isColorScaleGroup(group)) return null
+                    return (
+                      <ColorScale
+                        key={getColorScalePrefix(group)}
+                        label={getColorScaleLabel(group)}
+                        baseColor={getColorScaleBase(group.items)}
+                        colors={getColorScaleColors(group.items)}
+                        customColors={getColorScaleCustomColors(group.items)}
+                        highlightIndex={5}
+                        tokenPrefix={getColorScalePrefix(group)}
+                        selectedIndex={selectedColorInfo?.index ?? null}
+                        selectedGroupKey={selectedGroupKey}
+                        onSelect={(info) => {
+                          setSelectedColorInfo(info)
+                          setSelectedGroupKey(info.groupKey)
+                        }}
+                      />
+                    )
+                  })
+                )}
               </div>
             </div>
             <div className="demo-code">
               <h4>使用示例</h4>
-              <pre>{'<ColorScale\n  baseColor="#F95914"\n  steps={10}\n  size={24}\n/>'}</pre>
+              <pre>{'<ColorScale\n  baseColor="#F95914"\n  colors={colors}\n  highlightIndex={5}\n  tokenPrefix="primary"\n/>'}</pre>
             </div>
           </div>
         )
