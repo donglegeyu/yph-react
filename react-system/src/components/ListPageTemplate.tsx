@@ -4,10 +4,10 @@ import {
   CompanyButton,
   CompanyPagination,
   CompanyDropdown,
+  SvgIcon,
 } from '@donglegeyu/company-ui'
 import { Menu } from 'antd'
 import FilterForm from './FilterForm'
-import SvgIcon from './SvgIcon'
 import type { FilterItem, FilterScheme, PaginationConfig } from '@/types'
 import './ListPageTemplate.scss'
 
@@ -70,6 +70,9 @@ export default function ListPageTemplate({
   viewSchemes = [],
   viewDropdownText = '默认视图',
   showSchemeActions = false,
+  showAddView = false,
+  hasModified = false,
+  hasSearched = false,
   filterParams = {},
   onFilterParamsChange,
   onSearch,

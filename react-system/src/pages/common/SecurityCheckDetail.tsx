@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
-import { CompanyButton, CompanyTable, CompanyTabs, CompanyTag, CompanyMessage } from '@donglegeyu/company-ui'
-import PageTitle from '@/components/PageTitle'
+import { useParams, useNavigate } from 'react-router-dom'
+import { CompanyButton, CompanyTable, CompanyTabs, CompanyTag, CompanyMessage, PageTitle } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
 import request from '@/utils/request'
 import './SecurityCheckDetail.scss'
@@ -50,6 +49,7 @@ const infoFields = [
 
 export default function SecurityCheckDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [detail, setDetail] = useState<DetailInfo | null>(null)
   const [checkItems, setCheckItems] = useState<CheckItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -106,7 +106,7 @@ export default function SecurityCheckDetail() {
 
   return (
     <div className="security-check-detail">
-      <PageTitle title="安检详情" showBack backPath="/security-check-query" />
+      <PageTitle title="安检详情" showBack onBack={() => navigate('/security-check-query')} />
 
       {detail && (
         <div className="scd-user-card">

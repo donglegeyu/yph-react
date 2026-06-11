@@ -1,24 +1,27 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Menu, Space, Form, Tag, Input, Select, Switch, Button, Tabs } from 'antd'
-import { CompanyMessage, CompanyButton } from '@donglegeyu/company-ui'
-import PageTitle from '@/components/PageTitle'
-import ActionCell from '@/components/ActionCell'
-import type { ActionButton } from '@/components/ActionCell'
-import IconSelect from '@/components/IconSelect'
-import FilterForm from '@/components/FilterForm'
+import {
+  CompanyMessage,
+  CompanyButton,
+  IconSelect,
+  ActionCell,
+  type ActionButton,
+  PageTitle,
+  FilterForm,
+  ColumnSettingsPanel,
+  type ColumnField,
+  FilterOptionsDrawer,
+  type FilterOption,
+  SmartListTemplate,
+  SectionTitle,
+  BaseInfoForm,
+  type FormField,
+  FormFooterActions,
+  FormPageTemplate,
+  SvgIcon,
+} from '@donglegeyu/company-ui'
 import AccessibilityChecker from '@/components/AccessibilityChecker'
 import ColorScale from '@/components/ColorScale'
-import ColumnSettingsPanel from '@/components/ColumnSettingsPanel'
-import type { ColumnField } from '@/components/ColumnSettingsPanel'
-import FilterOptionsDrawer from '@/components/FilterOptionsDrawer'
-import type { FilterOption } from '@/components/FilterOptionsDrawer'
-import SmartListTemplate from '@/components/SmartListTemplate'
-import SectionTitle from '@/components/SectionTitle'
-import BaseInfoForm from '@/components/BaseInfoForm'
-import type { FormField } from '@/components/BaseInfoForm'
-import FormFooterActions from '@/components/FormFooterActions'
-import FormPageTemplate from '@/components/FormPageTemplate'
-import SvgIcon from '@/components/SvgIcon'
 import './ComponentPreview.scss'
 
 interface BusinessComponent {

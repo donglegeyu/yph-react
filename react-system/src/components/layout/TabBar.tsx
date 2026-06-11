@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '@/store/app'
-import SvgIcon from '@/components/SvgIcon'
-import { CompanyTooltip } from '@donglegeyu/company-ui'
+import { CompanyTooltip, SvgIcon } from '@donglegeyu/company-ui'
 import './TabBar.scss'
 
 export default function TabBar() {

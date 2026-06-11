@@ -13,10 +13,10 @@ import {
   CompanyTag,
   CompanySpace,
   CompanyDatePicker,
+  PageTitle,
+  SvgIcon,
 } from '@donglegeyu/company-ui'
 import type { Dayjs } from 'dayjs'
-import SvgIcon from '@/components/SvgIcon'
-import PageTitle from '@/components/PageTitle'
 import { useMenuTitle, useListData } from '@/hooks'
 import { API_ENDPOINTS } from '@/constants/api'
 import './SecurityCheckQuery.scss'

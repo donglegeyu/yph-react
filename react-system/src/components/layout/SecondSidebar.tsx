@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '@/store/app'
-import SvgIcon from '@/components/SvgIcon'
+import { SvgIcon } from '@donglegeyu/company-ui'
 import './SecondSidebar.scss'
 import nullSvg from '@/assets/null.svg'
 

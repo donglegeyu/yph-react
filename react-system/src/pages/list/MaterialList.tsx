@@ -7,10 +7,10 @@ import {
   CompanyDrawer,
   CompanyCheckbox,
   CompanyMessage,
+  ActionCell,
+  SvgIcon,
+  SmartListTemplate,
 } from '@donglegeyu/company-ui'
-import SmartListTemplate from '@/components/SmartListTemplate'
-import ActionCell from '@/components/ActionCell'
-import SvgIcon from '@/components/SvgIcon'
 import type { FieldDefinition } from '@/types'
 import { API_ENDPOINTS } from '@/constants/api'
 import { useListData, useStatusMap, useDateFormat, useColumnSettings, useMenuTitle } from '@/hooks'

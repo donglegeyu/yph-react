@@ -2,15 +2,15 @@ import { useEffect, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Tag, Space } from 'antd'
 import {
+  ActionCell,
   CompanyButton,
   CompanyMessage,
   SmartListTemplate,
   SvgIcon,
+  ColumnSettingsPanel,
+  type ColumnField,
   type FieldDefinition,
 } from '@donglegeyu/company-ui'
-import ActionCell from '@/components/ActionCell'
-import ColumnSettingsPanel from '@/components/ColumnSettingsPanel'
-import type { ColumnField } from '@/components/ColumnSettingsPanel'
 import { API_ENDPOINTS } from '@/constants/api'
 import { useListData } from '@/hooks'
 

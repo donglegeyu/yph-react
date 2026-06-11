@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store/app'
-import SvgIcon from '@/components/SvgIcon'
+import { SvgIcon } from '@donglegeyu/company-ui'
 import './MoreMenuDrawer.scss'
 
 const iconMap: Record<string, string> = {

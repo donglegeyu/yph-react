@@ -4,10 +4,10 @@ import { Tag, Space } from 'antd'
 import {
   CompanyButton,
   CompanyMessage,
+  ActionCell,
+  SvgIcon,
 } from '@donglegeyu/company-ui'
 import ListPageTemplate from '@/components/ListPageTemplate'
-import ActionCell from '@/components/ActionCell'
-import SvgIcon from '@/components/SvgIcon'
 import type { FilterItem } from '@/types'
 import { API_ENDPOINTS } from '@/constants/api'
 import { useListData, useStatusMap, useDateFormat, useActions } from '@/hooks'

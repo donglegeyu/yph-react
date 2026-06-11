@@ -12,11 +12,11 @@ import {
   CompanyPopconfirm,
   CompanyDropdown,
   CompanyCheckbox,
+  FilterForm,
+  ActionCell,
+  SvgIcon,
+  IconSelect,
 } from '@donglegeyu/company-ui'
-import FilterForm from '@/components/FilterForm'
-import ActionCell from '@/components/ActionCell'
-import IconSelect from '@/components/IconSelect'
-import SvgIcon from '@/components/SvgIcon'
 import { useAppStore } from '@/store/app'
 import { API_ENDPOINTS } from '@/constants/api'
 import PageErrorBoundary from '@/components/PageErrorBoundary'
