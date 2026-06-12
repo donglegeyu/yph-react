@@ -85,12 +85,34 @@
       justify-content: space-between;
       padding: calc(var(--spacing-md) * 1px) calc(var(--spacing-sm) * 1px) calc(var(--spacing-sm) * 1px);
 
+      .scq-table-header-left {
+        display: flex;
+        align-items: center;
+        gap: calc(var(--spacing-sm) * 1px);
+      }
+
+      .scq-table-header-right {
+        display: flex;
+        align-items: center;
+        gap: calc(var(--spacing-xs) * 1px);
+      }
+
+      .scq-filter-btn {
+        border-color: var(--primary-color);
+        color: var(--color-text);
+
+        &:hover {
+          border-color: var(--primary-color);
+        }
+      }
+
       .icon-only-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         width: 32px;
         height: 32px;
+        border: 1px solid var(--color-border);
         border-radius: calc(var(--border-radius-base) * 1px);
         cursor: pointer;
         color: var(--color-text-tertiary);
@@ -98,6 +120,56 @@
 
         &:hover {
           background: var(--primary-1);
+          color: var(--primary-color);
+        }
+      }
+    }
+
+    .scq-filter-tags {
+      display: flex;
+      align-items: center;
+      gap: calc(var(--spacing-sm) * 1px);
+      padding: 0 calc(var(--spacing-sm) * 1px) calc(var(--spacing-sm) * 1px);
+
+      .scq-filter-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 4px;
+        background: var(--color-bg-tertiary, #fff1e6);
+        border-radius: 4px;
+        font-size: calc(var(--font-size-sm) * 1px);
+        color: var(--color-text);
+        line-height: 22px;
+
+        .scq-filter-tag-text {
+          white-space: nowrap;
+        }
+
+        .scq-filter-tag-close {
+          font-size: 12px;
+          color: var(--color-text);
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+
+          &:hover {
+            color: var(--primary-color);
+          }
+        }
+      }
+
+      .scq-filter-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        font-size: calc(var(--font-size-sm) * 1px);
+        color: var(--color-text-tertiary);
+        cursor: pointer;
+        line-height: 22px;
+
+        &:hover {
           color: var(--primary-color);
         }
       }

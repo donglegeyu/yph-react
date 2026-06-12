@@ -1044,9 +1044,10 @@ export default function MenuManagement() {
         open={modalVisible}
         title={modalTitle}
         width={360}
+        className="menu-form-drawer"
         onClose={handleModalCancel}
         footer={
-          <div style={{ textAlign: 'right' }}>
+          <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <CompanyButton onClick={handleModalCancel}>取消</CompanyButton>
             <CompanyButton type="primary" onClick={handleModalOk}>确定</CompanyButton>
           </div>

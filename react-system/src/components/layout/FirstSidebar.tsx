@@ -129,10 +129,12 @@ export default function FirstSidebar() {
     if (path === '/home') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveKey('home')
+      selectFirstMenu('home')
       return
     }
     if (path === '/favorites') {
       setActiveKey('favorites')
+      selectFirstMenu('favorites')
       return
     }
 
@@ -145,7 +147,9 @@ export default function FirstSidebar() {
   useEffect(() => {
     const unsub = useAppStore.subscribe((state) => {
       const newMenu = state.activeFirstMenu
-      if (newMenu === 'home' || newMenu === 'favorites' || !newMenu) {
+      if (newMenu === 'home' || newMenu === 'favorites') {
+        setActiveKey(newMenu)
+      } else if (!newMenu) {
         setActiveKey('')
       } else {
         setActiveKey(newMenu)

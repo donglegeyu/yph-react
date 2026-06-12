@@ -36,7 +36,6 @@ const ConstructionApplicationList = lazy(() => import('@/pages/common/Constructi
 const PurchaseDemandCreate = lazy(() => import('@/pages/purchase/PurchaseDemandCreate'))
 const PurchaseDemandDetail = lazy(() => import('@/pages/purchase/PurchaseDemandDetail'))
 const PurchaseDemandList = lazy(() => import('@/pages/purchase/PurchaseDemandList'))
-const PurchaseOrderList = lazy(() => import('@/pages/purchase/PurchaseOrderList'))
 const PurchaseOrderCreate = lazy(() => import('@/pages/purchase/PurchaseOrderCreate'))
 const PurchaseOrderDetail = lazy(() => import('@/pages/purchase/PurchaseOrderDetail'))
 const PurchaseMinOrder = lazy(() => import('@/pages/purchase/PurchaseMinOrder'))
@@ -64,6 +63,7 @@ const CostDeductionConfig = lazy(() => import('@/pages/purchase/CostDeductionCon
 const CostDeductionAdjust = lazy(() => import('@/pages/purchase/CostDeductionAdjust'))
 const SecurityCheckQuery = lazy(() => import('@/pages/common/SecurityCheckQuery'))
 const SecurityCheckDetail = lazy(() => import('@/pages/common/SecurityCheckDetail'))
+const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
 
 const routes: RouteObject[] = [
   {
@@ -77,7 +77,7 @@ const routes: RouteObject[] = [
     errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Navigate to="/home" replace /> },
-      { path: 'home', element: <HomeView /> },
+      { path: 'home', element: <SalesDashboard /> },
       { path: 'building', element: <BuildingView /> },
       { path: 'materials/create', element: <MaterialCreate /> },
       { path: 'materials/:id', element: <MaterialDetail /> },
@@ -99,7 +99,6 @@ const routes: RouteObject[] = [
       { path: 'purchase-demand/create', element: <PurchaseDemandCreate /> },
       { path: 'purchase-demand/:id', element: <PurchaseDemandDetail /> },
       { path: 'purchase-demand', element: <PurchaseDemandList /> },
-      { path: 'purchase-order', element: <PurchaseOrderList /> },
       { path: 'purchase-order/create', element: <PurchaseOrderCreate /> },
       { path: 'purchase-order/:id', element: <PurchaseOrderDetail /> },
       { path: 'purchase-min-order', element: <PurchaseMinOrder /> },
