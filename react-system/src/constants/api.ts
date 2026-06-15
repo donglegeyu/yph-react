@@ -48,6 +48,12 @@ export const API_ENDPOINTS = {
 
   // 用户管理
   SYS_USERS: `${API_BASE}/sys/users`,
+
+  // 部门管理
+  SYS_DEPTS: `${API_BASE}/sys/depts`,
+
+  // 角色管理
+  SYS_ROLES: `${API_BASE}/sys/roles`,
 } as const
 
 // 图标服务 API

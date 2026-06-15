@@ -11,11 +11,11 @@ import java.util.List;
 
 public interface SysUserService extends IService<SysUser> {
 
-    IPage<SysUserVO> page(Page<SysUser> page, String username, Integer status);
+    IPage<SysUserVO> page(Page<SysUser> page, String username, Integer status, Long deptId);
 
-    SysUser create(SysUser user);
+    SysUser create(SysUser user, List<Long> roleIds);
 
-    void update(Long id, SysUser user);
+    void update(Long id, SysUser user, List<Long> roleIds);
 
     void updateStatus(Long id, Integer status);
 

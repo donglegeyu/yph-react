@@ -19,6 +19,14 @@ public class NavMenu {
 
     private String path;
 
+    private String component;
+
+    private String perms;
+
+    private Integer visible;
+
+    private String menuCategory;
+
     private String icon;
 
     private Integer sort;

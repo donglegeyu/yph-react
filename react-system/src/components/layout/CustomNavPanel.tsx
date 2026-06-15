@@ -67,7 +67,10 @@ export default function CustomNavPanel({
   onUpdate,
 }: CustomNavPanelProps) {
   const [allMenus, setAllMenus] = useState<MenuItem[]>([])
+  const [dragIndex, setDragIndex] = useState(-1)
+  const [dragOverIndex, setDragOverIndex] = useState(-1)
   const dragIndexRef = useRef(-1)
+  const dragOverIndexRef = useRef(-1)
 
   useEffect(() => {
     if (visible && menus && menus.length > 0) {
@@ -89,33 +92,43 @@ export default function CustomNavPanel({
 
   function onDragStart(e: React.DragEvent, index: number) {
     dragIndexRef.current = index
+    setDragIndex(index)
     e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
   }
 
-  function onDragOver(e: React.DragEvent) {
+  function onDragOverItem(e: React.DragEvent, index: number) {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-  }
-
-  function onDragEnter(e: React.DragEvent, index: number) {
-    e.preventDefault()
-    if (dragIndexRef.current !== -1 && dragIndexRef.current !== index) {
-      setAllMenus((prev) => {
-        const arr = [...prev]
-        const [item] = arr.splice(dragIndexRef.current, 1)
-        arr.splice(index, 0, item)
-        dragIndexRef.current = index
-        return arr
-      })
+    if (dragOverIndexRef.current !== index) {
+      dragOverIndexRef.current = index
+      setDragOverIndex(index)
     }
   }
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
+    const from = dragIndexRef.current
+    const to = dragOverIndexRef.current
+    if (from !== -1 && to !== -1 && from !== to) {
+      setAllMenus((prev) => {
+        const arr = [...prev]
+        const [item] = arr.splice(from, 1)
+        arr.splice(to, 0, item)
+        return arr
+      })
+    }
+    dragIndexRef.current = -1
+    dragOverIndexRef.current = -1
+    setDragIndex(-1)
+    setDragOverIndex(-1)
   }
 
   function onDragEnd() {
     dragIndexRef.current = -1
+    dragOverIndexRef.current = -1
+    setDragIndex(-1)
+    setDragOverIndex(-1)
   }
 
   function handleCancel() {
@@ -142,11 +155,10 @@ export default function CustomNavPanel({
             <div key={item.key}>
               {index === totalCount && <div className="menu-divider" />}
               <div
-                className={`menu-item${index < totalCount ? ' on-nav' : ''}${dragIndexRef.current === index ? ' dragging' : ''}`}
+                className={`menu-item${index < totalCount ? ' on-nav' : ''}${dragIndex === index ? ' dragging' : ''}${dragOverIndex === index ? ' drag-over' : ''}`}
                 draggable
                 onDragStart={(e) => onDragStart(e, index)}
-                onDragOver={onDragOver}
-                onDragEnter={(e) => onDragEnter(e, index)}
+                onDragOver={(e) => onDragOverItem(e, index)}
                 onDrop={onDrop}
                 onDragEnd={onDragEnd}
               >

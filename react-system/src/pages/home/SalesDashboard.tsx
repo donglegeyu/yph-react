@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Dropdown, Radio, Tag } from 'antd'
 import type { MenuProps } from 'antd'
 import { DownOutlined } from '@ant-design/icons'
 import { Column } from '@ant-design/charts'
-import { CompanyButton } from '@donglegeyu/company-ui'
+import { CompanyButton, useCompanyToken } from '@donglegeyu/company-ui'
 import './SalesDashboard.scss'
 
 interface SalesSummary {
@@ -105,15 +105,16 @@ const periodItems: MenuProps['items'] = [
 export default function SalesDashboard() {
   const [activeView, setActiveView] = useState<'default' | 'sales'>('sales')
   const [trendMode, setTrendMode] = useState<'amount' | 'count'>('amount')
-
-  const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#F95914'
+  
+  const token = useCompanyToken()
+  const primaryColor = token?.colorPrimary || '#F95914'
 
   const chartData = mockTrends.map((t) => ({
     month: t.month,
     value: t.amount,
   }))
 
-  const chartConfig = {
+  const chartConfig = useMemo(() => ({
     data: chartData,
     xField: 'month',
     yField: 'value',
@@ -158,7 +159,7 @@ export default function SalesDashboard() {
         marker: false,
       },
     },
-  }
+  }), [primaryColor])
 
   const renderSummarySection = () => (
     <div className="summary-card">

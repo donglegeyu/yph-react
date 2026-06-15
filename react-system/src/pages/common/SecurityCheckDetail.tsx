@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { CompanyButton, CompanyTable, CompanyTabs, CompanyTag, CompanyMessage, PageTitle } from '@donglegeyu/company-ui'
+import { CompanyButton, CompanyTable, CompanyTabs, CompanyTag, PageTitle } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
-import request from '@/utils/request'
 import './SecurityCheckDetail.scss'
 
 interface CheckItem {
@@ -17,16 +16,25 @@ interface CheckItem {
 
 interface DetailInfo {
   id: number
-  orderNo: string
+  orderCode: string
   gasCode: string
+  customerName: string
   phone: string
   reportBook: string
-  area: string
+  checkArea: string
   company: string
   checkUser: string
-  status: string
+  checkStatus: string
   userType: string
   uploadStatus: string
+  visitResult: string
+  hasDanger: string
+  maxDangerLevel: string
+  dangerCount: string
+  checkCategory: string
+  address: string
+  checkDate: string
+  hiddenDanger: string
   avatarName: string
 }
 
@@ -39,13 +47,22 @@ const checkItemColumns = [
 ]
 
 const infoFields = [
-  { label: '工单编号', key: 'orderNo' },
-  { label: '燃气编号', key: 'gasCode' },
+  { label: '工单编号', key: 'orderCode' },
+  { label: '燃气编码', key: 'gasCode' },
+  { label: '客户名称', key: 'customerName' },
   { label: '联系电话', key: 'phone' },
   { label: '报表册', key: 'reportBook' },
-  { label: '安检片区', key: 'area' },
+  { label: '安检片区', key: 'checkArea' },
   { label: '所属公司', key: 'company' },
+  { label: '安检分类', key: 'checkCategory' },
+  { label: '详细地址', key: 'address' },
 ]
+
+const checkStatusText: Record<string, string> = {
+  checked: '已安检',
+  unchecked: '未安检',
+  recheck: '待复检',
+}
 
 export default function SecurityCheckDetail() {
   const { id } = useParams()
@@ -59,14 +76,14 @@ export default function SecurityCheckDetail() {
     if (!id) return
     setLoading(true)
     try {
-      const res = await request.get(`${API_ENDPOINTS.SECURITY_CHECKS}/${id}`)
-      if (res?.data) {
-        setDetail(res.data as DetailInfo)
-      } else {
-        setDetail(mockDetail(id))
+      const res = await fetch(`${API_ENDPOINTS.SECURITY_CHECKS}/${id}`)
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+      const json = await res.json()
+      if (json.code === 200 && json.data) {
+        setDetail(json.data as DetailInfo)
       }
     } catch {
-      setDetail(mockDetail(id))
+      // 接口异常时不展示兜底数据
     } finally {
       setLoading(false)
     }
@@ -119,13 +136,15 @@ export default function SecurityCheckDetail() {
           <div className="scd-user-top">
             <div className="scd-user-info">
               <div className="scd-avatar">
-                {detail.avatarName?.charAt(0) || '?'}
+                {(detail.customerName || detail.checkUser || '?').charAt(0)}
               </div>
-              <span className="scd-username">{detail.checkUser || '--'}</span>
+              <span className="scd-username">{detail.customerName || detail.checkUser || '--'}</span>
             </div>
             <div className="scd-user-tags">
-              {detail.status && (
-                <CompanyTag className="scd-tag-default">{detail.status}</CompanyTag>
+              {detail.checkStatus && (
+                <CompanyTag className="scd-tag-default">
+                  {checkStatusText[detail.checkStatus] || detail.checkStatus}
+                </CompanyTag>
               )}
               {detail.userType && (
                 <CompanyTag className="scd-tag-default">{detail.userType}</CompanyTag>
@@ -194,20 +213,3 @@ const mockCheckItems: CheckItem[] = [
   { id: 5, projectName: '通风检查', checkContent: '检查厨房通风情况', checkResult: '合格', status: '合格', remark: '' },
   { id: 6, projectName: '软管检查', checkContent: '检查燃气软管是否老化', checkResult: '待检查', status: '待检查', remark: '软管使用已超2年，建议更换' },
 ]
-
-function mockDetail(id: string): DetailInfo {
-  return {
-    id: Number(id) || 1,
-    orderNo: 'GD20260415001',
-    gasCode: 'RQ2026001234',
-    phone: '138****8888',
-    reportBook: '第3册',
-    area: '城东片区',
-    company: '城市燃气有限公司',
-    checkUser: '张三',
-    status: '已安检',
-    userType: '居民用户',
-    uploadStatus: '已上传',
-    avatarName: '张三',
-  }
-}

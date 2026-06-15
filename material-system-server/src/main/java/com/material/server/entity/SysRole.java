@@ -6,31 +6,23 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("sys_user")
-public class SysUser {
+@TableName("sys_role")
+public class SysRole {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String username;
+    private String roleName;
 
-    private String password;
+    private String roleCode;
 
-    private String nickname;
+    private Integer dataScope;
 
-    private String realName;
-
-    private Long deptId;
-
-    private String phone;
-
-    private String email;
+    private Integer sortOrder;
 
     private Integer status;
 
-    private LocalDateTime lastLoginTime;
-
-    private String lastLoginIp;
+    private String remark;
 
     private LocalDateTime createTime;
 

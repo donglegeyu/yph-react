@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react'
-import { Form, Input, Radio, Checkbox, Descriptions, Tag, Space } from 'antd'
+import { Form, Input, Radio, Checkbox, Descriptions, Tag, Space, TreeSelect, Select } from 'antd'
 import {
   CompanyButton,
   CompanyDrawer,
@@ -19,13 +19,27 @@ interface DomainBrief {
   domainName: string
 }
 
+interface RoleBrief {
+  id: number
+  roleName: string
+  roleCode: string
+}
+
 interface UserRecord {
   [key: string]: unknown
   id: number
   username: string
   nickname: string
+  realName?: string
+  deptId?: number
+  deptName?: string
+  companyId?: number
+  companyName?: string
+  phone?: string
+  email?: string
   status: number
   domains?: DomainBrief[]
+  roles?: RoleBrief[]
   createTime: string
   updateTime: string
 }
@@ -33,32 +47,68 @@ interface UserRecord {
 interface UserFormValues {
   username: string
   nickname: string
+  realName?: string
   password?: string
+  deptId?: number
+  phone?: string
+  email?: string
   status: number
+}
+
+interface DeptItem {
+  id: number
+  deptName: string
+  children?: DeptItem[]
+}
+
+interface RoleItem {
+  id: number
+  roleName: string
+  roleCode: string
 }
 
 const fields: FieldDefinition[] = [
   { key: 'username', label: '用户名', type: 'input', placeholder: '请输入用户名', width: 160 },
   { key: 'nickname', label: '昵称', type: 'input', placeholder: '请输入昵称', width: 160 },
+  { key: 'realName', label: '真实姓名', type: 'input', placeholder: '请输入真实姓名', width: 120 },
+  { key: 'companyName', label: '所属公司', type: 'input', placeholder: '请输入公司', width: 140 },
+  { key: 'deptName', label: '所属部门', type: 'input', placeholder: '请输入部门', width: 140 },
   { key: 'status', label: '状态', type: 'select', width: 100, options: [
     { label: '全部', value: '' },
     { label: '启用', value: 1 },
     { label: '禁用', value: 0 },
   ]},
-  { key: 'domains', label: '关联域', width: 240 },
+  { key: 'domains', label: '关联域', width: 220 },
+  { key: 'roles', label: '角色', width: 180 },
+  { key: 'createTime', label: '创建时间', type: 'date', width: 170 },
   { key: 'action', label: '操作', width: 200, fixed: 'right' },
 ]
 
 const defaultColumnFields: ColumnField[] = [
-  { key: 'username', label: '用户名', visible: true, width: 160 },
-  { key: 'nickname', label: '昵称', visible: true, width: 160 },
-  { key: 'status', label: '状态', visible: true, width: 100 },
-  { key: 'domains', label: '关联域', visible: true, width: 240 },
-  { key: 'createTime', label: '创建时间', visible: true, width: 180 },
-  { key: 'updateTime', label: '更新时间', visible: true, width: 180 },
+  { key: 'username', label: '用户名', visible: true, width: 140 },
+  { key: 'nickname', label: '昵称', visible: true, width: 120 },
+  { key: 'realName', label: '真实姓名', visible: true, width: 120 },
+  { key: 'companyName', label: '所属公司', visible: true, width: 140 },
+  { key: 'deptName', label: '所属部门', visible: true, width: 140 },
+  { key: 'status', label: '状态', visible: true, width: 90 },
+  { key: 'domains', label: '关联域', visible: true, width: 200 },
+  { key: 'roles', label: '角色', visible: true, width: 160 },
+  { key: 'createTime', label: '创建时间', visible: true, width: 170 },
 ]
 
-const STORAGE_KEY = 'user-management-column-settings'
+const STORAGE_KEY = 'user-management-column-settings-v2'
+
+function buildDeptTreeData(depts: DeptItem[]): Array<{
+  title: string
+  value: number
+  children?: ReturnType<typeof buildDeptTreeData>
+}> {
+  return depts.map((d) => ({
+    title: d.deptName,
+    value: d.id,
+    children: d.children && d.children.length > 0 ? buildDeptTreeData(d.children) : undefined,
+  }))
+}
 
 export default function UserManagement() {
   const { loading, dataSource, pagination, filterParams, setFilterParams, fetchData, refresh } = useListData<UserRecord>({
@@ -86,6 +136,9 @@ export default function UserManagement() {
   const [formLoading, setFormLoading] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form] = Form.useForm<UserFormValues>()
+  const [deptTree, setDeptTree] = useState<DeptItem[]>([])
+  const [roleList, setRoleList] = useState<RoleItem[]>([])
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([])
 
   const [domainVisible, setDomainVisible] = useState(false)
   const [domainLoading, setDomainLoading] = useState(false)
@@ -110,30 +163,52 @@ export default function UserManagement() {
     } catch { /* ignore */ }
   }, [])
 
-  const openCreate = useCallback(() => {
+  const loadDeptAndRoles = useCallback(async () => {
+    try {
+      const [deptRes, roleRes] = await Promise.all([
+        fetch(API_ENDPOINTS.SYS_DEPTS),
+        fetch(`${API_ENDPOINTS.SYS_ROLES}/all`),
+      ])
+      const deptJson = await deptRes.json()
+      const roleJson = await roleRes.json()
+      if (deptJson.code === 200) setDeptTree(deptJson.data || [])
+      if (roleJson.code === 200) setRoleList(roleJson.data || [])
+    } catch { /* ignore */ }
+  }, [])
+
+  const openCreate = useCallback(async () => {
     setEditingId(null)
+    setSelectedRoleIds([])
     form.resetFields()
     form.setFieldsValue({ status: 1 })
     setFormVisible(true)
-  }, [form])
+    await loadDeptAndRoles()
+  }, [form, loadDeptAndRoles])
 
-  const openEdit = useCallback((record: UserRecord) => {
+  const openEdit = useCallback(async (record: UserRecord) => {
     setEditingId(record.id)
+    setSelectedRoleIds((record.roles || []).map((r) => r.id))
     form.setFieldsValue({
       username: record.username,
       nickname: record.nickname,
+      realName: record.realName,
+      deptId: record.deptId,
+      phone: record.phone,
+      email: record.email,
       status: record.status,
     })
     setFormVisible(true)
-  }, [form])
+    await loadDeptAndRoles()
+  }, [form, loadDeptAndRoles])
 
   const handleFormSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields()
       setFormLoading(true)
+      const payload = { ...values, roleIds: selectedRoleIds }
 
       if (editingId === null) {
-        const newId = await createUser(values)
+        const newId = await createUser(payload)
         if (newId !== null) {
           CompanyMessage.success('新增成功')
           setFormVisible(false)
@@ -142,7 +217,7 @@ export default function UserManagement() {
           CompanyMessage.error('新增失败，请稍后重试')
         }
       } else {
-        const ok = await updateUser(editingId, values)
+        const ok = await updateUser(editingId, payload)
         if (ok) {
           CompanyMessage.success('编辑成功')
           setFormVisible(false)
@@ -152,11 +227,11 @@ export default function UserManagement() {
         }
       }
     } catch {
-      /* 校验失败，忽略 */
+      /* 校验失败 */
     } finally {
       setFormLoading(false)
     }
-  }, [form, editingId, createUser, updateUser, refresh])
+  }, [form, editingId, selectedRoleIds, createUser, updateUser, refresh])
 
   const handleToggleStatus = useCallback(async (record: UserRecord) => {
     const newStatus = record.status === 1 ? 0 : 1
@@ -223,15 +298,27 @@ export default function UserManagement() {
         if (domains.length === 0) {
           return <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
         }
-        return (
-          <Space size={[4, 4]} wrap>
-            {domains.map((domain) => (
-              <CompanyTag key={domain.id} color="processing">
-                {domain.domainName}
-              </CompanyTag>
-            ))}
-          </Space>
-        )
+        return <span>{domains.map((d) => d.domainName).join('、')}</span>
+      }
+
+      if (column.key === 'roles') {
+        const roles = userRecord.roles || []
+        if (roles.length === 0) {
+          return <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
+        }
+        return <span>{roles.map((r) => r.roleName).join('、')}</span>
+      }
+
+      if (column.key === 'companyName') {
+        return <span>{userRecord.companyName || <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>}</span>
+      }
+
+      if (column.key === 'deptName') {
+        return <span>{userRecord.deptName || <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>}</span>
+      }
+
+      if (column.key === 'realName') {
+        return <span>{userRecord.realName || <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>}</span>
       }
 
       if (column.key === 'action') {
@@ -290,7 +377,7 @@ export default function UserManagement() {
         title={editingId === null ? '新增用户' : '编辑用户'}
         open={formVisible}
         onClose={() => setFormVisible(false)}
-        size={420}
+        size={480}
         destroyOnHidden
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -301,11 +388,7 @@ export default function UserManagement() {
           </div>
         }
       >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ status: 1 }}
-        >
+        <Form form={form} layout="vertical" initialValues={{ status: 1 }}>
           <Form.Item
             name="username"
             label="用户名"
@@ -320,6 +403,9 @@ export default function UserManagement() {
           >
             <Input placeholder="请输入昵称" maxLength={50} />
           </Form.Item>
+          <Form.Item name="realName" label="真实姓名">
+            <Input placeholder="请输入真实姓名" maxLength={50} />
+          </Form.Item>
           <Form.Item
             name="password"
             label="密码"
@@ -327,6 +413,30 @@ export default function UserManagement() {
             extra={editingId !== null ? '留空则不修改密码' : undefined}
           >
             <Input.Password placeholder="请输入密码" maxLength={50} />
+          </Form.Item>
+          <Form.Item name="deptId" label="所属部门">
+            <TreeSelect
+              treeData={buildDeptTreeData(deptTree)}
+              placeholder="请选择部门"
+              allowClear
+              treeDefaultExpandAll
+            />
+          </Form.Item>
+          <Form.Item label="角色">
+            <Select
+              mode="multiple"
+              placeholder="请选择角色（可多选）"
+              value={selectedRoleIds}
+              onChange={(values) => setSelectedRoleIds(values as number[])}
+              options={roleList.map((r) => ({ label: r.roleName, value: r.id }))}
+              allowClear
+            />
+          </Form.Item>
+          <Form.Item name="phone" label="手机号">
+            <Input placeholder="请输入手机号" maxLength={20} />
+          </Form.Item>
+          <Form.Item name="email" label="邮箱">
+            <Input placeholder="请输入邮箱" maxLength={100} />
           </Form.Item>
           <Form.Item name="status" label="状态">
             <Radio.Group>
@@ -385,12 +495,40 @@ export default function UserManagement() {
           <Descriptions column={2} bordered size="small">
             <Descriptions.Item label="用户名">{currentDetail.username}</Descriptions.Item>
             <Descriptions.Item label="昵称">{currentDetail.nickname}</Descriptions.Item>
+            <Descriptions.Item label="真实姓名">
+              {currentDetail.realName || '--'}
+            </Descriptions.Item>
+            <Descriptions.Item label="所属公司">
+              {currentDetail.companyName || '--'}
+            </Descriptions.Item>
+            <Descriptions.Item label="所属部门">
+              {currentDetail.deptName || '--'}
+            </Descriptions.Item>
+            <Descriptions.Item label="手机号">
+              {currentDetail.phone || '--'}
+            </Descriptions.Item>
+            <Descriptions.Item label="邮箱">
+              {currentDetail.email || '--'}
+            </Descriptions.Item>
             <Descriptions.Item label="状态">
               <Tag color={currentDetail.status === 1 ? 'success' : 'default'}>
                 {currentDetail.status === 1 ? '启用' : '禁用'}
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="用户ID">{currentDetail.id}</Descriptions.Item>
+            <Descriptions.Item label="角色" span={2}>
+              {(currentDetail.roles || []).length === 0 ? (
+                <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
+              ) : (
+                <Space size={[4, 4]} wrap>
+                  {(currentDetail.roles || []).map((role) => (
+                    <Tag key={role.id} color="warning">
+                      {role.roleName}
+                    </Tag>
+                  ))}
+                </Space>
+              )}
+            </Descriptions.Item>
             <Descriptions.Item label="关联域" span={2}>
               {(currentDetail.domains || []).length === 0 ? (
                 <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>

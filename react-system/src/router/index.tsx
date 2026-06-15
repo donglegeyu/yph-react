@@ -28,6 +28,8 @@ const ComponentPreview = lazy(() => import('@/pages/common/ComponentPreview'))
 const DomainForm = lazy(() => import('@/pages/form/DomainForm'))
 const DomainManagement = lazy(() => import('@/pages/common/DomainManagement'))
 const UserManagement = lazy(() => import('@/pages/common/UserManagement'))
+const DepartmentManagement = lazy(() => import('@/pages/common/DepartmentManagement'))
+const RoleManagement = lazy(() => import('@/pages/common/RoleManagement'))
 const PermissionQuery = lazy(() => import('@/pages/common/PermissionQuery'))
 const JiuHaoHang = lazy(() => import('@/pages/common/JiuHaoHang'))
 const ConstructionList = lazy(() => import('@/pages/common/ConstructionList'))
@@ -94,6 +96,8 @@ const routes: RouteObject[] = [
       { path: 'domain-manage/:id', element: <DomainForm /> },
       { path: 'domain-manage', element: <DomainManagement /> },
       { path: 'user-management', element: <UserManagement /> },
+      { path: 'department-management', element: <DepartmentManagement /> },
+      { path: 'role-management', element: <RoleManagement /> },
       { path: 'permission-query', element: <PermissionQuery /> },
       { path: 'dao-hang', element: <JiuHaoHang /> },
       { path: 'purchase-demand/create', element: <PurchaseDemandCreate /> },

@@ -102,6 +102,11 @@
       opacity: 0.5;
     }
 
+    &.drag-over {
+      border-color: #F95914;
+      border-style: dashed;
+    }
+
     .nav-badge {
       font-size: 10px;
       color: rgba(0, 0, 0, 0.45);
