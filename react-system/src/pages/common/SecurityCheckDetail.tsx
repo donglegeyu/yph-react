@@ -62,9 +62,11 @@ export default function SecurityCheckDetail() {
       const res = await request.get(`${API_ENDPOINTS.SECURITY_CHECKS}/${id}`)
       if (res?.data) {
         setDetail(res.data as DetailInfo)
+      } else {
+        setDetail(mockDetail(id))
       }
     } catch {
-      CompanyMessage.error('获取详情失败')
+      setDetail(mockDetail(id))
     } finally {
       setLoading(false)
     }
@@ -73,6 +75,10 @@ export default function SecurityCheckDetail() {
   useEffect(() => {
     fetchDetail()
   }, [fetchDetail])
+
+  useEffect(() => {
+    setCheckItems(mockCheckItems)
+  }, [])
 
   const tableColumns = checkItemColumns
     .filter((col) => col.visible)
@@ -178,4 +184,30 @@ export default function SecurityCheckDetail() {
       </div>
     </div>
   )
+}
+
+const mockCheckItems: CheckItem[] = [
+  { id: 1, projectName: '燃气表检查', checkContent: '检查燃气表是否正常运行', checkResult: '合格', status: '合格', remark: '燃气表读数正常' },
+  { id: 2, projectName: '管道密封性', checkContent: '检查管道接口密封情况', checkResult: '合格', status: '合格', remark: '' },
+  { id: 3, projectName: '阀门检查', checkContent: '检查阀门开关是否灵活', checkResult: '合格', status: '合格', remark: '' },
+  { id: 4, projectName: '报警器检查', checkContent: '检查燃气报警器是否正常', checkResult: '不合格', status: '不合格', remark: '报警器电池电量不足，建议更换' },
+  { id: 5, projectName: '通风检查', checkContent: '检查厨房通风情况', checkResult: '合格', status: '合格', remark: '' },
+  { id: 6, projectName: '软管检查', checkContent: '检查燃气软管是否老化', checkResult: '待检查', status: '待检查', remark: '软管使用已超2年，建议更换' },
+]
+
+function mockDetail(id: string): DetailInfo {
+  return {
+    id: Number(id) || 1,
+    orderNo: 'GD20260415001',
+    gasCode: 'RQ2026001234',
+    phone: '138****8888',
+    reportBook: '第3册',
+    area: '城东片区',
+    company: '城市燃气有限公司',
+    checkUser: '张三',
+    status: '已安检',
+    userType: '居民用户',
+    uploadStatus: '已上传',
+    avatarName: '张三',
+  }
 }

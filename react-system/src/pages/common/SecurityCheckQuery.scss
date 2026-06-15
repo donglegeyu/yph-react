@@ -4,7 +4,7 @@
   height: 100%;
   padding: 0 calc(var(--spacing-sm) * 1px);
 
-  .page-title .title-suffix {
+  .page-title .page-title-suffix {
     display: flex;
     align-items: center;
     gap: calc(var(--spacing-md) * 1px);
@@ -98,11 +98,10 @@
       }
 
       .scq-filter-btn {
-        border-color: var(--primary-color);
-        color: var(--color-text);
-
-        &:hover {
-          border-color: var(--primary-color);
+        &.scq-filter-btn-active {
+          border-color: var(--primary-color) !important;
+          color: var(--primary-color) !important;
+          background: var(--primary-1) !important;
         }
       }
 

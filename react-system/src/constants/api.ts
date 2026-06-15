@@ -45,6 +45,9 @@ export const API_ENDPOINTS = {
   DOMAIN_MENUS_BATCH: `${API_BASE}/sys/domain-menus/batch`,
   DATA_PERMISSIONS: `${API_BASE}/sys/data-permissions`,
   DATA_PERMISSIONS_BATCH: `${API_BASE}/sys/data-permissions/batch`,
+
+  // 用户管理
+  SYS_USERS: `${API_BASE}/sys/users`,
 } as const
 
 // 图标服务 API

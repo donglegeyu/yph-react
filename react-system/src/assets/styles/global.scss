@@ -362,8 +362,6 @@ body {
   background: var(--color-bg-light) !important;
   font-weight: 600;
   border-top: none !important;
-  height: 46px !important;
-  padding: 7px 16px !important;
 }
 
 .ant-table-thead > tr > th.ant-table-cell-fix-end {
@@ -371,14 +369,7 @@ body {
 }
 
 .ant-table-cell {
-  padding: 12px 16px !important;
   white-space: nowrap !important;
-}
-
-/* 表格行高 46px */
-.ant-table-tbody > tr > td {
-  height: 46px !important;
-  padding: 7px 16px !important;
 }
 
 /* 状态标签样式 - Ghost Tag */

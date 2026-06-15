@@ -2,6 +2,7 @@ package com.material.server.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.material.server.dto.SysUserVO;
 import com.material.server.entity.SysUser;
 import com.material.server.service.SysUserService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ public class SysUserController {
             @RequestParam(required = false) String username,
             @RequestParam(required = false) Integer status) {
         Page<SysUser> page = new Page<>(current, size);
-        IPage<SysUser> result = sysUserService.page(page, username, status);
+        IPage<SysUserVO> result = sysUserService.page(page, username, status);
 
         Map<String, Object> response = new HashMap<>();
         response.put("code", 200);

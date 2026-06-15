@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState } from 'react'
 import { ConfigProvider, Form } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
-import { DownOutlined, SearchOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons'
+import { DownOutlined, CloseOutlined, DeleteOutlined, FilterOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import {
   CompanyButton,
@@ -26,24 +26,38 @@ import './SecurityCheckQuery.scss'
 interface SecurityCheckRecord {
   [key: string]: unknown
   id: number
+  orderCode: string
   gasCode: string
-  address: string
+  customerName: string
+  checkStatus: string
+  visitResult: string
   checkUser: string
+  hasDanger: string
+  maxDangerLevel: string
+  dangerCount: string
+  address: string
+  company: string
+  checkArea: string
+  checkCategory: string
   checkDate: string
-  checkResult: string
-  hiddenDanger: string
-  status: string
 }
 
 const defaultColumns = [
-  { key: 'gasCode', label: '燃气编号', visible: true, width: 140 },
-  { key: 'address', label: '用户地址', visible: true, width: 260 },
-  { key: 'checkUser', label: '安检人员', visible: true, width: 120 },
-  { key: 'checkDate', label: '安检日期', visible: true, width: 140 },
-  { key: 'checkResult', label: '安检结果', visible: true, width: 120 },
-  { key: 'hiddenDanger', label: '隐患项', visible: true, width: 120 },
-  { key: 'status', label: '状态', visible: true, width: 100 },
-  { key: 'action', label: '操作', visible: true, width: 120, fixed: 'right' as const },
+  { key: 'orderCode', label: '工单编码', visible: true, width: 140 },
+  { key: 'gasCode', label: '燃气编码', visible: true, width: 140 },
+  { key: 'customerName', label: '客户名称', visible: true, width: 140 },
+  { key: 'checkStatus', label: '安检状态', visible: true, width: 100 },
+  { key: 'visitResult', label: '上门结果', visible: true, width: 100 },
+  { key: 'checkUser', label: '安检员', visible: true, width: 100 },
+  { key: 'hasDanger', label: '是否隐患', visible: true, width: 100 },
+  { key: 'maxDangerLevel', label: '最高隐患等级', visible: true, width: 120 },
+  { key: 'dangerCount', label: '隐患数量', visible: true, width: 100 },
+  { key: 'address', label: '地址', visible: true, width: 220 },
+  { key: 'company', label: '所属项目公司', visible: true, width: 160 },
+  { key: 'checkArea', label: '安检片区', visible: true, width: 120 },
+  { key: 'checkCategory', label: '安检分类', visible: true, width: 120 },
+  { key: 'checkDate', label: '安检时间', visible: true, width: 160 },
+  { key: 'action', label: '操作', visible: true, width: 100, fixed: 'right' as const },
 ]
 
 const statisticCards = [
@@ -54,9 +68,21 @@ const statisticCards = [
 ]
 
 const statusMap: Record<string, { text: string; color: string }> = {
-  pass: { text: '合格', color: 'status-approved' },
-  fail: { text: '不合格', color: 'status-rejected' },
-  pending: { text: '待安检', color: 'status-pending' },
+  checked: { text: '已安检', color: 'status-approved' },
+  unchecked: { text: '未安检', color: 'status-rejected' },
+  recheck: { text: '待复检', color: 'status-pending' },
+}
+
+const visitResultMap: Record<string, { text: string; color: string }> = {
+  home: { text: '到访不遇', color: 'status-rejected' },
+  done: { text: '已完成', color: 'status-approved' },
+  refuse: { text: '拒检', color: 'status-pending' },
+}
+
+const dangerLevelMap: Record<string, { text: string; color: string }> = {
+  '1': { text: '一级', color: 'status-rejected' },
+  '2': { text: '二级', color: 'status-pending' },
+  '3': { text: '三级', color: 'status-approved' },
 }
 
 type FilterFieldType = 'input' | 'select' | 'date'
@@ -70,9 +96,9 @@ interface FilterFieldConfig {
 }
 
 const drawerFilterFields: FilterFieldConfig[] = [
-  { key: 'gasCode', label: '燃气编号', type: 'input', placeholder: '请输入燃气编号' },
+  { key: 'gasCode', label: '燃气编码', type: 'input', placeholder: '请输入燃气编码' },
   {
-    key: 'status',
+    key: 'checkStatus',
     label: '安检状态',
     type: 'select',
     placeholder: '请选择安检状态',
@@ -83,18 +109,29 @@ const drawerFilterFields: FilterFieldConfig[] = [
     ],
   },
   {
-    key: 'checkResult',
-    label: '安检结果',
+    key: 'visitResult',
+    label: '上门结果',
     type: 'select',
-    placeholder: '请选择安检结果',
+    placeholder: '请选择上门结果',
     options: [
-      { label: '合格', value: 'pass' },
-      { label: '不合格', value: 'fail' },
+      { label: '到访不遇', value: 'home' },
+      { label: '已完成', value: 'done' },
+      { label: '拒检', value: 'refuse' },
     ],
   },
   {
-    key: 'dangerLevel',
-    label: '隐患等级',
+    key: 'hasDanger',
+    label: '是否隐患',
+    type: 'select',
+    placeholder: '请选择',
+    options: [
+      { label: '是', value: '1' },
+      { label: '否', value: '0' },
+    ],
+  },
+  {
+    key: 'maxDangerLevel',
+    label: '最高隐患等级',
     type: 'select',
     placeholder: '请选择隐患等级',
     options: [
@@ -105,15 +142,15 @@ const drawerFilterFields: FilterFieldConfig[] = [
   },
   {
     key: 'company',
-    label: '所属公司',
+    label: '所属项目公司',
     type: 'select',
-    placeholder: '请选择所属公司',
+    placeholder: '请选择所属项目公司',
     options: [
       { label: '公司A', value: 'a' },
       { label: '公司B', value: 'b' },
     ],
   },
-  { key: 'checkUser', label: '安检人员', type: 'input', placeholder: '请输入安检人员' },
+  { key: 'checkUser', label: '安检员', type: 'input', placeholder: '请输入安检员' },
   {
     key: 'address',
     label: '用户地址',
@@ -173,7 +210,7 @@ export default function SecurityCheckQuery() {
 
   const handleSearch = useCallback(() => {
     if (!searchValue.trim()) {
-      CompanyMessage.warning('请输入燃气编号')
+      CompanyMessage.warning('请输入燃气编码')
       return
     }
     setFilterParams({ ...filterParams, gasCode: searchValue })
@@ -214,6 +251,11 @@ export default function SecurityCheckQuery() {
       const newParams = { ...filterParams }
       delete newParams[tagKey]
       setFilterParams(newParams)
+      setTempFilters((prev) => {
+        const next = { ...prev }
+        delete next[tagKey]
+        return next
+      })
     },
     [filterTags, filterParams, setFilterParams],
   )
@@ -247,7 +289,7 @@ export default function SecurityCheckQuery() {
       width: col.width,
       fixed: col.fixed,
       render: (text: string, _record: SecurityCheckRecord) => {
-        if (col.key === 'status') {
+        if (col.key === 'checkStatus') {
           const status = statusMap[text]
           return status ? (
             <CompanyTag className={status.color}>{status.text}</CompanyTag>
@@ -255,15 +297,31 @@ export default function SecurityCheckQuery() {
             <span style={{ color: 'var(--color-text-tertiary)' }}>--</span>
           )
         }
-        if (col.key === 'checkResult') {
-          const colorMap: Record<string, string> = {
-            '\u5408\u683c': 'var(--color-success)',
-            '\u4e0d\u5408\u683c': 'var(--color-error)',
+        if (col.key === 'visitResult') {
+          const result = visitResultMap[text]
+          return result ? (
+            <CompanyTag className={result.color}>{result.text}</CompanyTag>
+          ) : (
+            <span style={{ color: 'var(--color-text-tertiary)' }}>--</span>
+          )
+        }
+        if (col.key === 'hasDanger') {
+          if (text === 'yes' || text === '1') {
+            return <CompanyTag className="status-rejected">是</CompanyTag>
           }
-          return (
-            <span style={{ color: colorMap[text] || 'var(--color-text)' }}>
-              {text || '--'}
+          if (text === 'no' || text === '0') {
+            return <CompanyTag className="status-approved">否</CompanyTag>
+          }
+          return <span style={{ color: 'var(--color-text-tertiary)' }}>--</span>
+        }
+        if (col.key === 'maxDangerLevel') {
+          const level = dangerLevelMap[text]
+          return level ? (
+            <span style={{ color: text === '1' ? 'var(--color-danger)' : 'var(--color-text)' }}>
+              {level.text}
             </span>
+          ) : (
+            <span style={{ color: 'var(--color-text-tertiary)' }}>--</span>
           )
         }
         if (col.key === 'checkDate') {
@@ -345,7 +403,7 @@ export default function SecurityCheckQuery() {
             <CompanyInput
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
-              placeholder="请输入燃气编号进行搜索"
+              placeholder="请输入燃气编码进行搜索"
               style={{ width: 320 }}
               onPressEnter={handleSearch}
               suffix={
@@ -358,11 +416,20 @@ export default function SecurityCheckQuery() {
               }
             />
             <CompanyButton
-              icon={<SearchOutlined />}
-              className="scq-filter-btn"
-              onClick={() => setFilterVisible(true)}
+              icon={<FilterOutlined />}
+              className={`scq-filter-btn${filterTags.length > 0 ? ' scq-filter-btn-active' : ''}`}
+              onClick={() => {
+                const currentFilters: Record<string, string> = {}
+                drawerFilterFields.forEach((f) => {
+                  if (filterParams[f.key] !== undefined) {
+                    currentFilters[f.key] = String(filterParams[f.key])
+                  }
+                })
+                setTempFilters(currentFilters)
+                setFilterVisible(true)
+              }}
             >
-              筛选
+              筛选{filterTags.length > 0 && `(${filterTags.length})`}
             </CompanyButton>
           </div>
           <div className="scq-table-header-right">
