@@ -1,6 +1,8 @@
-import { useEffect, useCallback, useState } from 'react'
-import { Tag, Modal, Descriptions } from 'antd'
+import { useEffect, useCallback, useState, useRef } from 'react'
+import { Tag, Modal, Descriptions, Space, Menu } from 'antd'
 import {
+  CompanyButton,
+  CompanyDropdown,
   CompanyMessage,
   SmartListTemplate,
   ActionCell,
@@ -20,44 +22,49 @@ interface CraftsmanRecord {
   serviceProviderName: string
   type: string
   region: string
+  serviceSkills: string
+  registerTime: string
   status: number
   createTime: string
 }
 
 const fields: FieldDefinition[] = [
-  { key: 'craftsmanCode', label: '工匠编码', type: 'input', placeholder: '请输入工匠编码', width: 150 },
-  { key: 'name', label: '姓名', type: 'input', placeholder: '请输入姓名', width: 120 },
+  { key: 'craftsmanCode', label: '工匠编码', type: 'input', width: 150 },
+  { key: 'name', label: '姓名', type: 'input', width: 120 },
+  { key: 'phone', label: '手机号', type: 'input', width: 130 },
+  { key: 'serviceProviderName', label: '所属服务商', type: 'input', width: 180 },
+  { key: 'type', label: '工匠类型', type: 'select', width: 100, options: [
+    { label: '全部', value: '' },
+    { label: '外包工匠', value: 'outsource' },
+    { label: '外部工匠', value: 'external' },
+  ]},
   { key: 'status', label: '状态', type: 'select', width: 100, options: [
     { label: '全部', value: '' },
-    { label: '启用', value: 1 },
-    { label: '禁用', value: 0 },
+    { label: '正式工匠', value: 1 },
+    { label: '意向工匠', value: 2 },
+    { label: '停用', value: 0 },
   ]},
-  { key: 'type', label: '类型', type: 'select', width: 100, options: [
-    { label: '全部', value: '' },
-    { label: '个人', value: 'person' },
-    { label: '服务商', value: 'company' },
-  ]},
-  { key: 'serviceProviderName', label: '服务商名称', type: 'input', placeholder: '请输入服务商名称', width: 180 },
-  { key: 'region', label: '区域', type: 'input', placeholder: '请输入区域', width: 120 },
-  { key: 'phone', label: '手机号', type: 'input', placeholder: '请输入手机号', width: 130 },
-  { key: 'userAccount', label: '用户账号', type: 'input', placeholder: '请输入用户账号', width: 150 },
+  { key: 'userAccount', label: '用户账号', type: 'input', width: 150 },
+  { key: 'serviceSkills', label: '服务技能', type: 'input', width: 150 },
+  { key: 'registerTime', label: '注册时间', type: 'input', width: 160 },
   { key: 'action', label: '操作', width: 180, fixed: 'right' },
 ]
 
 const defaultColumnFields: ColumnField[] = [
   { key: 'craftsmanCode', label: '工匠编码', visible: true, width: 150 },
   { key: 'name', label: '姓名', visible: true, width: 120 },
-  { key: 'status', label: '状态', visible: true, width: 100 },
-  { key: 'type', label: '类型', visible: true, width: 100 },
-  { key: 'serviceProviderName', label: '服务商名称', visible: true, width: 180 },
-  { key: 'region', label: '区域', visible: true, width: 120 },
   { key: 'phone', label: '手机号', visible: true, width: 130 },
+  { key: 'serviceProviderName', label: '所属服务商', visible: true, width: 180 },
+  { key: 'type', label: '工匠类型', visible: true, width: 100 },
+  { key: 'status', label: '状态', visible: true, width: 100 },
   { key: 'userAccount', label: '用户账号', visible: true, width: 150 },
+  { key: 'serviceSkills', label: '服务技能', visible: true, width: 150 },
+  { key: 'registerTime', label: '注册时间', visible: true, width: 160 },
 ]
 
 const typeMap: Record<string, string> = {
-  person: '个人',
-  company: '服务商',
+  outsource: '外包工匠',
+  external: '外部工匠',
 }
 
 export default function CraftsmanQuery() {
@@ -73,14 +80,47 @@ export default function CraftsmanQuery() {
   const [columnFields, setColumnFields] = useState<ColumnField[]>(defaultColumnFields)
   const [detailVisible, setDetailVisible] = useState(false)
   const [currentDetail, setCurrentDetail] = useState<CraftsmanRecord | null>(null)
+  const initializedRef = useRef(false)
 
   const handleColumnSettingsChange = useCallback((fields: ColumnField[]) => {
-    setColumnFields(fields)
+    const savedKeys = new Set(fields.map((f) => f.key))
+    const missingFields = defaultColumnFields.filter((f) => !savedKeys.has(f.key))
+    setColumnFields([...fields, ...missingFields])
   }, [])
 
   const handleColumnSettingsReset = useCallback(() => {
     setColumnFields(defaultColumnFields)
   }, [])
+
+  const handleImportClick = useCallback(({ key }: { key: string }) => {
+    if (key === 'import-template') {
+      CompanyMessage.info('下载模板功能开发中')
+    } else if (key === 'import-data') {
+      CompanyMessage.info('导入数据功能开发中')
+    }
+  }, [])
+
+  const toolbarActions = (
+    <Space size={12}>
+      <CompanyButton type="primary" onClick={() => CompanyMessage.info('新增工匠功能开发中')}>
+        新增工匠
+      </CompanyButton>
+      <CompanyDropdown
+        trigger={['click']}
+        popupRender={() => (
+          <Menu
+            onClick={handleImportClick}
+            items={[
+              { key: 'import-template', label: '下载模板' },
+              { key: 'import-data', label: '导入数据' },
+            ]}
+          />
+        )}
+      >
+        <CompanyButton>导入</CompanyButton>
+      </CompanyDropdown>
+    </Space>
+  )
 
   const handleToggleStatus = useCallback(async (record: CraftsmanRecord) => {
     const newStatus = record.status === 1 ? 0 : 1
@@ -109,10 +149,21 @@ export default function CraftsmanQuery() {
 
   useEffect(() => {
     registerStatusMap({
-      1: { text: '启用', color: 'status-approved' },
-      0: { text: '禁用', color: 'status-rejected' },
+      1: { text: '正式工匠', color: 'status-approved' },
+      2: { text: '意向工匠', color: 'status-pending' },
+      0: { text: '停用', color: 'status-rejected' },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (initializedRef.current) return
+    initializedRef.current = true
+    const currentKeys = new Set(columnFields.map((f) => f.key))
+    const missingFields = defaultColumnFields.filter((f) => !currentKeys.has(f.key))
+    if (missingFields.length > 0) {
+      setColumnFields((prev) => [...prev, ...missingFields])
+    }
   }, [])
 
   const bodyCell = useCallback(
@@ -120,7 +171,7 @@ export default function CraftsmanQuery() {
       const craftsmanRecord = record as unknown as CraftsmanRecord
 
       if (column.key === 'serviceProviderName') {
-        return craftsmanRecord.type === 'person'
+        return craftsmanRecord.type === 'external'
           ? <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
           : <span>{craftsmanRecord.serviceProviderName}</span>
       }
@@ -138,6 +189,11 @@ export default function CraftsmanQuery() {
       }
 
       if (column.key === 'action') {
+        const getToggleLabel = () => {
+          if (craftsmanRecord.status === 1) return '停用'
+          if (craftsmanRecord.status === 2) return '转正式'
+          return '启用'
+        }
         const buttons = [
           {
             key: 'detail',
@@ -145,8 +201,13 @@ export default function CraftsmanQuery() {
             onClick: () => showDetail(craftsmanRecord),
           },
           {
+            key: 'edit',
+            label: '编辑',
+            onClick: () => CompanyMessage.info('编辑功能开发中'),
+          },
+          {
             key: 'toggle',
-            label: craftsmanRecord.status === 1 ? '禁用' : '启用',
+            label: getToggleLabel(),
             onClick: () => handleToggleStatus(craftsmanRecord),
           },
         ]
@@ -184,6 +245,7 @@ export default function CraftsmanQuery() {
         onColumnSettingsChange={handleColumnSettingsChange}
         onColumnSettingsReset={handleColumnSettingsReset}
         onRefresh={refresh}
+        toolbarActions={toolbarActions}
         bodyCell={bodyCell}
       />
       <Modal
@@ -199,9 +261,11 @@ export default function CraftsmanQuery() {
             <Descriptions.Item label="姓名">{currentDetail.name}</Descriptions.Item>
             <Descriptions.Item label="手机号">{currentDetail.phone}</Descriptions.Item>
             <Descriptions.Item label="用户账号">{currentDetail.userAccount}</Descriptions.Item>
-            <Descriptions.Item label="服务商名称">{currentDetail.type === 'person' ? '--' : currentDetail.serviceProviderName}</Descriptions.Item>
-            <Descriptions.Item label="类型">{typeMap[currentDetail.type] || currentDetail.type}</Descriptions.Item>
+            <Descriptions.Item label="所属服务商">{currentDetail.type === 'external' ? '--' : currentDetail.serviceProviderName}</Descriptions.Item>
+            <Descriptions.Item label="工匠类型">{typeMap[currentDetail.type] || currentDetail.type}</Descriptions.Item>
             <Descriptions.Item label="区域">{currentDetail.region}</Descriptions.Item>
+            <Descriptions.Item label="服务技能">{currentDetail.serviceSkills || '--'}</Descriptions.Item>
+            <Descriptions.Item label="注册时间">{currentDetail.registerTime || '--'}</Descriptions.Item>
             <Descriptions.Item label="状态">
               <Tag className={getStatusColor(String(currentDetail.status))}>
                 {getStatusText(String(currentDetail.status))}

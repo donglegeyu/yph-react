@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '@/store/app'
 import { SvgIcon } from '@donglegeyu/company-ui'
+import type { MenuItem } from '@/types'
 import './SecondSidebar.scss'
 import nullSvg from '@/assets/null.svg'
 
@@ -47,11 +48,7 @@ function getIconName(icon?: string): string {
 
 const hideKeys = ['system-settings', 'component-preview']
 
-interface FavoritesItem {
-  key: string
-  label: string
-  path: string
-}
+type RenderMenuItem = MenuItem & { menuKey?: string }
 
 export default function SecondSidebar() {
   const navigate = useNavigate()
@@ -66,7 +63,6 @@ export default function SecondSidebar() {
   const secondMenusMap = useAppStore((s) => s.secondMenusMap)
   const isFavorited = useAppStore((s) => s.isFavorited)
   const addExpandedKey = useAppStore((s) => s.addExpandedKey)
-  const toggleExpandedKey = useAppStore((s) => s.toggleExpandedKey)
   const cancelHideSidebar = useAppStore((s) => s.cancelHideSidebar)
   const delayHideSidebar = useAppStore((s) => s.delayHideSidebar)
   const openTab = useAppStore((s) => s.openTab)
@@ -78,7 +74,7 @@ export default function SecondSidebar() {
   const [localExpandedKeys, setLocalExpandedKeys] = useState<string[]>(expandedKeys)
   const [localActiveKey, setLocalActiveKey] = useState(activeKey)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
-  const [favoritesList, setFavoritesList] = useState<FavoritesItem[]>([])
+  const [favoritesList, setFavoritesList] = useState<RenderMenuItem[]>([])
 
   const currentSecondMenus = useMemo(() => {
     return secondMenusMap[activeFirstMenu] || []
@@ -89,16 +85,16 @@ export default function SecondSidebar() {
     return secondSidebarHovered || secondSidebarFixed
   }, [activeFirstMenu, secondSidebarHovered, secondSidebarFixed])
 
-  const secondMenus = useMemo(() => {
+  const secondMenus = useMemo<RenderMenuItem[]>(() => {
     if (activeFirstMenu === 'favorites') {
-      return (favorites || []).map((item: Record<string, unknown>) => ({
-        key: item.menuKey || item.key || item.id,
-        label: item.menuLabel || item.label || item.name || item.title || '未命名',
-        path: item.menuPath || item.path || `/menu/${item.menuKey || item.key}`,
+      return (favorites || []).map((item) => ({
+        key: item.menuKey,
+        label: item.menuLabel || '未命名',
+        path: item.menuPath || `/menu/${item.menuKey}`,
       }))
     }
     return currentSecondMenus
-      .filter((menu) => !hideKeys.includes(menu.key) && !hideKeys.includes(menu.menuKey))
+      .filter((menu) => !hideKeys.includes(menu.key))
       .map((menu) => ({
         ...menu,
         icon: menu.icon || 'id-card-v-klbe0a04',
@@ -108,7 +104,7 @@ export default function SecondSidebar() {
   useEffect(() => {
     if (activeFirstMenu && secondMenus.length > 0) {
       const parentKeys = secondMenus
-        .filter((menu) => (menu.children as Record<string, unknown>[])?.length > 0)
+        .filter((menu) => (menu.children?.length ?? 0) > 0)
         .map((menu) => menu.key)
       setLocalExpandedKeys(parentKeys)
     }
@@ -121,10 +117,10 @@ export default function SecondSidebar() {
 
   useEffect(() => {
     if (activeFirstMenu === 'favorites') {
-      const mapped = (favorites || []).map((item: Record<string, unknown>) => ({
-        key: (item.menuKey || item.key || item.id) as string,
-        label: (item.menuLabel || item.label || item.name || item.title || '未命名') as string,
-        path: (item.menuPath || item.path || `/menu/${item.menuKey || item.key}`) as string,
+      const mapped = (favorites || []).map((item) => ({
+        key: item.menuKey,
+        label: item.menuLabel || '未命名',
+        path: item.menuPath || `/menu/${item.menuKey}`,
       }))
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFavoritesList(mapped)
@@ -135,7 +131,6 @@ export default function SecondSidebar() {
     const path = location.pathname
     if (path === '/home' || path === '/') return
 
-    let menuPath = path
     let result = navigateToPath(path)
 
     if (!result) {
@@ -144,7 +139,6 @@ export default function SecondSidebar() {
         const parentPath = path.substring(0, lastSlashIndex)
         const parentResult = navigateToPath(parentPath)
         if (parentResult) {
-          menuPath = parentPath
           result = parentResult
         }
       }
@@ -153,7 +147,7 @@ export default function SecondSidebar() {
     if (result) {
       const menu = result.thirdMenu || result.secondMenu
       if (menu) {
-        useAppStore.getState().openTab(menu.key, menu.label, menu.path)
+        useAppStore.getState().openTab(menu.key, menu.label, menu.path || menu.key)
       }
     } else {
       useAppStore.getState().clearExpandedKeys()
@@ -162,7 +156,7 @@ export default function SecondSidebar() {
   }, [location.pathname])
 
   const handleClick = useCallback(
-    (menu: Record<string, unknown>) => {
+    (menu: RenderMenuItem) => {
       if (menu.path) {
         navigateToPath(menu.path)
         openTab(menu.key, menu.label, menu.path)
@@ -187,7 +181,7 @@ export default function SecondSidebar() {
   )
 
   const handleToggleFavorite = useCallback(
-    async (menu: Record<string, unknown>) => {
+    async (menu: RenderMenuItem) => {
       await toggleFavorite(menu)
     },
     [toggleFavorite]
@@ -244,8 +238,8 @@ export default function SecondSidebar() {
                 />
               </div>
             ))
-          : secondMenus.map((menu: Record<string, unknown>) =>
-              (menu.children as Record<string, unknown>[])?.length ? (
+          : secondMenus.map((menu) =>
+              menu.children && menu.children.length > 0 ? (
                 <div key={menu.key} className="menu-group">
                   <div
                     className={`menu-item parent${localExpandedKeys.includes(menu.key) ? ' expanded' : ''}`}
@@ -268,7 +262,7 @@ export default function SecondSidebar() {
                     className="sub-menu"
                     style={{ display: localExpandedKeys.includes(menu.key) ? 'flex' : 'none' }}
                   >
-                    {(menu.children as Record<string, unknown>[]).map((sub) => (
+                    {menu.children.map((sub) => (
                       <div
                         key={sub.key}
                         className={`menu-item child${localActiveKey === sub.key ? ' active' : ''}`}

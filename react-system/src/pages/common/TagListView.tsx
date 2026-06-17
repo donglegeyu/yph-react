@@ -32,8 +32,8 @@ const tagTypeTextMap: Record<string, string> = {
 }
 
 const fields: FieldDefinition[] = [
-  { key: 'tagName', label: '标签名称', type: 'input', placeholder: '请输入标签名称', width: 180, fixed: 'left' },
-  { key: 'tagCode', label: '标签编码', type: 'input', placeholder: '请输入标签编码', width: 150 },
+  { key: 'tagName', label: '标签名称', type: 'input', width: 180, fixed: 'left' },
+  { key: 'tagCode', label: '标签编码', type: 'input', width: 150 },
   { key: 'tagType', label: '标签类型', type: 'select', width: 120, options: [
     { label: '全部', value: '' },
     { label: '材料标签', value: 'material' },
@@ -45,8 +45,8 @@ const fields: FieldDefinition[] = [
     { label: '启用', value: 'enabled' },
     { label: '禁用', value: 'disabled' },
   ]},
-  { key: 'description', label: '标签描述', type: 'input', placeholder: '请输入标签描述', width: 200 },
-  { key: 'refCount', label: '关联数量', type: 'input', placeholder: '请输入关联数量', width: 100 },
+  { key: 'description', label: '标签描述', type: 'input', width: 200 },
+  { key: 'refCount', label: '关联数量', type: 'input', width: 100 },
   { key: 'createTime', label: '创建时间', type: 'daterange', width: 220 },
   { key: 'updateTime', label: '更新时间', type: 'daterange', width: 220 },
   { key: 'action', label: '操作', width: 148, fixed: 'right' },

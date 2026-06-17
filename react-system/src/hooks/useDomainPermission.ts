@@ -151,6 +151,19 @@ export function useSysUsers() {
     }
   }, [])
 
+  const resetPassword = useCallback(async (id: number): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/sys/users/${id}/reset-password`, {
+        method: 'PUT',
+      })
+      const json = await res.json()
+      if (json.code === 200) return json.data as string
+      return null
+    } catch {
+      return null
+    }
+  }, [])
+
   const createUser = useCallback(async (data: Partial<SysUser>): Promise<number | null> => {
     try {
       const res = await fetch('/api/sys/users', {
@@ -180,6 +193,17 @@ export function useSysUsers() {
     }
   }, [])
 
+  const getUserById = useCallback(async (id: number): Promise<SysUser | null> => {
+    try {
+      const res = await fetch(`/api/sys/users/${id}`)
+      const json = await res.json()
+      if (json.code === 200) return json.data
+      return null
+    } catch {
+      return null
+    }
+  }, [])
+
   const getUserPermissions = useCallback(async (userId: number): Promise<any> => {
     try {
       const res = await fetch(`/api/sys/users/${userId}/permissions`)
@@ -206,8 +230,10 @@ export function useSysUsers() {
     fetchUserDomains,
     assignDomains,
     updateUserStatus,
+    resetPassword,
     createUser,
     updateUser,
+    getUserById,
     getUserPermissions,
     getDomainUsers,
   }

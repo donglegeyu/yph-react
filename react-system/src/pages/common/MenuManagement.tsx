@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
+import type { Key } from 'react'
 import type { DataNode } from 'antd/es/tree'
 import { Form, Drawer, Input, Select, InputNumber, TreeSelect, Radio } from 'antd'
 import {
@@ -87,6 +88,12 @@ interface FilterScheme {
   name: string
   filters: Record<string, unknown>
   filterOrder: string[]
+}
+
+interface TreeSelectDataNode {
+  value: string
+  title: string
+  children?: TreeSelectDataNode[]
 }
 
 interface FilterOptionItem {
@@ -199,7 +206,7 @@ function filterTree(data: MenuTreeItem[], params: MenuFilterParams): MenuTreeIte
   return result
 }
 
-function buildMenuTree(items: MenuTreeItem[], excludeId?: number): DataNode[] {
+function buildMenuTree(items: MenuTreeItem[], excludeId?: number): TreeSelectDataNode[] {
   return items
     .filter(item => !(excludeId && item.id === excludeId))
     .map((item) => ({
@@ -230,11 +237,11 @@ const menuTypeOptions = [
 ]
 
 const filterItems: FilterItem[] = [
-  { key: 'label', label: '菜单名称', type: 'input', placeholder: '请输入菜单名称' },
+  { key: 'label', label: '菜单名称', type: 'input' },
   { key: 'menuType', label: '菜单类型', type: 'select', options: menuTypeOptions },
   { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 1 }, { label: '禁用', value: 0 }] },
-  { key: 'path', label: '路径', type: 'input', placeholder: '请输入路径' },
-  { key: 'key', label: 'Key', type: 'input', placeholder: '请输入Key' },
+  { key: 'path', label: '路径', type: 'input' },
+  { key: 'key', label: 'Key', type: 'input' },
 ]
 
 export default function MenuManagement() {
@@ -242,7 +249,7 @@ export default function MenuManagement() {
   const [loading, setLoading] = useState(false)
   const [rawMenuData, setRawMenuData] = useState<MenuTreeItem[]>([])
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
-  const [selectedRowKeys, setSelectedRowKeys] = useState<(string | number)[]>([])
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([])
   const [filterParams, setFilterParams] = useState<MenuFilterParams>({})
   const [allExpanded, setAllExpanded] = useState(false)
   const [columnFields, setColumnFields] = useState<ColumnField[]>(() => {
@@ -290,7 +297,7 @@ export default function MenuManagement() {
     const search = parentSearchValue.trim().toLowerCase()
     const excludeId = formData.id || undefined
     if (search) {
-      const results: DataNode[] = []
+      const results: TreeSelectDataNode[] = []
       const collect = (items: MenuTreeItem[]) => {
         for (const item of items) {
           if (excludeId && item.id === excludeId) continue
@@ -551,15 +558,16 @@ export default function MenuManagement() {
         CompanyMessage.success('移动成功')
         closeMoveDrawer()
         fetchData()
+        appStore.fetchMenus()
       } else {
         CompanyMessage.error(json.message || '移动失败')
       }
     } catch {
       CompanyMessage.error('移动失败')
     }
-  }, [moveTargetRecord, selectedMoveTargetId, closeMoveDrawer, fetchData])
+  }, [moveTargetRecord, selectedMoveTargetId, closeMoveDrawer, fetchData, appStore])
 
-  const onSelectChange = useCallback((keys: (string | number)[]) => {
+  const onSelectChange = useCallback((keys: Key[]) => {
     setSelectedRowKeys(keys)
   }, [])
 
@@ -647,12 +655,12 @@ export default function MenuManagement() {
     setNewSchemeName('')
     setHasSearched(false)
     setDialogFilterOptions(
-      filterItems.map(item => ({
+      filterItems.map((item): FilterOptionItem => ({
         key: item.key,
         label: item.label,
         checked: false,
         defaultValue: filterParams[item.key] || '',
-        options: item.options,
+        options: item.options as FilterOptionItem['options'],
         type: item.type,
         placeholder: item.placeholder,
       }))
@@ -724,7 +732,7 @@ export default function MenuManagement() {
     setNewSchemeName(scheme.name)
     setFilterParams({ ...(scheme.filters || {}) } as MenuFilterParams)
     setDialogFilterOptions(
-      filterItems.map(item => {
+      filterItems.map((item): FilterOptionItem => {
         const isChecked = !!(scheme.filterOrder && scheme.filterOrder.includes(item.key))
         const defaultValue = scheme.filters?.[item.key]
         return {
@@ -732,7 +740,7 @@ export default function MenuManagement() {
           label: item.label,
           checked: isChecked,
           defaultValue,
-          options: item.options,
+          options: item.options as FilterOptionItem['options'],
           type: item.type,
           placeholder: item.placeholder,
         }
@@ -1238,7 +1246,7 @@ function buildMoveTreeData(record: FlatMenuItem, rawMenuData: MenuTreeItem[]): D
   const maxSubLevel = recordNode ? getSubTreeDepth(recordNode) : 0
 
   const traverse = (items: MenuTreeItem[]): DataNode[] => {
-    const nodes: DataNode[] = []
+    const result: DataNode[] = []
     for (const item of items) {
       const itemIdStr = String(item.id)
       if (excludedIds.includes(itemIdStr)) continue
@@ -1246,7 +1254,7 @@ function buildMoveTreeData(record: FlatMenuItem, rawMenuData: MenuTreeItem[]): D
       if (!isBizMenu) continue
       const targetMenuLevel = levelMap.get(itemIdStr) ?? 0
       const wouldExceed = targetMenuLevel + 1 + maxSubLevel > 2
-      nodes.push({
+      result.push({
         key: itemIdStr,
         title: wouldExceed ? (
           <span><span style={{ color: 'rgba(0,0,0,0.25)' }}>{item.label}</span><span style={{ color: '#999', fontSize: 12, marginLeft: 4 }}>（超出层级）</span></span>
@@ -1254,7 +1262,7 @@ function buildMoveTreeData(record: FlatMenuItem, rawMenuData: MenuTreeItem[]): D
         selectable: !wouldExceed,
       })
     }
-    return nodes
+    return result
   }
   return traverse(rawMenuData)
 }

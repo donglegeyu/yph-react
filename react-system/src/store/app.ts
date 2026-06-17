@@ -103,16 +103,11 @@ const uniqueTabs = savedTabs.filter(
 const savedActiveTabKey = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB_KEY) || ''
 const savedFirstMenu = localStorage.getItem(STORAGE_KEYS.ACTIVE_FIRST_MENU) || 'home'
 const savedUserInfo = loadFromStorage<UserInfo>(STORAGE_KEYS.USER_INFO, { username: 'admin' })
-const savedCustomNavMenus = loadFromStorage<CustomNavMenu[]>(STORAGE_KEYS.CUSTOM_NAV_MENUS, [])
-// 去重自定义导航
-const uniqueCustomNav = savedCustomNavMenus.filter(
-  (m, i, arr) => arr.findIndex((x) => x.key === m.key) === i
-)
 const savedSecondSidebarFixed = localStorage.getItem('app:secondSidebarFixed')
 
 export const useAppStore = create<AppState>((set, get) => ({
   businessMenus: [],
-  customNavMenus: uniqueCustomNav,
+  customNavMenus: [],
   firstMenus: [],
   systemBottomMenus: [],
   activeFirstMenu: savedFirstMenu,
@@ -311,12 +306,31 @@ export const useAppStore = create<AppState>((set, get) => ({
       const currentDomainId = localStorage.getItem('currentDomainId')
       const isDefaultDomain = currentDomainId === '1'
 
+      set({
+        customNavMenus: [],
+        activeFirstMenu: 'home',
+        activeKey: '',
+        expandedKeys: [],
+        secondSidebarHovered: false,
+      })
+
+      let currentUserId: number | null = null
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.USER_INFO)
+        if (raw) {
+          const u = JSON.parse(raw)
+          if (u && typeof u.id === 'number') currentUserId = u.id
+        }
+      } catch { /* ignore */ }
+
+      const userIdParam = currentUserId ? `&userId=${currentUserId}` : ''
+
       let domainMenus: NavMenu[] = []
       let systemMenus: NavMenu[] = []
 
       if (currentDomainId && !isDefaultDomain) {
         const [domainRes, systemRes] = await Promise.all([
-          fetch(`${API_ENDPOINTS.NAV_MENUS}?domainId=${currentDomainId}`),
+          fetch(`${API_ENDPOINTS.NAV_MENUS}?domainId=${currentDomainId}${userIdParam}`),
           fetch(API_ENDPOINTS.NAV_MENUS),
         ])
         const domainJson = await domainRes.json()
@@ -330,7 +344,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           )
         }
       } else {
-        const res = await fetch(API_ENDPOINTS.NAV_MENUS)
+        const res = await fetch(`${API_ENDPOINTS.NAV_MENUS}${currentUserId ? `?userId=${currentUserId}` : ''}`)
         const json = await res.json()
         if (json.code === 200 && json.data) {
           domainMenus = json.data as NavMenu[]
@@ -341,7 +355,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const seenIds = new Set<number>()
       const menus: NavMenu[] = []
       for (const m of menusRaw) {
-        if (!seenIds.has(m.id)) {
+        if (m.id !== undefined && !seenIds.has(m.id)) {
           seenIds.add(m.id)
           menus.push(m)
         }
@@ -426,17 +440,20 @@ export const useAppStore = create<AppState>((set, get) => ({
       await get().fetchCustomNavMenus()
 
       const { businessMenus: latestBusinessMenus, customNavMenus: currentCustomNav } = get()
-      if (currentDomainId) {
+      const domainId = localStorage.getItem('currentDomainId') || '1'
+      const cacheKey = `${STORAGE_KEYS.CUSTOM_NAV_MENUS}:${domainId}`
+      if (!Array.isArray(currentCustomNav) || currentCustomNav.length === 0) {
         const newCustomNav = latestBusinessMenus.map((m) => ({ ...m, icon: m.icon || 'id-card-v-klbe0a04' }))
         set({ customNavMenus: newCustomNav })
-        localStorage.setItem(STORAGE_KEYS.CUSTOM_NAV_MENUS, JSON.stringify(newCustomNav))
-      } else if (Array.isArray(currentCustomNav) && currentCustomNav.length > 0) {
+        localStorage.setItem(cacheKey, JSON.stringify(newCustomNav))
+        get().saveCustomNavMenus(newCustomNav)
+      } else {
         const customKeys = new Set(currentCustomNav.map((m) => m.key))
         const newMenus = latestBusinessMenus.filter((m) => !customKeys.has(m.key))
         if (newMenus.length > 0) {
           const merged = [...currentCustomNav, ...newMenus.map((m) => ({ ...m, icon: m.icon || 'id-card-v-klbe0a04' }))]
           set({ customNavMenus: merged })
-          localStorage.setItem(STORAGE_KEYS.CUSTOM_NAV_MENUS, JSON.stringify(merged))
+          localStorage.setItem(cacheKey, JSON.stringify(merged))
         }
       }
     } catch {
@@ -471,7 +488,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   fetchCustomNavMenus: async () => {
     try {
-      const res = await fetch(API_ENDPOINTS.CUSTOM_NAV_MENUS)
+      const raw = localStorage.getItem(STORAGE_KEYS.USER_INFO)
+      let userId: number | null = null
+      try { if (raw) { const u = JSON.parse(raw); if (u && typeof u.id === 'number') userId = u.id } } catch { /* ignore */ }
+      const domainId = localStorage.getItem('currentDomainId') || '1'
+      const params = new URLSearchParams()
+      if (userId) params.set('userId', String(userId))
+      params.set('domainId', domainId)
+      const url = `${API_ENDPOINTS.CUSTOM_NAV_MENUS}?${params.toString()}`
+      const res = await fetch(url)
       const json = await res.json()
       if (json.code === 200) {
         const menus = (json.data || []).map((m: CustomNavMenu) => ({
@@ -479,10 +504,16 @@ export const useAppStore = create<AppState>((set, get) => ({
           icon: m.icon || 'id-card-v-klbe0a04',
         }))
         set({ customNavMenus: menus })
-        localStorage.setItem(STORAGE_KEYS.CUSTOM_NAV_MENUS, JSON.stringify(menus))
+        const cacheKey = `${STORAGE_KEYS.CUSTOM_NAV_MENUS}:${domainId}`
+        localStorage.setItem(cacheKey, JSON.stringify(menus))
       }
     } catch {
-      // use cache
+      const domainId = localStorage.getItem('currentDomainId') || '1'
+      const cacheKey = `${STORAGE_KEYS.CUSTOM_NAV_MENUS}:${domainId}`
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        try { set({ customNavMenus: JSON.parse(cached) }) } catch { /* ignore */ }
+      }
     }
   },
 
@@ -492,12 +523,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...m,
         icon: m.icon || 'id-card-v-klbe0a04',
       }))
-      await fetch(API_ENDPOINTS.CUSTOM_NAV_MENUS, {
+      const raw = localStorage.getItem(STORAGE_KEYS.USER_INFO)
+      let userId: number | null = null
+      try { if (raw) { const u = JSON.parse(raw); if (u && typeof u.id === 'number') userId = u.id } } catch { /* ignore */ }
+      const domainId = localStorage.getItem('currentDomainId') || '1'
+      const params = new URLSearchParams()
+      if (userId) params.set('userId', String(userId))
+      params.set('domainId', domainId)
+      const url = `${API_ENDPOINTS.CUSTOM_NAV_MENUS}?${params.toString()}`
+      await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ menus: menusWithIcon }),
       })
-      localStorage.setItem(STORAGE_KEYS.CUSTOM_NAV_MENUS, JSON.stringify(menusWithIcon))
+      const cacheKey = `${STORAGE_KEYS.CUSTOM_NAV_MENUS}:${domainId}`
+      localStorage.setItem(cacheKey, JSON.stringify(menusWithIcon))
     } catch {
       // keep local
     }
@@ -597,7 +637,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     navList.push(menu as unknown as CustomNavMenu)
     set({ customNavMenus: navList })
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_NAV_MENUS, JSON.stringify(navList))
+    const domainId = localStorage.getItem('currentDomainId') || '1'
+    localStorage.setItem(`${STORAGE_KEYS.CUSTOM_NAV_MENUS}:${domainId}`, JSON.stringify(navList))
+    get().saveCustomNavMenus(navList)
   },
 
   syncCustomNavOrder: (displayOrder) => {
@@ -612,6 +654,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       return idxA - idxB
     })
     set({ customNavMenus: sorted })
+    const domainId = localStorage.getItem('currentDomainId') || '1'
+    localStorage.setItem(`${STORAGE_KEYS.CUSTOM_NAV_MENUS}:${domainId}`, JSON.stringify(sorted))
+    get().saveCustomNavMenus(sorted)
   },
 
   getMenuLabelByKey: (key) => {
@@ -724,20 +769,23 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   restoreDomainState: (domainId: number) => {
     const saved = localStorage.getItem(`app:domainState:${domainId}`)
+    const { secondMenusMap } = get()
     if (saved) {
       try {
         const domainState = JSON.parse(saved)
+        const savedFirstMenu = domainState.activeFirstMenu || 'home'
+        const validFirstMenu = savedFirstMenu === 'home' || savedFirstMenu === 'favorites' || (secondMenusMap[savedFirstMenu] && secondMenusMap[savedFirstMenu].length > 0)
         set({
           tabs: domainState.tabs || [],
           activeTabKey: domainState.activeTabKey || '',
-          activeFirstMenu: domainState.activeFirstMenu || 'home',
+          activeFirstMenu: validFirstMenu ? savedFirstMenu : 'home',
           activeKey: domainState.activeKey || '',
           expandedKeys: domainState.expandedKeys || [],
           secondSidebarHovered: false,
         })
         localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(domainState.tabs || []))
         localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB_KEY, domainState.activeTabKey || '')
-        localStorage.setItem(STORAGE_KEYS.ACTIVE_FIRST_MENU, domainState.activeFirstMenu || 'home')
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_FIRST_MENU, validFirstMenu ? savedFirstMenu : 'home')
       } catch {
         set({
           tabs: [],

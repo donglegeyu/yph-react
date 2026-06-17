@@ -26,8 +26,8 @@ interface DomainRecord {
 }
 
 const fields: FieldDefinition[] = [
-  { key: 'domainKey', label: '域标识', type: 'input', placeholder: '请输入域标识', width: 150 },
-  { key: 'domainName', label: '域名称', type: 'input', placeholder: '请输入域名称', width: 150 },
+  { key: 'domainKey', label: '域标识', type: 'input', width: 150 },
+  { key: 'domainName', label: '域名称', type: 'input', width: 150 },
   { key: 'isDefault', label: '域类型', type: 'input', width: 100 },
   { key: 'menuCount', label: '包含菜单数', type: 'input', width: 100 },
   { key: 'userCount', label: '用户数', type: 'input', width: 80 },
@@ -158,7 +158,14 @@ export default function DomainManagement() {
       }
 
       if (column.key === 'action') {
-        const buttons = [
+        const buttons: {
+          key: string
+          label: string
+          danger?: boolean
+          confirm?: boolean
+          confirmTitle?: string
+          onClick: () => void
+        }[] = [
           { key: 'edit', label: '编辑', onClick: () => handleEdit(domainRecord) },
           {
             key: 'toggle',
@@ -193,7 +200,7 @@ export default function DomainManagement() {
     <SmartListTemplate
       title="域管理"
       fields={fields}
-      dataSource={dataSource}
+      dataSource={dataSource as unknown as Record<string, unknown>[]}
       loading={loading}
       pagination={pagination}
       filterParams={filterParams}

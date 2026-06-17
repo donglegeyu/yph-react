@@ -27,7 +27,23 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Override
     public IPage<SysUserVO> page(Page<SysUser> page, String username, Integer status, Long deptId) {
+        return pageInternal(page, username, status, deptId, null);
+    }
+
+    @Override
+    public SysUserVO getDetailById(Long id) {
+        if (id == null) return null;
+        Page<SysUser> page = new Page<>(1, 1);
+        IPage<SysUserVO> voPage = pageInternal(page, null, null, null, id);
+        List<SysUserVO> records = voPage.getRecords();
+        return records.isEmpty() ? null : records.get(0);
+    }
+
+    private IPage<SysUserVO> pageInternal(Page<SysUser> page, String username, Integer status, Long deptId, Long id) {
         LambdaQueryWrapper<SysUser> query = new LambdaQueryWrapper<>();
+        if (id != null) {
+            query.eq(SysUser::getId, id);
+        }
         if (username != null && !username.isEmpty()) {
             query.like(SysUser::getUsername, username);
         }
@@ -185,6 +201,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     @Transactional
     public SysUser create(SysUser user, List<Long> roleIds) {
+        if (user.getPassword() == null || user.getPassword().isEmpty()) {
+            user.setPassword("123123");
+        }
         save(user);
         replaceUserRoles(user.getId(), roleIds);
         return user;
@@ -222,6 +241,14 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         SysUser user = new SysUser();
         user.setId(id);
         user.setStatus(status);
+        updateById(user);
+    }
+
+    @Override
+    public void resetPassword(Long id) {
+        SysUser user = new SysUser();
+        user.setId(id);
+        user.setPassword("123123");
         updateById(user);
     }
 

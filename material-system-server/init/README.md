@@ -7,17 +7,19 @@
 
 | 文件名 | 内容 | 说明 |
 |--------|------|------|
-| `01-schema-correct.sql` | 核心表结构 | `material_application`、`nav_menu`、`sys_tag` 等 + 默认菜单数据 |
+| `01-schema-correct.sql` | 核心表结构 | `material_application`、`nav_menu`、`sys_tag` 等（菜单数据已迁出） |
 | `02-sys-permission.sql` | 权限系统表 | `sys_user`、`sys_domain`、`sys_domain_menu`、`sys_permission` 等 + 默认域 |
 | `03-favorite.sql` | 收藏表 | `favorite` 表结构 |
 | `04-user-preference.sql` | 用户偏好表 | `user_preference` 表结构 |
 | `05-icon-config.sql` | 图标配置表 | `icon_config` 表结构 + 默认预设图标 |
-| `06-construction-application.sql` | 施工申请表 | `construction_application` 表结构 + 测试数据 + 菜单 |
+| `06-construction-application.sql` | 施工申请表 | `construction_application` 表结构 + 测试数据（菜单已迁出） |
 | `07-material-view.sql` | 材料视图表 | `material_view` 表结构 |
 | `08-menu-view.sql` | 菜单视图表 | `menu_view` 表结构 |
 | `09-init-data.sql` | 材料申请测试数据 | 5 条材料申请示例数据 |
-| `09.5-component-preview.sql` | 组件预览菜单 | 在系统中心下添加系统设置、组件预览菜单 |
+| `09-menu-seed.sql` | **菜单种子数据（唯一来源）** | 全量 nav_menu + 末尾统一同步默认域 sys_domain_menu |
 | `10-init-system-data.sql` | 系统初始化数据 | 创建 admin 用户并关联默认域 |
+
+> **菜单维护规则**：新增/修改菜单只改 `09-menu-seed.sql`，不要再往其他文件里写 `INSERT INTO nav_menu`。
 
 ## 何时重建
 

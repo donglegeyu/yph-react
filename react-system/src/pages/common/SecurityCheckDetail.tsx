@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { CompanyButton, CompanyTable, CompanyTabs, CompanyTag, PageTitle } from '@donglegeyu/company-ui'
+import { CompanyTable, CompanyTabs, CompanyTag, PageTitle } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
 import './SecurityCheckDetail.scss'
 
@@ -121,12 +121,6 @@ export default function SecurityCheckDetail() {
       },
     }))
 
-  const tabs = [
-    { key: 'result', label: '安检结果' },
-    { key: 'photos', label: '现场照片' },
-    { key: 'history', label: '历史记录' },
-  ]
-
   return (
     <div className="security-check-detail">
       <PageTitle title="安检详情" showBack onBack={() => navigate('/security-check-query')} />
@@ -159,7 +153,7 @@ export default function SecurityCheckDetail() {
               <div className="scd-field-item" key={field.key}>
                 <span className="scd-field-label">{field.label}：</span>
                 <span className="scd-field-value">
-                  {(detail as Record<string, string>)[field.key] || '--'}
+                  {(detail as unknown as Record<string, string>)[field.key] || '--'}
                 </span>
               </div>
             ))}

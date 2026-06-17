@@ -38,6 +38,15 @@ public class SysUserController {
         return response;
     }
 
+    @GetMapping("/{id}")
+    public Map<String, Object> detail(@PathVariable Long id) {
+        SysUserVO vo = sysUserService.getDetailById(id);
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("data", vo);
+        return response;
+    }
+
     @PostMapping
     public Map<String, Object> create(@RequestBody Map<String, Object> body) {
         SysUser user = new SysUser();
@@ -105,6 +114,15 @@ public class SysUserController {
         sysUserService.updateStatus(id, body.get("status"));
         Map<String, Object> response = new HashMap<>();
         response.put("code", 200);
+        return response;
+    }
+
+    @PutMapping("/{id}/reset-password")
+    public Map<String, Object> resetPassword(@PathVariable Long id) {
+        sysUserService.resetPassword(id);
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("data", "123123");
         return response;
     }
 

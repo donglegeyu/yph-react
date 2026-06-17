@@ -1,11 +1,14 @@
 import { useEffect, useCallback, useState } from 'react'
-import { Table, Form, Input, InputNumber, Radio, TreeSelect, Space } from 'antd'
-import type { TableProps } from 'antd'
+import { Form, Input, InputNumber, Radio, TreeSelect } from 'antd'
 import {
+  ActionCell,
   CompanyButton,
   CompanyDrawer,
   CompanyMessage,
   CompanyTag,
+  SmartListTemplate,
+  type ColumnField,
+  type FieldDefinition,
 } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
 import { useMenuTitle } from '@/hooks'
@@ -31,17 +34,15 @@ interface DeptFormValues {
   status: number
 }
 
-function flattenToTreeData(list: DeptRecord[]): DeptRecord[] {
-  return list
+type TreeSelectNode = {
+  title: string
+  value: number
+  disabled: boolean
+  children?: TreeSelectNode[]
 }
 
-function buildTreeSelectData(list: DeptRecord[], disabledId?: number) {
-  const loop = (nodes: DeptRecord[]): Array<{
-    title: string
-    value: number
-    disabled: boolean
-    children?: ReturnType<typeof loop>
-  }> =>
+function buildTreeSelectData(list: DeptRecord[], disabledId?: number): TreeSelectNode[] {
+  const loop = (nodes: DeptRecord[]): TreeSelectNode[] =>
     nodes.map((n) => ({
       title: n.deptName,
       value: n.id,
@@ -53,6 +54,29 @@ function buildTreeSelectData(list: DeptRecord[], disabledId?: number) {
   ]
 }
 
+const fields: FieldDefinition[] = [
+  { key: 'deptName', label: '部门名称', type: 'input', width: 220 },
+  { key: 'deptCode', label: '部门编码', type: 'input', width: 160 },
+  { key: 'sortOrder', label: '排序', type: 'input', width: 80 },
+  { key: 'status', label: '状态', type: 'select', width: 100, options: [
+    { label: '全部', value: '' },
+    { label: '启用', value: 1 },
+    { label: '停用', value: 0 },
+  ]},
+  { key: 'userCount', label: '用户数', type: 'input', width: 90 },
+  { key: 'action', label: '操作', width: 260, fixed: 'right' },
+]
+
+const defaultColumnFields: ColumnField[] = [
+  { key: 'deptName', label: '部门名称', visible: true, width: 220 },
+  { key: 'deptCode', label: '部门编码', visible: true, width: 160 },
+  { key: 'sortOrder', label: '排序', visible: true, width: 80 },
+  { key: 'status', label: '状态', visible: true, width: 100 },
+  { key: 'userCount', label: '用户数', visible: true, width: 90 },
+]
+
+const STORAGE_KEY = 'department-management-column-settings'
+
 export default function DepartmentManagement() {
   const menuTitle = useMenuTitle()
   const [loading, setLoading] = useState(false)
@@ -61,6 +85,17 @@ export default function DepartmentManagement() {
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form] = Form.useForm<DeptFormValues>()
+
+  const [columnFields, setColumnFields] = useState<ColumnField[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch { /* ignore */ }
+    return defaultColumnFields
+  })
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -161,74 +196,94 @@ export default function DepartmentManagement() {
     }
   }, [fetchData])
 
+  const handleColumnSettingsConfirm = useCallback((nextFields: ColumnField[]) => {
+    setColumnFields(nextFields)
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextFields))
+    } catch { /* ignore */ }
+  }, [])
+
+  const handleColumnSettingsReset = useCallback(() => {
+    setColumnFields(defaultColumnFields)
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultColumnFields))
+    } catch { /* ignore */ }
+  }, [])
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const columns: TableProps<DeptRecord>['columns'] = [
-    { title: '部门名称', dataIndex: 'deptName', key: 'deptName', width: 220 },
-    { title: '部门编码', dataIndex: 'deptCode', key: 'deptCode', width: 160 },
-    { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 80 },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (_: unknown, record: DeptRecord) => (
-        <CompanyTag color={record.status === 1 ? 'success' : 'default'}>
-          {record.status === 1 ? '启用' : '停用'}
-        </CompanyTag>
-      ),
+  const toolbarActions = (
+    <CompanyButton type="primary" onClick={() => openCreate(0)}>
+      新增部门
+    </CompanyButton>
+  )
+
+  const bodyCell = useCallback(
+    (column: Record<string, unknown>, record: Record<string, unknown>) => {
+      const item = record as unknown as DeptRecord
+
+      if (column.key === 'status') {
+        return (
+          <CompanyTag color={item.status === 1 ? 'success' : 'default'}>
+            {item.status === 1 ? '启用' : '停用'}
+          </CompanyTag>
+        )
+      }
+
+      if (column.key === 'userCount') {
+        return <>{item.userCount || 0} 人</>
+      }
+
+      if (column.key === 'action') {
+        return (
+          <ActionCell
+            buttons={[
+              { key: 'addChild', label: '新增子级', onClick: () => openCreate(item.id) },
+              { key: 'edit', label: '编辑', onClick: () => openEdit(item) },
+              {
+                key: 'toggle',
+                label: item.status === 1 ? '停用' : '启用',
+                onClick: () => handleToggleStatus(item),
+              },
+              {
+                key: 'delete',
+                label: '删除',
+                danger: true,
+                confirm: true,
+                confirmTitle: `确定删除部门「${item.deptName}」？`,
+                onClick: () => handleDelete(item),
+              },
+            ]}
+          />
+        )
+      }
+
+      return null
     },
-    {
-      title: '用户数',
-      dataIndex: 'userCount',
-      key: 'userCount',
-      width: 90,
-      render: (v: unknown) => `${v || 0} 人`,
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 260,
-      render: (_: unknown, record: DeptRecord) => (
-        <Space size={4}>
-          <CompanyButton size="small" type="link" onClick={() => openCreate(record.id)}>
-            新增子级
-          </CompanyButton>
-          <CompanyButton size="small" type="link" onClick={() => openEdit(record)}>
-            编辑
-          </CompanyButton>
-          <CompanyButton size="small" type="link" onClick={() => handleToggleStatus(record)}>
-            {record.status === 1 ? '停用' : '启用'}
-          </CompanyButton>
-          <CompanyButton size="small" type="link" danger onClick={() => handleDelete(record)}>
-            删除
-          </CompanyButton>
-        </Space>
-      ),
-    },
-  ]
+    [openCreate, openEdit, handleToggleStatus, handleDelete]
+  )
 
   return (
-    <div style={{ padding: 16, background: '#fff', borderRadius: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{menuTitle || '部门管理'}</h2>
-        <CompanyButton type="primary" onClick={() => openCreate(0)}>
-          新增部门
-        </CompanyButton>
-      </div>
-
-      <Table<DeptRecord>
-        columns={columns}
-        dataSource={flattenToTreeData(treeData)}
-        rowKey="id"
+    <>
+      <SmartListTemplate
+        title={menuTitle || '部门管理'}
+        fields={fields}
+        dataSource={treeData as unknown as Record<string, unknown>[]}
         loading={loading}
         pagination={false}
-        childrenColumnName="children"
-        defaultExpandAllRows
+        rowKey="id"
+        treeConfig={{ enabled: true, levelIndent: 24 }}
+        defaultExpandAll
+        columnFields={columnFields}
+        defaultColumnFields={defaultColumnFields}
+        onColumnSettingsChange={handleColumnSettingsConfirm}
+        onColumnSettingsReset={handleColumnSettingsReset}
+        onRefresh={fetchData}
+        toolbarActions={toolbarActions}
+        bodyCell={bodyCell}
       />
 
       <CompanyDrawer
@@ -279,6 +334,6 @@ export default function DepartmentManagement() {
           </Form.Item>
         </Form>
       </CompanyDrawer>
-    </div>
+    </>
   )
 }

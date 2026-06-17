@@ -1,12 +1,10 @@
 import { useEffect, useCallback, useState } from 'react'
-import { Tag, Menu, Space } from 'antd'
+import { Tag, Space } from 'antd'
 import {
   CompanyButton,
-  CompanyDropdown,
   CompanyMessage,
   SmartListTemplate,
   ActionCell,
-  SvgIcon,
   type FieldDefinition,
   type ColumnField,
 } from '@donglegeyu/company-ui'
@@ -15,12 +13,12 @@ import { useListData, useStatusMap, useDateFormat } from '@/hooks'
 import { useColumnSettings } from '@/hooks/useColumnSettings'
 
 const fields: FieldDefinition[] = [
-  { key: 'categoryName', label: '分类名称', type: 'input', placeholder: '请输入分类名称', width: 180, fixed: 'left' },
-  { key: 'categoryCode', label: '分类编码', type: 'input', placeholder: '请输入分类编码', width: 150 },
+  { key: 'categoryName', label: '分类名称', type: 'input', width: 180, fixed: 'left' },
+  { key: 'categoryCode', label: '分类编码', type: 'input', width: 150 },
   { key: 'parentCategory', label: '上级分类', type: 'select', width: 150, options: [
     { label: '全部', value: '' },
   ]},
-  { key: 'sortOrder', label: '排序', type: 'input', placeholder: '请输入排序号', width: 100 },
+  { key: 'sortOrder', label: '排序', type: 'input', width: 100 },
   { key: 'status', label: '状态', type: 'select', width: 100, options: [
     { label: '全部', value: '' },
     { label: '启用', value: 'enabled' },

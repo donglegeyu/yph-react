@@ -7,7 +7,7 @@ import { CompanyPopover, SvgIcon } from '@donglegeyu/company-ui'
 import MoreMenuDrawer from './MoreMenuDrawer'
 import CustomNavPanel from './CustomNavPanel'
 import type { Domain } from '@/types'
-import { useDomains } from '@/hooks'
+import { useDomains, useSysUsers } from '@/hooks'
 import './FirstSidebar.scss'
 import logoImg from '@/assets/logo-dl.svg'
 
@@ -74,6 +74,7 @@ export default function FirstSidebar() {
   const [currentDomainId, setCurrentDomainId] = useState<number | null>(null)
   
   const { fetchAllDomains } = useDomains()
+  const { fetchUserDomains } = useSysUsers()
   const [moreDrawerOpen, setMoreDrawerOpen] = useState(false)
   const [customNavVisible, setCustomNavVisible] = useState(false)
   const [adminPopoverOpen, setAdminPopoverOpen] = useState(false)
@@ -169,13 +170,31 @@ export default function FirstSidebar() {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [moreDrawerOpen])
 
+  const getCurrentUserId = useCallback((): number => {
+    try {
+      const raw = localStorage.getItem('app:userInfo')
+      if (raw) {
+        const u = JSON.parse(raw)
+        if (u && typeof u.id === 'number') return u.id
+      }
+    } catch { /* ignore */ }
+    return 1
+  }, [])
+
+  const loadUserDomains = useCallback(async (): Promise<Domain[]> => {
+    const userId = getCurrentUserId()
+    const userDomains = await fetchUserDomains(userId)
+    if (userDomains.length > 0) return userDomains
+    return await fetchAllDomains()
+  }, [fetchUserDomains, fetchAllDomains, getCurrentUserId])
+
   useEffect(() => {
     async function loadDomains() {
-      const domainList = await fetchAllDomains()
+      const domainList = await loadUserDomains()
       setDomains(domainList)
-      
+
       const savedDomainId = localStorage.getItem('currentDomainId')
-      if (savedDomainId) {
+      if (savedDomainId && domainList.some((d) => d.id === Number(savedDomainId))) {
         setCurrentDomainId(Number(savedDomainId))
       } else if (domainList.length > 0) {
         setCurrentDomainId(domainList[0].id)
@@ -183,15 +202,15 @@ export default function FirstSidebar() {
       }
     }
     loadDomains()
-  }, [fetchAllDomains])
+  }, [loadUserDomains])
 
   const handleDomainPopoverOpenChange = useCallback(async (open: boolean) => {
     if (open) {
-      const domainList = await fetchAllDomains()
+      const domainList = await loadUserDomains()
       setDomains(domainList)
     }
     setDomainPopoverOpen(open)
-  }, [fetchAllDomains])
+  }, [loadUserDomains])
 
   const handleClick = useCallback(
     (menu: any) => {
@@ -254,7 +273,8 @@ export default function FirstSidebar() {
 
   const handleCustomNavUpdate = useCallback((selected: any[]) => {
     useAppStore.setState({ customNavMenus: selected })
-    localStorage.setItem('app:customNavMenus', JSON.stringify(selected))
+    const domainId = localStorage.getItem('currentDomainId') || '1'
+    localStorage.setItem(`app:customNavMenus:${domainId}`, JSON.stringify(selected))
     useAppStore.getState().saveCustomNavMenus(selected)
   }, [])
 

@@ -5,9 +5,15 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.material.server.entity.NavMenu;
 import com.material.server.entity.SysDomain;
 import com.material.server.entity.SysDomainMenu;
+import com.material.server.entity.SysRole;
+import com.material.server.entity.SysRoleMenu;
+import com.material.server.entity.SysUserRole;
 import com.material.server.mapper.NavMenuMapper;
 import com.material.server.mapper.SysDomainMapper;
 import com.material.server.mapper.SysDomainMenuMapper;
+import com.material.server.mapper.SysRoleMapper;
+import com.material.server.mapper.SysRoleMenuMapper;
+import com.material.server.mapper.SysUserRoleMapper;
 import com.material.server.service.NavMenuService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,6 +32,9 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
 
     private final SysDomainMenuMapper sysDomainMenuMapper;
     private final SysDomainMapper sysDomainMapper;
+    private final SysUserRoleMapper sysUserRoleMapper;
+    private final SysRoleMapper sysRoleMapper;
+    private final SysRoleMenuMapper sysRoleMenuMapper;
 
     @Override
     public List<NavMenu> getTreeList() {
@@ -95,6 +104,56 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
                 .collect(Collectors.toList());
 
         return buildDomainTree(roots, childrenMap, menuMap, domainMenuByMenuId, true);
+    }
+
+    @Override
+    public List<NavMenu> getTreeListByDomainIdAndUserId(Long domainId, Long userId) {
+        List<NavMenu> domainTree = domainId != null
+                ? getTreeListByDomainId(domainId)
+                : getTreeList();
+
+        if (userId == null) {
+            return domainTree;
+        }
+
+        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
+                new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
+        if (userRoles.isEmpty()) {
+            return filterTreeByAllowedIds(domainTree, java.util.Collections.emptySet());
+        }
+
+        Set<Long> roleIds = userRoles.stream().map(SysUserRole::getRoleId).collect(Collectors.toSet());
+        List<SysRole> roles = sysRoleMapper.selectBatchIds(roleIds);
+        boolean isAdmin = roles.stream().anyMatch(r -> "ROLE_ADMIN".equals(r.getRoleCode()));
+        if (isAdmin) {
+            return domainTree;
+        }
+
+        List<SysRoleMenu> roleMenus = sysRoleMenuMapper.selectList(
+                new LambdaQueryWrapper<SysRoleMenu>().in(SysRoleMenu::getRoleId, roleIds));
+        Set<Long> allowedMenuIds = roleMenus.stream()
+                .map(SysRoleMenu::getMenuId)
+                .collect(Collectors.toSet());
+
+        return filterTreeByAllowedIds(domainTree, allowedMenuIds);
+    }
+
+    private List<NavMenu> filterTreeByAllowedIds(List<NavMenu> tree, Set<Long> allowedIds) {
+        List<NavMenu> result = new ArrayList<>();
+        for (NavMenu node : tree) {
+            List<NavMenu> filteredChildren = node.getChildren() != null
+                    ? filterTreeByAllowedIds(node.getChildren(), allowedIds)
+                    : new ArrayList<>();
+
+            if (allowedIds.contains(node.getId())) {
+                node.setChildren(filteredChildren);
+                result.add(node);
+            } else if (!filteredChildren.isEmpty()) {
+                node.setChildren(filteredChildren);
+                result.add(node);
+            }
+        }
+        return result;
     }
 
     private Long getEffectiveParentMenuId(SysDomainMenu dm,

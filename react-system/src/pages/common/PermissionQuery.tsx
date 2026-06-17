@@ -45,6 +45,12 @@ interface PermissionData {
   user: UserOption & { deptName?: string; status?: number }
   domains: DomainItem[]
   rbac: {
+    userId?: number
+    username?: string
+    deptId?: number
+    deptName?: string
+    companyId?: number
+    companyName?: string
     roles: RoleBrief[]
     menus: MenuNode[]
     permissions: string[]

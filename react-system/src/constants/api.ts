@@ -3,6 +3,9 @@ export const API_BASE = '/api'
 
 // 后端服务 API
 export const API_ENDPOINTS = {
+  // 认证
+  AUTH_LOGIN: `${API_BASE}/auth/login`,
+
   // 材料管理
   MATERIALS: `${API_BASE}/materials`,
   MATERIAL_VIEWS: `${API_BASE}/material-views`,
@@ -54,6 +57,12 @@ export const API_ENDPOINTS = {
 
   // 角色管理
   SYS_ROLES: `${API_BASE}/sys/roles`,
+
+  // 技能管理
+  SKILLS: `${API_BASE}/skills`,
+
+  // 文件上传
+  FILE_UPLOAD: `${API_BASE}/files/upload`,
 } as const
 
 // 图标服务 API

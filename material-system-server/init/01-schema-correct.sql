@@ -37,30 +37,4 @@ CREATE TABLE IF NOT EXISTS nav_menu (
     deleted TINYINT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='导航菜单表';
 
--- 插入默认菜单数据
-INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_type) VALUES
-('home', '首页', '/home', 'home', 1, 1, 0, '系统菜单-上'),
-('favorites', '收藏', '/favorites', 'star', 2, 1, 0, '系统菜单-上'),
-('material-center', '材料中心', NULL, 'file', 3, 1, 0, '业务菜单'),
-('material-apply', '材料申请', '/materials', 'list', 1, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='material-center') AS t), '业务菜单'),
-('construction-library', '施工项库', '/construction-library', 'building-one', 2, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='material-center') AS t), '业务菜单'),
-('purchase-center', '采购中心', NULL, 'buy', 2, 1, 0, '业务菜单'),
-('purchase-demand', '采购需求单', '/purchase-demand', 'transaction', 1, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='purchase-center') AS t), '业务菜单'),
-('purchase-order', '采购订单', '/purchase-order', 'bill', 2, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='purchase-center') AS t), '业务菜单'),
-('product-center', '商品中心', NULL, 'commodity', 3, 1, 0, '业务菜单'),
-('tag-list', '标签列表', '/tag-list', 'coupon', 1, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='product-center') AS t), '业务菜单'),
-('category-list', '分类列表', '/category-list', 'list', 2, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='product-center') AS t), '业务菜单'),
-('brand-list', '品牌列表', '/brand-list', 'bank-card', 3, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='product-center') AS t), '业务菜单'),
-('settings-center', '系统中心', NULL, 'setting', 4, 1, 0, '业务菜单'),
-('menu-management', '菜单管理', '/menu-management', 'list', 1, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='settings-center') AS t), '业务菜单'),
-('domain-manage', '域管理', '/domain-manage', 'setting', 2, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='settings-center') AS t), '业务菜单'),
-('user-management', '用户管理', '/user-management', 'user', 3, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='settings-center') AS t), '业务菜单'),
-('system-settings', '系统设置', NULL, 'tool', 4, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='settings-center') AS t), '业务菜单'),
-('permission-query', '权限查询', '/permission-query', 'safe', 5, 1, (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='settings-center') AS t), '业务菜单'),
-('super-search', '超级搜索', NULL, 'search', 1, 1, 0, '系统菜单-下');
-
--- 修复所有菜单的 level 值
-UPDATE nav_menu SET level = 0 WHERE parent_id IS NULL OR parent_id = 0;
-UPDATE nav_menu SET level = 1 WHERE parent_id IN (SELECT id FROM (SELECT id FROM nav_menu WHERE parent_id IS NULL OR parent_id = 0) AS t) AND (parent_id IS NOT NULL AND parent_id != 0);
-UPDATE nav_menu SET level = 2 WHERE parent_id IN (SELECT id FROM (SELECT id FROM nav_menu WHERE level = 1) AS t);
-UPDATE nav_menu SET level = 3 WHERE parent_id IN (SELECT id FROM (SELECT id FROM nav_menu WHERE level = 2) AS t);
+-- 注：菜单种子数据已统一迁移到 09-menu-seed.sql 集中管理

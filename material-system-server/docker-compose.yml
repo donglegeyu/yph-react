@@ -29,6 +29,8 @@ services:
     depends_on:
       mysql:
         condition: service_started
+    volumes:
+      - uploads-data:/app/uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/api/nav-menus"]
       interval: 30s
@@ -40,3 +42,5 @@ volumes:
   mysql-react-data:
     name: material-mysql-react-data
     external: true
+  uploads-data:
+    name: material-uploads-react-data

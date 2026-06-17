@@ -16,9 +16,12 @@ public class NavMenuController {
     private final NavMenuService navMenuService;
 
     @GetMapping
-    public Result<List<NavMenu>> list(@RequestParam(required = false) Long domainId) {
+    public Result<List<NavMenu>> list(@RequestParam(required = false) Long domainId,
+                                      @RequestParam(required = false) Long userId) {
         List<NavMenu> menus;
-        if (domainId != null) {
+        if (userId != null) {
+            menus = navMenuService.getTreeListByDomainIdAndUserId(domainId, userId);
+        } else if (domainId != null) {
             menus = navMenuService.getTreeListByDomainId(domainId);
         } else {
             menus = navMenuService.getTreeList();

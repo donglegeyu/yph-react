@@ -1,0 +1,153 @@
+.user-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 calc(var(--spacing-sm) * 1px);
+
+  .ud-user-card {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing-md) * 1px);
+    padding: calc(var(--spacing-md) * 1px);
+    background: var(--color-bg-container);
+    border-radius: calc(var(--border-radius-base) * 1px);
+
+    .ud-user-top {
+      display: flex;
+      align-items: center;
+      gap: calc(var(--spacing-sm) * 1px);
+
+      .ud-user-info {
+        display: flex;
+        align-items: center;
+        gap: calc(var(--spacing-xs) * 1px);
+
+        .ud-avatar {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          height: 24px;
+          border-radius: 66px;
+          background: var(--primary-color);
+          color: #fff;
+          font-size: calc(var(--font-size-base) * 1px);
+          line-height: 22px;
+          font-weight: 400;
+        }
+
+        .ud-username {
+          font-size: calc(var(--font-size-lg) * 1px);
+          font-weight: 500;
+          color: var(--color-text);
+          line-height: 24px;
+        }
+      }
+
+      .ud-user-tags {
+        display: flex;
+        align-items: center;
+        gap: calc(var(--spacing-xs) * 1px);
+      }
+    }
+
+    .ud-user-fields {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px calc(var(--spacing-md) * 1px + 24px);
+
+      .ud-field-item {
+        display: flex;
+        align-items: center;
+        line-height: 22px;
+
+        .ud-field-label {
+          font-size: calc(var(--font-size-base) * 1px);
+          color: var(--color-text-tertiary);
+          white-space: nowrap;
+        }
+
+        .ud-field-value {
+          font-size: calc(var(--font-size-base) * 1px);
+          color: var(--color-text);
+        }
+      }
+    }
+
+    .ud-user-relations {
+      display: flex;
+      flex-direction: column;
+      gap: calc(var(--spacing-xs) * 1px);
+      padding-top: calc(var(--spacing-xs) * 1px);
+      border-top: 1px solid var(--color-border-secondary);
+
+      .ud-relation-row {
+        display: flex;
+        align-items: flex-start;
+        line-height: 22px;
+
+        .ud-relation-label {
+          font-size: calc(var(--font-size-base) * 1px);
+          color: var(--color-text-tertiary);
+          white-space: nowrap;
+          margin-right: 8px;
+        }
+
+        .ud-relation-value {
+          font-size: calc(var(--font-size-base) * 1px);
+          color: var(--color-text);
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+      }
+    }
+  }
+
+  .ud-divider {
+    height: 12px;
+    flex-shrink: 0;
+    background: var(--color-bg-layout);
+  }
+
+  .ud-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-container);
+    border-radius: calc(var(--border-radius-base) * 1px) calc(var(--border-radius-base) * 1px) 0 0;
+    overflow: hidden;
+    padding: 0 calc(var(--spacing-md) * 1px);
+
+    .ud-tab-pane {
+      padding: calc(var(--spacing-md) * 1px) 0;
+    }
+
+    .ud-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--color-text-tertiary);
+      font-size: calc(var(--font-size-base) * 1px);
+    }
+
+    .ud-perm-section {
+      margin-bottom: calc(var(--spacing-md) * 1px);
+
+      .ud-perm-title {
+        font-size: calc(var(--font-size-base) * 1px);
+        font-weight: 500;
+        color: var(--color-text);
+        margin-bottom: calc(var(--spacing-xs) * 1px);
+      }
+
+      .ud-perm-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+    }
+  }
+}

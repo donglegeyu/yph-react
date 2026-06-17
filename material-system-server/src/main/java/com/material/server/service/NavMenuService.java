@@ -10,6 +10,8 @@ public interface NavMenuService extends IService<NavMenu> {
 
     List<NavMenu> getTreeListByDomainId(Long domainId);
 
+    List<NavMenu> getTreeListByDomainIdAndUserId(Long domainId, Long userId);
+
     List<NavMenu> getTreeListByParentId(Long parentId);
 
     void batchUpdateStatus(List<Long> ids, Integer status);

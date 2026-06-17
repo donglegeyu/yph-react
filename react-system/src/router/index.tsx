@@ -14,7 +14,6 @@ function RouteErrorBoundary() {
 }
 
 const LoginView = lazy(() => import('@/pages/common/LoginView'))
-const HomeView = lazy(() => import('@/pages/home/HomeView'))
 const BuildingView = lazy(() => import('@/components/layout/BuildingView'))
 
 const MaterialCreate = lazy(() => import('@/pages/create/MaterialCreate'))
@@ -28,6 +27,7 @@ const ComponentPreview = lazy(() => import('@/pages/common/ComponentPreview'))
 const DomainForm = lazy(() => import('@/pages/form/DomainForm'))
 const DomainManagement = lazy(() => import('@/pages/common/DomainManagement'))
 const UserManagement = lazy(() => import('@/pages/common/UserManagement'))
+const UserDetail = lazy(() => import('@/pages/common/UserDetail'))
 const DepartmentManagement = lazy(() => import('@/pages/common/DepartmentManagement'))
 const RoleManagement = lazy(() => import('@/pages/common/RoleManagement'))
 const PermissionQuery = lazy(() => import('@/pages/common/PermissionQuery'))
@@ -65,6 +65,7 @@ const CostDeductionConfig = lazy(() => import('@/pages/purchase/CostDeductionCon
 const CostDeductionAdjust = lazy(() => import('@/pages/purchase/CostDeductionAdjust'))
 const SecurityCheckQuery = lazy(() => import('@/pages/common/SecurityCheckQuery'))
 const SecurityCheckDetail = lazy(() => import('@/pages/common/SecurityCheckDetail'))
+const SkillManagement = lazy(() => import('@/pages/common/SkillManagement'))
 const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
 
 const routes: RouteObject[] = [
@@ -96,6 +97,7 @@ const routes: RouteObject[] = [
       { path: 'domain-manage/:id', element: <DomainForm /> },
       { path: 'domain-manage', element: <DomainManagement /> },
       { path: 'user-management', element: <UserManagement /> },
+      { path: 'user-management/:id', element: <UserDetail /> },
       { path: 'department-management', element: <DepartmentManagement /> },
       { path: 'role-management', element: <RoleManagement /> },
       { path: 'permission-query', element: <PermissionQuery /> },
@@ -130,6 +132,7 @@ const routes: RouteObject[] = [
       { path: 'cost-deduction-adjust', element: <CostDeductionAdjust /> },
       { path: 'security-check-query', element: <SecurityCheckQuery /> },
       { path: 'security-check-query/:id', element: <SecurityCheckDetail /> },
+      { path: 'craftsman-skill', element: <SkillManagement /> },
       { path: '*', element: <BuildingView /> },
     ],
   },

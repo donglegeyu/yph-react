@@ -38,9 +38,9 @@ echo "$ALL_CHANGES"
 echo ""
 
 # 分类变更
-CODE_CHANGES=$(echo "$ALL_CHANGES" | grep -E "^( M|M |MM|A |??)" | grep -E "(material-system/src/|material-system-server/src/)" || true)
+CODE_CHANGES=$(echo "$ALL_CHANGES" | grep -E "^( M|M |MM|A |??)" | grep -E "(react-system/src/|material-system-server/src/)" || true)
 DOCS_CHANGES=$(echo "$ALL_CHANGES" | grep -E "^( M|M |MM|A |??)" | grep -E "docs/" || true)
-MEMORY_CHANGES=$(echo "$ALL_CHANGES" | grep -E "^( M|M |MM|A |??)" | grep -E "\.trae/memory/" || true)
+MEMORY_CHANGES=$(echo "$ALL_CHANGES" | grep -E "^( M|M |MM|A |??)" | grep -E "memory/" || true)
 WORKFLOW_CHANGES=$(echo "$ALL_CHANGES" | grep -E "^( M|M |MM|A |??)" | grep -E "\.github/" || true)
 SCRIPTS_CHANGES=$(echo "$ALL_CHANGES" | grep -E "^( M|M |MM|A |??)" | grep -E "^scripts/" || true)
 

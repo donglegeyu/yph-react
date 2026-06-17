@@ -21,9 +21,13 @@ public class Craftsman {
 
     private String serviceProviderName;
 
-    private String type;
+    private String type;  // outsource: 外包工匠, external: 外部工匠
 
     private String region;
+
+    private String serviceSkills;
+
+    private LocalDateTime registerTime;
 
     private Integer status;
 

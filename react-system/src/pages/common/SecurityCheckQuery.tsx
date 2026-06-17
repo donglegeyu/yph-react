@@ -96,7 +96,7 @@ interface FilterFieldConfig {
 }
 
 const drawerFilterFields: FilterFieldConfig[] = [
-  { key: 'gasCode', label: '燃气编码', type: 'input', placeholder: '请输入燃气编码' },
+  { key: 'gasCode', label: '燃气编码', type: 'input' },
   {
     key: 'checkStatus',
     label: '安检状态',
@@ -150,7 +150,7 @@ const drawerFilterFields: FilterFieldConfig[] = [
       { label: '公司B', value: 'b' },
     ],
   },
-  { key: 'checkUser', label: '安检员', type: 'input', placeholder: '请输入安检员' },
+  { key: 'checkUser', label: '安检员', type: 'input' },
   {
     key: 'address',
     label: '用户地址',
@@ -190,10 +190,10 @@ export default function SecurityCheckQuery() {
   const [filterTags, setFilterTags] = useState<FilterTag[]>([])
 
   const columnSettings = useColumnSettings({
-    storageKey: 'security-check-columns',
+    pageKey: 'security-check',
   })
 
-  const { loading, dataSource, pagination, filterParams, setFilterParams, fetchData, refresh } =
+  const { loading, dataSource, pagination, filterParams, setFilterParams, fetchData } =
     useListData<SecurityCheckRecord>({
       apiEndpoint: API_ENDPOINTS.SECURITY_CHECKS,
       defaultPageSize: 20,
@@ -361,7 +361,7 @@ export default function SecurityCheckQuery() {
                     open={monthDropdownOpen}
                     onChange={handleMonthChange}
                     onOpenChange={(open) => { if (!open) setMonthDropdownOpen(false) }}
-                    getPopupContainer={false}
+                    getPopupContainer={(triggerNode) => triggerNode.parentNode as HTMLElement}
                     inputReadOnly
                   />
                 </div>

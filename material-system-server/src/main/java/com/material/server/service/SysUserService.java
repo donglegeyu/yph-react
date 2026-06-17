@@ -13,11 +13,15 @@ public interface SysUserService extends IService<SysUser> {
 
     IPage<SysUserVO> page(Page<SysUser> page, String username, Integer status, Long deptId);
 
+    SysUserVO getDetailById(Long id);
+
     SysUser create(SysUser user, List<Long> roleIds);
 
     void update(Long id, SysUser user, List<Long> roleIds);
 
     void updateStatus(Long id, Integer status);
+
+    void resetPassword(Long id);
 
     void assignDomains(Long userId, Long[] domainIds);
 

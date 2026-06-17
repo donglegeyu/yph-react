@@ -16,13 +16,20 @@ export interface BusinessMenu extends MenuItem {
 }
 
 export interface NavMenu {
+  id?: number
   key: string
   label: string
   path?: string
+  component?: string
+  perms?: string
+  visible?: number
+  menuCategory?: string
   icon?: string
-  menuType?: string
+  sort?: number
   status?: number
   parentId?: number
+  level?: number
+  menuType?: string
   children?: NavMenu[]
   hasChildren?: boolean
 }
@@ -46,9 +53,22 @@ export interface CustomNavMenu {
 
 // ========== 用户相关 ==========
 export interface UserInfo {
+  id?: number
   username?: string
   avatar?: string
   role?: string
+}
+
+export interface LoginResult {
+  token: string
+  id: number
+  username: string
+  nickname?: string
+  realName?: string
+  deptId?: number
+  deptName?: string
+  phone?: string
+  email?: string
 }
 
 // ========== 域相关 ==========

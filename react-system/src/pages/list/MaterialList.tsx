@@ -16,8 +16,8 @@ import { API_ENDPOINTS } from '@/constants/api'
 import { useListData, useStatusMap, useDateFormat, useColumnSettings, useMenuTitle } from '@/hooks'
 
 const fields: FieldDefinition[] = [
-  { key: 'materialName', label: '材料名称', type: 'input', placeholder: '请输入材料名称', width: 180, fixed: 'left' },
-  { key: 'applicationNo', label: '申请单号', type: 'input', placeholder: '请输入申请单号', width: 150 },
+  { key: 'materialName', label: '材料名称', type: 'input', width: 180, fixed: 'left' },
+  { key: 'applicationNo', label: '申请单号', type: 'input', width: 150 },
   { key: 'status', label: '状态', type: 'select', width: 100, options: [
     { label: '全部', value: '' },
     { label: '草稿', value: 'draft' },
@@ -25,11 +25,11 @@ const fields: FieldDefinition[] = [
     { label: '已通过', value: 'approved' },
     { label: '已拒绝', value: 'rejected' },
   ]},
-  { key: 'spec', label: '规格型号', type: 'input', placeholder: '请输入规格型号', width: 120 },
-  { key: 'unit', label: '单位', type: 'input', placeholder: '请输入单位', width: 80 },
-  { key: 'quantity', label: '申请数量', type: 'input', placeholder: '请输入申请数量', width: 100 },
-  { key: 'materialQuantity', label: '材料数量', type: 'input', placeholder: '请输入材料数量', width: 100 },
-  { key: 'applicant', label: '申请人', type: 'input', placeholder: '请输入申请人', width: 100 },
+  { key: 'spec', label: '规格型号', type: 'input', width: 120 },
+  { key: 'unit', label: '单位', type: 'input', width: 80 },
+  { key: 'quantity', label: '申请数量', type: 'input', width: 100 },
+  { key: 'materialQuantity', label: '材料数量', type: 'input', width: 100 },
+  { key: 'applicant', label: '申请人', type: 'input', width: 100 },
   { key: 'department', label: '部门', type: 'select', width: 100, options: [
     { label: '全部', value: '' },
     { label: '工程部', value: 'engineering' },

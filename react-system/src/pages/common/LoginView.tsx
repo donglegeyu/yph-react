@@ -6,6 +6,9 @@ import logoUrl from '@/assets/logo-login.svg'
 import img260 from '@/assets/images/login/260@1x.png'
 import img300 from '@/assets/images/login/300@1x.png'
 import img396 from '@/assets/images/login/396@1x.png'
+import { API_ENDPOINTS } from '@/constants/api'
+import { post } from '@/utils/request'
+import type { LoginResult } from '@/types'
 import './LoginView.scss'
 
 const STORAGE_KEYS = {
@@ -43,8 +46,8 @@ export default function LoginView() {
     const remember = localStorage.getItem(STORAGE_KEYS.REMEMBER_ME) === 'true'
     const savedUsername = localStorage.getItem(STORAGE_KEYS.SAVED_USERNAME)
     return {
-      username: remember && savedUsername ? savedUsername : 'admin',
-      password: '123456',
+      username: remember && savedUsername ? savedUsername : '',
+      password: '',
       remember,
     }
   }, [])
@@ -64,9 +67,20 @@ export default function LoginView() {
 
     try {
       const username = sanitizeInput(values.username)
-      const password = sanitizeInput(values.password)
+      const password = values.password
 
       if (!username || !password) throw new Error('用户名或密码不能为空')
+
+      const res = await post<LoginResult>(API_ENDPOINTS.AUTH_LOGIN, {
+        username,
+        password,
+      })
+
+      if (res.code !== 200 || !res.data) {
+        throw new Error(res.message || '登录失败，请稍后重试')
+      }
+
+      const { token, nickname, realName, username: uname } = res.data
 
       if (values.remember) {
         localStorage.setItem(STORAGE_KEYS.REMEMBER_ME, 'true')
@@ -76,11 +90,21 @@ export default function LoginView() {
         localStorage.removeItem(STORAGE_KEYS.SAVED_USERNAME)
       }
 
-      localStorage.setItem('token', 'mock-token')
+      localStorage.setItem('token', token)
+      localStorage.setItem(
+        'login:user',
+        JSON.stringify({ username: uname, nickname, realName }),
+      )
       message.success('登录成功')
       navigate('/home', { replace: true })
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : '登录失败，请稍后重试')
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : '登录失败，请稍后重试'
+      setErrorMessage(msg)
     } finally {
       setLoading(false)
     }

@@ -24,18 +24,4 @@ INSERT INTO construction_application (application_no, construction_name, content
 ('CA202604220004', '防水施工', '屋面防水卷材铺设', 'approved', 1, 35000, '赵六', '2026-04-22 11:00:00'),
 ('CA202604220005', '外墙保温', '外墙外保温系统安装', 'rejected', 1, 65000, '张三', '2026-04-22 14:00:00');
 
--- 在菜单表中添加施工申请列表菜单（作为施工项库的子菜单）
--- 先查询施工项库的ID
-SET @parent_id = (SELECT id FROM nav_menu WHERE `key` = 'construction-library' LIMIT 1);
-
--- 如果施工项库不存在，则插入施工项库和施工申请列表
-INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_type)
-SELECT 'construction-library', '施工项库', '/construction-library', NULL, 2, 1, 
-       (SELECT id FROM (SELECT id FROM nav_menu WHERE `key` = 'material-center') AS t), '业务菜单'
-WHERE NOT EXISTS (SELECT 1 FROM nav_menu WHERE `key` = 'construction-library');
-
--- 插入施工申请列表菜单
-INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_type)
-SELECT 'construction-apply', '施工申请列表', '/construction-apply', NULL, 1, 1, 
-       (SELECT id FROM nav_menu WHERE `key` = 'construction-library'), '业务菜单'
-WHERE NOT EXISTS (SELECT 1 FROM nav_menu WHERE `key` = 'construction-apply');
+-- 注：施工申请列表菜单已统一迁移到 09-menu-seed.sql 集中管理

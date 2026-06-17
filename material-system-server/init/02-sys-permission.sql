@@ -73,12 +73,5 @@ CREATE TABLE IF NOT EXISTS sys_user_domain (
 INSERT INTO sys_domain (domain_key, domain_name, description, is_default, status) VALUES
 ('xingjiZM', '星际造梦', '系统默认域，使用系统默认菜单结构', 1, 1);
 
--- 为默认域添加所有菜单（使用系统菜单）
-INSERT INTO sys_domain_menu (domain_id, menu_id, custom_label, sort)
-SELECT
-    (SELECT id FROM sys_domain WHERE domain_key = 'xingjiZM'),
-    id,
-    label,
-    sort
-FROM nav_menu
-WHERE deleted = 0 AND status = 1;
+-- 注：默认域与菜单的关联（sys_domain_menu）由 09-menu-seed.sql 末尾统一同步
+-- （原在此处同步会因菜单尚未全部插入而导致默认域菜单不全）

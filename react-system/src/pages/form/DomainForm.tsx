@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import type { Key } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Tree, Input, Select, InputNumber, Table, Alert, Empty, Menu } from 'antd'
 import { SearchOutlined, DownOutlined } from '@ant-design/icons'
-import { CompanyButton, CompanyCard, CompanyDrawer, CompanyDropdown, CompanyMessage, FormPageTemplate, SectionTitle, BaseInfoForm, type BaseInfoFormRef, IconSelect } from '@donglegeyu/company-ui'
+import { CompanyButton, CompanyDrawer, CompanyDropdown, CompanyMessage, FormPageTemplate, SectionTitle, BaseInfoForm, type BaseInfoFormRef, IconSelect } from '@donglegeyu/company-ui'
 import { pinyin } from 'pinyin-pro'
 import { API_ENDPOINTS } from '@/constants/api'
 import './DomainForm.scss'
@@ -101,7 +102,7 @@ export default function DomainForm() {
   const isEdit = Boolean(params.id)
   const pageTitle = isEdit ? '编辑域' : '新增域'
 
-  const [loading, setLoading] = useState(false)
+  const [, setLoading] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [formData, setFormData] = useState<DomainFormData>({
     domainKey: '',
@@ -127,9 +128,6 @@ export default function DomainForm() {
   const [selectedMoveTargetId, setSelectedMoveTargetId] = useState<number | null>(null)
   const [moveExpandedKeys, setMoveExpandedKeys] = useState<string[]>([])
   const [moveTreeData, setMoveTreeData] = useState<MoveTreeNode[]>([])
-
-  const [isScrolling, setIsScrolling] = useState(false)
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const checkedCount = checkedKeys.length
 
@@ -293,7 +291,7 @@ export default function DomainForm() {
 
     function getEffectiveParentId(dm: DomainMenu): number | null {
       if (dm.customParentId != null) {
-        return dm.customParentId
+        return dm.customParentId === 0 ? null : dm.customParentId
       }
       const sysParentId = getSystemParentId(dm.menuId)
       if (sysParentId === 0) return null
@@ -338,7 +336,7 @@ export default function DomainForm() {
   })()
 
   // -------- Drawer handlers --------
-  function onExpand(keys: (string | number)[]) {
+  function onExpand(keys: Key[]) {
     setExpandedKeys(keys.map(k => Number(k)))
   }
 
@@ -468,62 +466,67 @@ export default function DomainForm() {
   }
 
   // -------- Move drawer --------
-  function getSubTreeDepth(node: any): number {
-    if (!node.children?.length) return 0
-    let maxChildDepth = 0
-    for (const child of node.children) {
-      maxChildDepth = Math.max(maxChildDepth, getSubTreeDepth(child))
-    }
-    return 1 + maxChildDepth
-  }
-
   function buildMoveTreeData(record: any): MoveTreeNode[] {
-    const maxSubLevel = getSubTreeDepth(record)
-    const selectedMenuIdStrs = new Set(domainMenus.map(m => String(m.menuId)))
-    const excludedIds = new Set([String(record.menuId)])
+    const excludedMenuIds = new Set([Number(record.menuId)])
 
-    function traverse(items: SystemMenu[]): MoveTreeNode[] {
-      const nodes: MoveTreeNode[] = []
-
-      for (const item of items) {
-        const itemIdStr = String(item.id)
-
-        if (excludedIds.has(itemIdStr)) continue
-
-        const childrenNodes = item.children?.length ? traverse(item.children) : undefined
-        const hasSelectedDescendant = childrenNodes && childrenNodes.length > 0
-        const isSelected = selectedMenuIdStrs.has(itemIdStr)
-
-        if (!isSelected && !hasSelectedDescendant) continue
-
-        const findLevel = (menus: SystemMenu[], targetId: number, level: number = 1): number => {
-          for (const menu of menus) {
-            if (menu.id === targetId) return level
-            if (menu.children?.length) {
-              const found = findLevel(menu.children, targetId, level + 1)
-              if (found > 0) return found
-            }
+    function getSysMenuLabel(menuId: number): string {
+      function find(menus: SystemMenu[]): string {
+        for (const m of menus) {
+          if (m.id === menuId) return m.label
+          if (m.children?.length) {
+            const r = find(m.children)
+            if (r) return r
           }
-          return 1
         }
-        const targetMenuLevel = findLevel(systemMenus, item.id)
-        const wouldExceed = targetMenuLevel + maxSubLevel > 3
-
-        nodes.push({
-          key: itemIdStr,
-          label: item.label,
-          disabled: wouldExceed,
-          children: childrenNodes,
-        })
+        return ''
       }
-
-      return nodes
+      return find(systemMenus) || `菜单${menuId}`
     }
 
-    return traverse(systemMenus)
+    function getEffectiveParentId(dm: DomainMenu): number | null {
+      if (dm.customParentId != null) {
+        return dm.customParentId === 0 ? null : dm.customParentId
+      }
+      function findSysParentId(menus: SystemMenu[]): number {
+        for (const m of menus) {
+          if (m.id === dm.menuId) return m.parentId ?? 0
+          if (m.children?.length) {
+            const r = findSysParentId(m.children)
+            if (r) return r
+          }
+        }
+        return 0
+      }
+      const sysParentId = findSysParentId(systemMenus)
+      if (sysParentId === 0) return null
+      const parentDomainMenu = domainMenus.find(d => d.menuId === sysParentId)
+      if (parentDomainMenu?.id) return parentDomainMenu.id
+      return null
+    }
+
+    function build(parentId: number | null, depth: number): MoveTreeNode[] {
+      return domainMenus
+        .filter(dm => {
+          if (excludedMenuIds.has(dm.menuId)) return false
+          return getEffectiveParentId(dm) === parentId
+        })
+        .sort((a, b) => (a.sort || 0) - (b.sort || 0))
+        .map(dm => {
+          const wouldExceed = depth + 1 > 3
+          const childNodes = build(dm.id ?? dm.menuId, depth + 1)
+          return {
+            key: String(dm.menuId),
+            label: dm.customLabel || dm.originalLabel || getSysMenuLabel(dm.menuId),
+            disabled: wouldExceed,
+            ...(childNodes.length > 0 ? { children: childNodes } : {}),
+          }
+        })
+    }
+
+    return build(null, 1)
   }
 
-  function onMoveTreeSelect(selectedKeys: (string | number)[]) {
+  function onMoveTreeSelect(selectedKeys: Key[]) {
     if (selectedKeys.length > 0) {
       const key = selectedKeys[0]
       const node = findMoveTreeNode(moveTreeData, String(key))
@@ -533,7 +536,7 @@ export default function DomainForm() {
     }
   }
 
-  function onMoveTreeExpand(keys: (string | number)[]) {
+  function onMoveTreeExpand(keys: Key[]) {
     setMoveExpandedKeys(keys as string[])
   }
 
@@ -552,7 +555,7 @@ export default function DomainForm() {
     setMoveTargetRecord(record)
     setSelectedMoveTargetId(null)
     setMoveTreeData(buildMoveTreeData(record))
-    setMoveExpandedKeys(systemMenus.map(item => String(item.id)))
+    setMoveExpandedKeys(domainMenus.map(item => String(item.menuId)))
     setMoveDrawerVisible(true)
   }
 
@@ -575,7 +578,7 @@ export default function DomainForm() {
       let newCustomLevel: number | null = null
 
       if (selectedMoveTargetId === 0) {
-        newCustomParentId = null
+        newCustomParentId = 0
         newCustomLevel = 1
       } else {
         const parentDomainMenu = prev.find(m => m.menuId === selectedMoveTargetId)
@@ -680,17 +683,6 @@ export default function DomainForm() {
     } finally {
       setSubmitLoading(false)
     }
-  }
-
-  // -------- Scroll --------
-  function handleScroll() {
-    setIsScrolling(true)
-    if (scrollTimerRef.current) {
-      clearTimeout(scrollTimerRef.current)
-    }
-    scrollTimerRef.current = setTimeout(() => {
-      setIsScrolling(false)
-    }, 500)
   }
 
   // -------- Init --------

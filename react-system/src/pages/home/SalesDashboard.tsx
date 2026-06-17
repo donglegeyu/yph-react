@@ -1,9 +1,12 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Dropdown, Radio, Tag } from 'antd'
 import type { MenuProps } from 'antd'
-import { DownOutlined } from '@ant-design/icons'
+import { DownOutlined, RightOutlined } from '@ant-design/icons'
 import { Column } from '@ant-design/charts'
 import { CompanyButton, useCompanyToken } from '@donglegeyu/company-ui'
+import goldMedal from '../../assets/icons/gold-medal.svg'
+import silverMedal from '../../assets/icons/silver-medal.svg'
+import bronzeMedal from '../../assets/icons/bronze-medal.svg'
 import './SalesDashboard.scss'
 
 interface SalesSummary {
@@ -43,7 +46,7 @@ const mockSummary: SalesSummary = {
   totalAmount: '235,325,678.99',
   yoyChange: '-1.5',
   yoyDirection: 'down',
-  targetRate: 3.2,
+  targetRate: 32.6,
   nationalRank: 16,
   provinceRank: 2,
 }
@@ -63,23 +66,67 @@ const mockTrends: TrendItem[] = [
   { month: '12月', amount: 1500, momRate: 53 },
 ]
 
-const mockProducts: ProductRank[] = Array.from({ length: 10 }, (_, i) => ({
-  id: i + 1,
-  name: '燃气具',
-  amount: '254,100.00',
-  momChange: '35',
-  momDirection: 'up' as const,
-  salesCount: 32,
-}))
+const productNames = [
+  '燃气热水器',
+  '抽油烟机',
+  '嵌入式燃气灶',
+  '电热水器',
+  '消毒柜',
+  '集成灶',
+  '壁挂炉',
+  '洗碗机',
+  '蒸烤一体机',
+  '净水器',
+]
 
-const mockCompanyRanks: CompanyRank[] = Array.from({ length: 10 }, (_, i) => ({
-  id: i + 1,
-  name: '广西壹品慧电子商务有限公司大理分公司',
-  amount: '4,100.00',
-  momChange: i === 2 ? '-5' : '35',
-  momDirection: i === 2 ? ('down' as const) : ('up' as const),
-  targetRate: 30,
-}))
+const mockProducts: ProductRank[] = productNames.map((name, i) => {
+  const baseAmount = 2541 - i * 180
+  const amount = (baseAmount * 100).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  const momChange = (Math.random() * 60 - 15).toFixed(1)
+  const direction = Number(momChange) >= 0 ? 'up' : 'down'
+  return {
+    id: i + 1,
+    name,
+    amount,
+    momChange,
+    momDirection: direction as 'up' | 'down',
+    salesCount: Math.round(baseAmount / 40),
+  }
+})
+
+const companyNames = [
+  '广西壹品慧电子商务有限公司南宁分公司',
+  '深圳市壹品慧到家科技有限公司',
+  '广西壹品慧电子商务有限公司柳州分公司',
+  '广西壹品慧电子商务有限公司桂林分公司',
+  '广西壹品慧电子商务有限公司玉林分公司',
+  '广西壹品慧电子商务有限公司梧州分公司',
+  '广西壹品慧电子商务有限公司北海分公司',
+  '广西壹品慧电子商务有限公司钦州分公司',
+  '广西壹品慧电子商务有限公司贵港分公司',
+  '广西壹品慧电子商务有限公司贺州分公司',
+]
+
+const mockCompanyRanks: CompanyRank[] = companyNames.map((name, i) => {
+  const baseAmount = 1280 - i * 95
+  const amount = (baseAmount * 100).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  const momChange = (Math.random() * 50 - 12).toFixed(1)
+  const direction = Number(momChange) >= 0 ? 'up' : 'down'
+  return {
+    id: i + 1,
+    name,
+    amount,
+    momChange,
+    momDirection: direction as 'up' | 'down',
+    targetRate: Math.round(85 - i * 6 + Math.random() * 5),
+  }
+})
 
 const channelItems: MenuProps['items'] = [
   { key: 'all', label: '全部渠道' },
@@ -103,11 +150,25 @@ const periodItems: MenuProps['items'] = [
 ]
 
 export default function SalesDashboard() {
-  const [activeView, setActiveView] = useState<'default' | 'sales'>('sales')
+  const [activeView, setActiveView] = useState<'default' | 'sales'>('default')
   const [trendMode, setTrendMode] = useState<'amount' | 'count'>('amount')
-  
+  const [colorKey, setColorKey] = useState(0)
+
   const token = useCompanyToken()
   const primaryColor = token?.colorPrimary || '#F95914'
+
+  useEffect(() => {
+    if (token?.colorPrimary) {
+      setColorKey((k) => k + 1)
+    }
+  }, [token?.colorPrimary])
+
+  const renderRankBadge = (index: number) => {
+    if (index === 0) return <img className="rank-medal" src={goldMedal} alt="金牌" />
+    if (index === 1) return <img className="rank-medal" src={silverMedal} alt="银牌" />
+    if (index === 2) return <img className="rank-medal" src={bronzeMedal} alt="铜牌" />
+    return <span>{index + 1}.</span>
+  }
 
   const chartData = mockTrends.map((t) => ({
     month: t.month,
@@ -121,38 +182,35 @@ export default function SalesDashboard() {
     color: primaryColor,
     autoFit: true,
     height: 430,
-    label: {
-      text: (d: { value: number }) => (d.value > 0 ? d.value.toString() : ''),
-      textBaseline: 'bottom' as const,
-      position: 'outside' as const,
-      style: {
-        fontSize: 11,
-        fill: 'rgba(0,0,0,0.45)',
-      },
-    },
     axis: {
       x: {
         title: false,
         labelAutoRotate: false,
-        style: {
-          labelFontSize: 12,
-          labelFill: 'rgba(0,0,0,0.88)',
-        },
+        labelFill: '#1D2129',
+        labelFontSize: 12,
+        labelOpacity: 1,
       },
       y: {
         title: false,
         labelFormatter: (v: string) => v,
-        style: {
-          labelFontSize: 12,
-          labelFill: 'rgba(0,0,0,0.45)',
-        },
-        gridDash: 'dash',
+        labelFill: '#1D2129',
+        labelFontSize: 12,
+        labelOpacity: 1,
+        gridLineDash: [2, 2],
+        gridStroke: 'rgba(0,0,0,0.06)',
       },
     },
     style: {
+      fill: primaryColor,
       radiusTopLeft: 2,
       radiusTopRight: 2,
-      maxWidth: 40,
+      maxWidth: 24,
+    },
+    state: {
+      active: {
+        fill: primaryColor,
+        fillOpacity: 0.8,
+      },
     },
     interaction: {
       tooltip: {
@@ -222,14 +280,14 @@ export default function SalesDashboard() {
           onChange={(e) => setTrendMode(e.target.value)}
           size="small"
           optionType="button"
-          buttonStyle="solid"
+          buttonStyle="outline"
         >
           <Radio.Button value="amount">销售额</Radio.Button>
           <Radio.Button value="count">订单量</Radio.Button>
         </Radio.Group>
       </div>
       <div className="trend-chart-wrapper">
-        <Column {...chartConfig} />
+        <Column key={colorKey} {...chartConfig} />
       </div>
     </div>
   )
@@ -242,7 +300,7 @@ export default function SalesDashboard() {
       <div className="rank-list">
         {mockProducts.map((product, index) => (
           <div className="rank-item" key={product.id}>
-            <div className="rank-index">{index + 1}</div>
+            <div className="rank-index">{renderRankBadge(index)}</div>
             <div className="rank-content">
               <div className="rank-name">{product.name}</div>
               <div className="rank-detail">
@@ -277,12 +335,12 @@ export default function SalesDashboard() {
   const renderCompanyRank = () => (
     <div className="company-rank-card">
       <div className="section-header">
-        <span className="section-title">指标公司/门店/员工排名</span>
+        <span className="section-title">指标公司排名</span>
       </div>
       <div className="rank-list">
         {mockCompanyRanks.map((company, index) => (
           <div className="rank-item company" key={company.id}>
-            <div className="rank-index">{index + 1}</div>
+            <div className="rank-index">{renderRankBadge(index)}</div>
             <div className="rank-content">
               <div className="rank-name">{company.name}</div>
               <div className="rank-detail">
@@ -308,7 +366,7 @@ export default function SalesDashboard() {
                 </div>
               </div>
             </div>
-            <div className="rank-arrow">›</div>
+            <div className="rank-arrow"><RightOutlined /></div>
           </div>
         ))}
       </div>
@@ -319,20 +377,26 @@ export default function SalesDashboard() {
     <div className="sales-dashboard">
       <div className="dashboard-toolbar">
         <div className="toolbar-left">
-          <span
-            className={`view-tab ${activeView === 'default' ? '' : 'active'}`}
-            onClick={() => setActiveView('default')}
-          >
-            <span className="view-icon">▦</span>
-            默认视图
-          </span>
-          <span
-            className={`view-tab ${activeView === 'sales' ? 'active' : ''}`}
-            onClick={() => setActiveView('sales')}
-          >
-            <span className="view-icon">⊞</span>
-            销售数据视图
-          </span>
+          <div className="view-tabs">
+            <div
+              className={`view-tab ${activeView === 'default' ? 'active' : ''}`}
+              onClick={() => setActiveView('default')}
+            >
+              <svg className="view-icon" aria-hidden="true">
+                <use href="#view-list" />
+              </svg>
+              默认视图
+            </div>
+            <div
+              className={`view-tab ${activeView === 'sales' ? 'active' : ''}`}
+              onClick={() => setActiveView('sales')}
+            >
+              <svg className="view-icon" aria-hidden="true">
+                <use href="#chart-histogram" />
+              </svg>
+              销售数据视图
+            </div>
+          </div>
         </div>
         <div className="toolbar-right">
           <span className="guide-text">快速上手系统，请查看</span>
@@ -340,43 +404,53 @@ export default function SalesDashboard() {
         </div>
       </div>
 
-      <div className="dashboard-filters">
-        <div className="filters-left">
-          <span className="company-name">深圳市壹品慧到家科技有限公司</span>
-          <Tag className="company-tag">省公司</Tag>
-          <Dropdown menu={{ items: channelItems }} trigger={['click']}>
-            <CompanyButton type="link" className="filter-dropdown">
-              渠道 <DownOutlined />
-            </CompanyButton>
-          </Dropdown>
-          <Dropdown menu={{ items: categoryItems }} trigger={['click']}>
-            <CompanyButton type="link" className="filter-dropdown">
-              全部渠道大类/全部渠道小类 <DownOutlined />
-            </CompanyButton>
-          </Dropdown>
-          <Dropdown menu={{ items: financeItems }} trigger={['click']}>
-            <CompanyButton type="link" className="filter-dropdown">
-              财务口径 <DownOutlined />
-            </CompanyButton>
-          </Dropdown>
-          <Dropdown menu={{ items: periodItems }} trigger={['click']}>
-            <CompanyButton type="link" className="filter-dropdown">
-              本月 <DownOutlined />
-            </CompanyButton>
-          </Dropdown>
+      {activeView === 'default' ? (
+        <div className="dashboard-content">
+          <div className="developing-placeholder">
+            <div className="developing-text">开发中</div>
+            <div className="developing-desc">该功能正在开发中，敬请期待</div>
+          </div>
         </div>
-      </div>
-
-      <div className="dashboard-content">
-        <div className="content-main">
-          {renderSummarySection()}
-          {renderTrendChart()}
-          {renderProductRank()}
+      ) : (
+        <>
+        <div className="dashboard-filters">
+          <div className="filters-left">
+            <span className="company-name">深圳市壹品慧到家科技有限公司</span>
+            <Tag className="company-tag">省公司</Tag>
+            <Dropdown menu={{ items: channelItems }} trigger={['click']}>
+              <CompanyButton type="link" className="filter-dropdown">
+                渠道 <DownOutlined />
+              </CompanyButton>
+            </Dropdown>
+            <Dropdown menu={{ items: categoryItems }} trigger={['click']}>
+              <CompanyButton type="link" className="filter-dropdown">
+                全部渠道大类/全部渠道小类 <DownOutlined />
+              </CompanyButton>
+            </Dropdown>
+            <Dropdown menu={{ items: financeItems }} trigger={['click']}>
+              <CompanyButton type="link" className="filter-dropdown">
+                财务口径 <DownOutlined />
+              </CompanyButton>
+            </Dropdown>
+            <Dropdown menu={{ items: periodItems }} trigger={['click']}>
+              <CompanyButton type="link" className="filter-dropdown">
+                本月 <DownOutlined />
+              </CompanyButton>
+            </Dropdown>
+          </div>
         </div>
-        <div className="content-side">
-          {renderCompanyRank()}
+        <div className="dashboard-content">
+          <div className="content-main">
+            {renderSummarySection()}
+            {renderTrendChart()}
+            {renderProductRank()}
+          </div>
+          <div className="content-side">
+            {renderCompanyRank()}
+          </div>
         </div>
-      </div>
+        </>
+      )}
     </div>
   )
 }

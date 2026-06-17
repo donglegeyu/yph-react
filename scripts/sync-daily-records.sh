@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # 每日记录同步脚本
-# 将 .trae/memory/ 中的每日记录同步到 docs/每日记录/
+# 将 memory/ 中的每日记录同步到 docs/每日记录/
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # 源目录
-MEMORY_DIR="$PROJECT_ROOT/.trae/memory"
+MEMORY_DIR="$PROJECT_ROOT/memory"
 # 目标目录
 DAILY_RECORD_DIR="$PROJECT_ROOT/docs/每日记录"
 

@@ -75,15 +75,19 @@ export default function CustomNavPanel({
   useEffect(() => {
     if (visible && menus && menus.length > 0) {
       const safeSelected = Array.isArray(selectedMenus) ? selectedMenus : []
-      const selectedKeys = new Set(safeSelected.map((m) => m.key))
       const safeMenus = Array.isArray(menus) ? menus : []
-      const menuItems: MenuItem[] = safeMenus.map((menu) => ({
-        key: menu.key,
-        label: menu.label,
-        icon: menu.icon || 'folder-open',
-      }))
-      const selectedItems = menuItems.filter((item) => selectedKeys.has(item.key))
-      const unselectedItems = menuItems.filter((item) => !selectedKeys.has(item.key))
+      const menuMap = new Map(safeMenus.map((menu) => [menu.key, menu]))
+      const selectedItems: MenuItem[] = safeSelected
+        .map((sm) => {
+          const menu = menuMap.get(sm.key)
+          if (!menu) return null
+          return { key: menu.key, label: menu.label, icon: menu.icon || 'folder-open' } as MenuItem
+        })
+        .filter((item): item is MenuItem => item !== null)
+      const selectedKeys = new Set(selectedItems.map((m) => m.key))
+      const unselectedItems: MenuItem[] = safeMenus
+        .filter((menu) => !selectedKeys.has(menu.key))
+        .map((menu) => ({ key: menu.key, label: menu.label, icon: menu.icon || 'folder-open' } as MenuItem))
       setAllMenus([...selectedItems, ...unselectedItems])
     } else if (!visible) {
       setAllMenus([])

@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState } from 'react'
-import { Form, Input, Radio, Checkbox, Descriptions, Tag, Space, TreeSelect, Select } from 'antd'
+import { useNavigate } from 'react-router-dom'
+import { Form, Input, Radio, Checkbox, Space, TreeSelect, Select } from 'antd'
 import {
   CompanyButton,
   CompanyDrawer,
@@ -53,6 +54,7 @@ interface UserFormValues {
   phone?: string
   email?: string
   status: number
+  roleIds?: number[]
 }
 
 interface DeptItem {
@@ -68,11 +70,11 @@ interface RoleItem {
 }
 
 const fields: FieldDefinition[] = [
-  { key: 'username', label: '用户名', type: 'input', placeholder: '请输入用户名', width: 160 },
-  { key: 'nickname', label: '昵称', type: 'input', placeholder: '请输入昵称', width: 160 },
-  { key: 'realName', label: '真实姓名', type: 'input', placeholder: '请输入真实姓名', width: 120 },
-  { key: 'companyName', label: '所属公司', type: 'input', placeholder: '请输入公司', width: 140 },
-  { key: 'deptName', label: '所属部门', type: 'input', placeholder: '请输入部门', width: 140 },
+  { key: 'username', label: '用户名', type: 'input', width: 160 },
+  { key: 'nickname', label: '昵称', type: 'input', width: 160 },
+  { key: 'realName', label: '真实姓名', type: 'input', width: 120 },
+  { key: 'companyName', label: '所属公司', type: 'input', width: 140 },
+  { key: 'deptName', label: '所属部门', type: 'input', width: 140 },
   { key: 'status', label: '状态', type: 'select', width: 100, options: [
     { label: '全部', value: '' },
     { label: '启用', value: 1 },
@@ -118,7 +120,7 @@ export default function UserManagement() {
 
   const menuTitle = useMenuTitle()
 
-  const { createUser, updateUser, updateUserStatus, fetchUserDomains, assignDomains } = useSysUsers()
+  const { createUser, updateUser, updateUserStatus, resetPassword, fetchUserDomains, assignDomains } = useSysUsers()
   const { fetchAllDomains } = useDomains()
 
   const [columnFields, setColumnFields] = useState<ColumnField[]>(() => {
@@ -146,8 +148,7 @@ export default function UserManagement() {
   const [allDomains, setAllDomains] = useState<Domain[]>([])
   const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([])
 
-  const [detailVisible, setDetailVisible] = useState(false)
-  const [currentDetail, setCurrentDetail] = useState<UserRecord | null>(null)
+  const navigate = useNavigate()
 
   const handleColumnSettingsConfirm = useCallback((nextFields: ColumnField[]) => {
     setColumnFields(nextFields)
@@ -180,7 +181,7 @@ export default function UserManagement() {
     setEditingId(null)
     setSelectedRoleIds([])
     form.resetFields()
-    form.setFieldsValue({ status: 1 })
+    form.setFieldsValue({ status: 1, password: '123123' })
     setFormVisible(true)
     await loadDeptAndRoles()
   }, [form, loadDeptAndRoles])
@@ -196,6 +197,7 @@ export default function UserManagement() {
       phone: record.phone,
       email: record.email,
       status: record.status,
+      roleIds: (record.roles || []).map((r) => r.id),
     })
     setFormVisible(true)
     await loadDeptAndRoles()
@@ -205,7 +207,7 @@ export default function UserManagement() {
     try {
       const values = await form.validateFields()
       setFormLoading(true)
-      const payload = { ...values, roleIds: selectedRoleIds }
+      const payload = { ...values, roleIds: values.roleIds ?? selectedRoleIds }
 
       if (editingId === null) {
         const newId = await createUser(payload)
@@ -244,6 +246,15 @@ export default function UserManagement() {
     }
   }, [updateUserStatus, refresh])
 
+  const handleResetPassword = useCallback(async (record: UserRecord) => {
+    const pwd = await resetPassword(record.id)
+    if (pwd !== null) {
+      CompanyMessage.success(`密码已重置为：${pwd}`)
+    } else {
+      CompanyMessage.error('重置失败，请稍后重试')
+    }
+  }, [resetPassword])
+
   const openAssignDomains = useCallback(async (record: UserRecord) => {
     setDomainUserId(record.id)
     setSelectedDomainIds([])
@@ -269,11 +280,6 @@ export default function UserManagement() {
       CompanyMessage.error('分配失败，请稍后重试')
     }
   }, [domainUserId, selectedDomainIds, assignDomains, refresh])
-
-  const showDetail = useCallback((record: UserRecord) => {
-    setCurrentDetail(record)
-    setDetailVisible(true)
-  }, [])
 
   const toolbarActions = (
     <CompanyButton type="primary" onClick={openCreate}>
@@ -323,12 +329,17 @@ export default function UserManagement() {
 
       if (column.key === 'action') {
         const buttons = [
-          { key: 'detail', label: '详情', onClick: () => showDetail(userRecord) },
+          { key: 'detail', label: '详情', onClick: () => navigate(`/user-management/${userRecord.id}`) },
           { key: 'edit', label: '编辑', onClick: () => openEdit(userRecord) },
           {
             key: 'domain',
             label: '分配域',
             onClick: () => openAssignDomains(userRecord),
+          },
+          {
+            key: 'resetPwd',
+            label: '重置密码',
+            onClick: () => handleResetPassword(userRecord),
           },
           {
             key: 'toggle',
@@ -341,7 +352,7 @@ export default function UserManagement() {
 
       return null
     },
-    [showDetail, openEdit, openAssignDomains, handleToggleStatus]
+    [navigate, openEdit, openAssignDomains, handleResetPassword, handleToggleStatus]
   )
 
   useEffect(() => {
@@ -410,7 +421,7 @@ export default function UserManagement() {
             name="password"
             label="密码"
             rules={editingId === null ? [{ required: true, message: '请输入密码' }] : []}
-            extra={editingId !== null ? '留空则不修改密码' : undefined}
+            extra={editingId !== null ? '留空则不修改密码' : '默认密码 123123，可修改'}
           >
             <Input.Password placeholder="请输入密码" maxLength={50} />
           </Form.Item>
@@ -422,11 +433,14 @@ export default function UserManagement() {
               treeDefaultExpandAll
             />
           </Form.Item>
-          <Form.Item label="角色">
+          <Form.Item
+            name="roleIds"
+            label="角色"
+            rules={[{ required: true, message: '请选择角色' }]}
+          >
             <Select
               mode="multiple"
               placeholder="请选择角色（可多选）"
-              value={selectedRoleIds}
               onChange={(values) => setSelectedRoleIds(values as number[])}
               options={roleList.map((r) => ({ label: r.roleName, value: r.id }))}
               allowClear
@@ -481,74 +495,6 @@ export default function UserManagement() {
               ))}
             </Space>
           </Checkbox.Group>
-        )}
-      </CompanyDrawer>
-
-      <CompanyDrawer
-        title="用户详情"
-        open={detailVisible}
-        onClose={() => setDetailVisible(false)}
-        size={480}
-        destroyOnHidden
-      >
-        {currentDetail && (
-          <Descriptions column={2} bordered size="small">
-            <Descriptions.Item label="用户名">{currentDetail.username}</Descriptions.Item>
-            <Descriptions.Item label="昵称">{currentDetail.nickname}</Descriptions.Item>
-            <Descriptions.Item label="真实姓名">
-              {currentDetail.realName || '--'}
-            </Descriptions.Item>
-            <Descriptions.Item label="所属公司">
-              {currentDetail.companyName || '--'}
-            </Descriptions.Item>
-            <Descriptions.Item label="所属部门">
-              {currentDetail.deptName || '--'}
-            </Descriptions.Item>
-            <Descriptions.Item label="手机号">
-              {currentDetail.phone || '--'}
-            </Descriptions.Item>
-            <Descriptions.Item label="邮箱">
-              {currentDetail.email || '--'}
-            </Descriptions.Item>
-            <Descriptions.Item label="状态">
-              <Tag color={currentDetail.status === 1 ? 'success' : 'default'}>
-                {currentDetail.status === 1 ? '启用' : '禁用'}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="用户ID">{currentDetail.id}</Descriptions.Item>
-            <Descriptions.Item label="角色" span={2}>
-              {(currentDetail.roles || []).length === 0 ? (
-                <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
-              ) : (
-                <Space size={[4, 4]} wrap>
-                  {(currentDetail.roles || []).map((role) => (
-                    <Tag key={role.id} color="warning">
-                      {role.roleName}
-                    </Tag>
-                  ))}
-                </Space>
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="关联域" span={2}>
-              {(currentDetail.domains || []).length === 0 ? (
-                <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
-              ) : (
-                <Space size={[4, 4]} wrap>
-                  {(currentDetail.domains || []).map((domain) => (
-                    <Tag key={domain.id} color="processing">
-                      {domain.domainName}
-                    </Tag>
-                  ))}
-                </Space>
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="创建时间" span={2}>
-              {currentDetail.createTime}
-            </Descriptions.Item>
-            <Descriptions.Item label="更新时间" span={2}>
-              {currentDetail.updateTime}
-            </Descriptions.Item>
-          </Descriptions>
         )}
       </CompanyDrawer>
     </>

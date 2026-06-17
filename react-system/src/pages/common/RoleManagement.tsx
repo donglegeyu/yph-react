@@ -57,8 +57,8 @@ const dataScopeMap: Record<number, string> = {
 }
 
 const fields: FieldDefinition[] = [
-  { key: 'roleName', label: '角色名称', type: 'input', placeholder: '请输入角色名称', width: 160 },
-  { key: 'roleCode', label: '角色编码', type: 'input', placeholder: '请输入角色编码', width: 160 },
+  { key: 'roleName', label: '角色名称', type: 'input', width: 160 },
+  { key: 'roleCode', label: '角色编码', type: 'input', width: 160 },
   { key: 'status', label: '状态', type: 'select', width: 100, options: [
     { label: '全部', value: '' },
     { label: '启用', value: 1 },

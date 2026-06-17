@@ -27,6 +27,7 @@ public class CraftsmanController {
             @RequestParam(required = false) String serviceProviderName,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String region,
+            @RequestParam(required = false) String serviceSkills,
             @RequestParam(required = false) Integer status) {
 
         Page<Craftsman> page = new Page<>(current, size);
@@ -51,6 +52,9 @@ public class CraftsmanController {
         }
         if (region != null && !region.isEmpty()) {
             query.like(Craftsman::getRegion, region);
+        }
+        if (serviceSkills != null && !serviceSkills.isEmpty()) {
+            query.like(Craftsman::getServiceSkills, serviceSkills);
         }
         if (status != null) {
             query.eq(Craftsman::getStatus, status);

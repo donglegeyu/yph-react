@@ -30,10 +30,10 @@ export function useColumnSettings<T extends BaseColumnField = BaseColumnField>(
   function mergeFields(savedFields: T[]) {
     setColumnFields((prev) => {
       const next = [...prev]
-      savedFields.forEach((saved) => {
-        const existing = next.find((f) => f.key === saved.key)
-        if (existing) {
-          Object.assign(existing, saved)
+      next.forEach((field) => {
+        const saved = savedFields.find((f) => f.key === field.key)
+        if (saved) {
+          Object.assign(field, saved)
         }
       })
       return next
