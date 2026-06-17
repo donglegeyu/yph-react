@@ -1,0 +1,109 @@
+# .gitlab-ci.yml - yph-react 项目 GitLab CI
+# 前端 React + 后端 Spring Boot
+
+# 使用通用构建镜像
+image: registry.zrhsh.com/library/base-image-jdk11:0.0.1
+
+variables:
+  REGISTRY: registry.zrhsh.com
+  HARBOR_PROJECT_GROUP: nrp-nrp2
+
+stages:
+  - build
+  - deploy-recode
+
+# === 公共 before_script（登录镜像仓库）===
+.before_script_template: &before_script_definition
+  before_script:
+    - echo "Logging in to $REGISTRY"
+    - 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin "$REGISTRY"'
+
+# === 1. 构建后端镜像 ===
+build-backend:
+  stage: build
+  <<: *before_script_definition
+  script:
+    - |
+      echo "Branch: $CI_COMMIT_BRANCH"
+      echo "Project: $CI_PROJECT_NAME (backend)"
+      VERSION=${CI_COMMIT_BRANCH////-}-$(echo $CI_COMMIT_SHA | cut -c1-7)
+      echo "Version: $VERSION"
+
+      cd material-system-server
+
+      # 验证 Dockerfile 存在
+      pwd
+      ls -l -a
+
+      # 构建并推送镜像
+      docker build -t "$REGISTRY/$HARBOR_PROJECT_GROUP/yph-react-backend:$VERSION" -f Dockerfile .
+      docker push "$REGISTRY/$HARBOR_PROJECT_GROUP/yph-react-backend:$VERSION"
+  tags:
+    - oceanet
+  variables:
+    DOCKER_USERNAME: yos
+    DOCKER_PASSWORD: Nrp202312
+
+# === 2. 构建前端镜像 ===
+build-frontend:
+  stage: build
+  <<: *before_script_definition
+  script:
+    - |
+      echo "Branch: $CI_COMMIT_BRANCH"
+      echo "Project: $CI_PROJECT_NAME (frontend)"
+      VERSION=${CI_COMMIT_BRANCH////-}-$(echo $CI_COMMIT_SHA | cut -c1-7)
+      echo "Version: $VERSION"
+
+      cd react-system
+
+      # 验证 Dockerfile 存在
+      pwd
+      ls -l -a
+
+      # 构建并推送镜像
+      docker build -t "$REGISTRY/$HARBOR_PROJECT_GROUP/yph-react-frontend:$VERSION" -f Dockerfile .
+      docker push "$REGISTRY/$HARBOR_PROJECT_GROUP/yph-react-frontend:$VERSION"
+  tags:
+    - oceanet
+  variables:
+    DOCKER_USERNAME: yos
+    DOCKER_PASSWORD: Nrp202312
+
+# === 3. 部署后端到 recode 环境 ===
+deploy-backend-recode:
+  stage: deploy-recode
+  script:
+    - VERSION=${CI_COMMIT_BRANCH////-}-$(echo $CI_COMMIT_SHA | cut -c1-7)
+    - echo "Deploying backend to recode"
+    - |
+      IMAGE="${REGISTRY}/${HARBOR_PROJECT_GROUP}/yph-react-backend:${VERSION}"
+      echo "Deploying image: ${IMAGE}"
+      response=$(curl -s -X PUT \
+        -H "content-type: application/json" \
+        -H "Cookie: KuboardUsername=admin; KuboardAccessKey=asd6mz2x5m8n.82am6p4zz3ks3aedr2t3pm2dwxdny7bf" \
+        -d "{\"kind\":\"deployments\",\"namespace\":\"nrp-recode\",\"name\":\"yph-react-backend\",\"images\":{\"${REGISTRY}/${HARBOR_PROJECT_GROUP}/yph-react-backend\":\"${IMAGE}\"}}" \
+        "http://172.17.34.130/kuboard-api/cluster/recode/kind/CICDApi/admin/resource/updateImageTag")
+      echo "$response"
+  tags:
+    - oceanet
+  when: manual
+
+# === 4. 部署前端到 recode 环境 ===
+deploy-frontend-recode:
+  stage: deploy-recode
+  script:
+    - VERSION=${CI_COMMIT_BRANCH////-}-$(echo $CI_COMMIT_SHA | cut -c1-7)
+    - echo "Deploying frontend to recode"
+    - |
+      IMAGE="${REGISTRY}/${HARBOR_PROJECT_GROUP}/yph-react-frontend:${VERSION}"
+      echo "Deploying image: ${IMAGE}"
+      response=$(curl -s -X PUT \
+        -H "content-type: application/json" \
+        -H "Cookie: KuboardUsername=admin; KuboardAccessKey=asd6mz2x5m8n.82am6p4zz3ks3aedr2t3pm2dwxdny7bf" \
+        -d "{\"kind\":\"deployments\",\"namespace\":\"nrp-recode\",\"name\":\"yph-react-frontend\",\"images\":{\"${REGISTRY}/${HARBOR_PROJECT_GROUP}/yph-react-frontend\":\"${IMAGE}\"}}" \
+        "http://172.17.34.130/kuboard-api/cluster/recode/kind/CICDApi/admin/resource/updateImageTag")
+      echo "$response"
+  tags:
+    - oceanet
+  when: manual

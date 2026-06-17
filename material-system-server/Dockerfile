@@ -1,11 +1,39 @@
-FROM maven:3.9.6-eclipse-temurin-17 AS builder
-WORKDIR /app
-COPY pom.xml .
-COPY src ./src
-RUN mvn package -DskipTests
+# ============================================
+# 后端 Dockerfile (material-system-server)
+# Spring Boot 3.2.5 + Java 17 + Maven
+# ============================================
 
-FROM eclipse-temurin:17-jre
+# ---------- 阶段1: Maven 构建 ----------
+FROM registry.zrhsh.com/library/base-image:jdk17-gradle8.14-mvn3.9-ci-v1.0.0 AS builder
+WORKDIR /build
+
+# 先复制 pom.xml 利用 Docker 缓存加速依赖下载
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# 复制源码并编译打包
+COPY src ./src
+RUN mvn clean package -DskipTests -B \
+    && mv target/material-system-server-1.0.0.jar target/app.jar
+
+# ---------- 阶段2: 运行时镜像 ----------
+FROM registry.zrhsh.com/library/openjdk:17-sky8.9
+
 WORKDIR /app
-COPY --from=builder /app/target/*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# 复制构建产物并设置权限
+COPY --from=builder /build/target/app.jar /app/app.jar
+
+# 时区设置
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && mkdir -p /app/uploads
+
+# 暴露端口
+EXPOSE 8081
+
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:+AlwaysPreTouch", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]
