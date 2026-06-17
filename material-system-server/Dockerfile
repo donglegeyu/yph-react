@@ -24,6 +24,12 @@ WORKDIR /app
 # 复制构建产物并设置权限
 COPY --from=builder /build/target/app.jar /app/app.jar
 
+# 环境变量（可通过 docker run -e 或 K8s env 覆盖）
+ENV SERVER_PORT=8081
+ENV DB_URL=jdbc:mysql://material-mysql-react:3306/material_system_react?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&connectionCollation=utf8mb4_unicode_ci&initSql=SET NAMES utf8mb4
+ENV DB_USERNAME=root
+ENV DB_PASSWORD=root123456
+
 # 时区设置
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && mkdir -p /app/uploads
