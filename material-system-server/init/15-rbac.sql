@@ -134,3 +134,41 @@ UPDATE sys_user SET real_name = '系统管理员', dept_id = 1 WHERE username = 
 INSERT INTO sys_user_role (user_id, role_id)
 SELECT u.id, 1 FROM sys_user u WHERE u.username = 'admin'
 AND NOT EXISTS (SELECT 1 FROM sys_user_role ur WHERE ur.user_id = u.id AND ur.role_id = 1);
+
+-- ----------------------------------------------------------
+-- 9. 研发角色(ROLE_DEV) 的菜单权限
+-- ----------------------------------------------------------
+-- 研发人员拥有：系统菜单 + 全部业务中心 + 采购/商品/工匠下的子菜单（不含系统中心管理类菜单）
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT 2, m.id
+FROM nav_menu m
+WHERE m.deleted = 0 AND m.status = 1
+  AND m.`key` IN (
+    -- 系统菜单
+    'home', 'super-search', 'favorites',
+    -- 业务一级中心（除系统中心 settings-center 外的全部）
+    'purchase-center', 'material-center', 'bidding-center', 'central-stock',
+    'customer-center', 'stock-center', 'craftsman-center', 'logistics-center',
+    'price-center', 'organization-center', 'message-center',
+    -- 商品中心 / 材料中心 子菜单
+    'material-apply', 'construction-library', 'construction-apply',
+    -- 采购中心 子菜单
+    'purchase-demand', 'purchase-order',
+    -- 工匠中心 全部子菜单
+    'craftsman-manage', 'craftsman-search', 'craftsman-skill', 'craftsman-application',
+    'workorder-center', 'workorder-pool', 'workorder-abnormal', 'workorder-sampling',
+    'workorder-return-visit', 'workorder-barcode-error', 'workorder-correction', 'workorder-sn-search',
+    'config-center', 'config-fault-phenomenon', 'config-fault-reason', 'config-repair-measure',
+    'config-repair-parts', 'config-workorder-rule', 'config-evaluation', 'config-device-link',
+    'quality-center', 'quality-feedback-list', 'quality-batch-list'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = 2 AND rm.menu_id = m.id
+  );
+
+-- ----------------------------------------------------------
+-- 10. 工匠演示账号绑定研发角色
+-- ----------------------------------------------------------
+INSERT INTO sys_user_role (user_id, role_id)
+SELECT u.id, 2 FROM sys_user u WHERE u.username = 'craftsman'
+AND NOT EXISTS (SELECT 1 FROM sys_user_role ur WHERE ur.user_id = u.id AND ur.role_id = 2);

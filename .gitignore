@@ -19,6 +19,11 @@ storybook-static/
 material-system-server/target/
 material-system/dist/
 
+# Database backups & runtime data (never commit to git)
+material-system-server/backups/
+*.sql.gz
+*.sql.bak
+
 # Temporary files
 *.tmp
 *.temp

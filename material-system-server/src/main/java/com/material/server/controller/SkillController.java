@@ -5,9 +5,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.material.server.common.PageResult;
 import com.material.server.common.Result;
 import com.material.server.entity.Skill;
+import com.material.server.service.CertificateImageService;
+import com.material.server.entity.CertificateImage;
 import com.material.server.service.SkillService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/skills")
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class SkillController {
 
     private final SkillService skillService;
+    private final CertificateImageService certificateImageService;
 
     @GetMapping
     public Result<PageResult<Skill>> list(
@@ -42,6 +47,18 @@ public class SkillController {
         Page<Skill> result = skillService.page(page, query);
         long total = skillService.count(query);
 
+        List<CertificateImage> certImages = certificateImageService.list();
+        java.util.Map<String, String> certImageMap = new java.util.HashMap<>();
+        for (CertificateImage ci : certImages) {
+            certImageMap.put(ci.getCertificateType(), ci.getExampleImage());
+        }
+        for (Skill s : result.getRecords()) {
+            String shared = certImageMap.get(s.getCertificateType());
+            if (shared != null && !shared.isEmpty()) {
+                s.setExampleImage(shared);
+            }
+        }
+
         PageResult<Skill> pageResult = PageResult.of(
                 result.getRecords(), total, result.getCurrent(), result.getSize());
         return Result.success(pageResult);
@@ -62,6 +79,7 @@ public class SkillController {
             return Result.error("该服务技能与二级品类组合已存在");
         }
         skillService.save(skill);
+        upsertCertificateImage(skill.getCertificateType(), skill.getExampleImage());
         return Result.success(skill.getId());
     }
 
@@ -76,7 +94,26 @@ public class SkillController {
             return Result.error("该服务技能与二级品类组合已存在");
         }
         skillService.updateById(skill);
+        upsertCertificateImage(skill.getCertificateType(), skill.getExampleImage());
         return Result.success();
+    }
+
+    private void upsertCertificateImage(String certificateType, String exampleImage) {
+        if (certificateType == null || certificateType.isEmpty() || exampleImage == null || exampleImage.isEmpty()) {
+            return;
+        }
+        LambdaQueryWrapper<CertificateImage> query = new LambdaQueryWrapper<CertificateImage>()
+                .eq(CertificateImage::getCertificateType, certificateType);
+        CertificateImage existing = certificateImageService.getOne(query);
+        if (existing != null) {
+            existing.setExampleImage(exampleImage);
+            certificateImageService.updateById(existing);
+        } else {
+            CertificateImage record = new CertificateImage();
+            record.setCertificateType(certificateType);
+            record.setExampleImage(exampleImage);
+            certificateImageService.save(record);
+        }
     }
 
     @DeleteMapping("/{id}")

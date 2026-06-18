@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Form, Input, Select, Upload, type UploadFile, type UploadProps } from 'antd'
-import { CompanyDrawer, CompanyButton, CompanyMessage } from '@donglegeyu/company-ui'
-import { UploadOutlined } from '@ant-design/icons'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Input, Select, Upload, ConfigProvider, type UploadFile, type UploadProps } from 'antd'
+import { CompanyDrawer, CompanyButton, CompanyMessage, CompanyForm } from '@donglegeyu/company-ui'
+import { UploadOutlined, PlusOutlined } from '@ant-design/icons'
 import { API_ENDPOINTS } from '@/constants/api'
 
 export interface SkillFormData {
@@ -25,7 +25,7 @@ const secondaryCategoryOptions = [
   { label: '到家/家电类', value: '到家/家电类' },
 ]
 
-const certificateTypeOptions = [
+const defaultCertificateTypeOptions = [
   { label: '特种作业操作证', value: '特种作业操作证' },
   { label: '上岗证', value: '上岗证' },
 ]
@@ -37,9 +37,12 @@ export default function SkillDrawer({
   onClose,
   onSuccess,
 }: SkillDrawerProps) {
-  const [form] = Form.useForm<SkillFormData>()
+  const [form] = CompanyForm.useForm<SkillFormData>()
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [certificateTypeOptions, setCertificateTypeOptions] = useState(defaultCertificateTypeOptions)
+  const [certInputVisible, setCertInputVisible] = useState(false)
+  const [certInputValue, setCertInputValue] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -66,6 +69,82 @@ export default function SkillDrawer({
       setFileList([])
     }
   }, [open, initialValues, form])
+
+  const handleAddCertificateType = () => {
+    const value = certInputValue.trim()
+    if (!value) {
+      CompanyMessage.error('请输入证件类型')
+      return
+    }
+    if (certificateTypeOptions.some((o) => o.value === value)) {
+      CompanyMessage.error('该证件类型已存在')
+      return
+    }
+    const newOption = { label: value, value }
+    setCertificateTypeOptions([...certificateTypeOptions, newOption])
+    form.setFieldValue('certificateType', value)
+    setCertInputValue('')
+    setCertInputVisible(false)
+    CompanyMessage.success('新增成功')
+  }
+
+  const handleCertificateTypeChange = async (value: string) => {
+    if (!value) {
+      form.setFieldValue('exampleImage', '')
+      setFileList([])
+      return
+    }
+    try {
+      const res = await fetch(`${API_ENDPOINTS.CERTIFICATE_IMAGES}/by-type?certificateType=${encodeURIComponent(value)}`)
+      const json = await res.json()
+      const images = json.data?.exampleImage || ''
+      form.setFieldValue('exampleImage', images)
+      const urls = images.split(',').map((u: string) => u.trim()).filter(Boolean)
+      setFileList(urls.map((url: string, index: number) => ({
+        uid: `existing-${index}`,
+        name: `示例图${index + 1}`,
+        status: 'done' as const,
+        url,
+        response: { data: url },
+      })))
+    } catch {
+      // 查询失败保持当前状态
+    }
+  }
+
+  const certificateDropdownRender = (menu: ReactNode) => (
+    <>
+      {menu}
+      <div style={{ padding: '4px 8px', borderTop: '1px solid rgba(5,5,5,0.06)' }}>
+        {certInputVisible ? (
+          <div style={{ display: 'flex', gap: 4, paddingBlock: 4 }}>
+            <Input
+              size="small"
+              placeholder="请输入证件类型"
+              value={certInputValue}
+              onChange={(e) => setCertInputValue(e.target.value)}
+              onPressEnter={handleAddCertificateType}
+              style={{ flex: 1 }}
+            />
+            <CompanyButton size="small" type="primary" onClick={handleAddCertificateType}>
+              确定
+            </CompanyButton>
+            <CompanyButton size="small" onClick={() => { setCertInputVisible(false); setCertInputValue('') }}>
+              取消
+            </CompanyButton>
+          </div>
+        ) : (
+          <div
+            onClick={() => setCertInputVisible(true)}
+            style={{ cursor: 'pointer', paddingBlock: 6, color: 'var(--color-primary)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <PlusOutlined />
+            <span>新增证件类型</span>
+          </div>
+        )}
+      </div>
+    </>
+  )
 
   const handleUploadChange: UploadProps['onChange'] = ({ fileList: newList }) => {
     setFileList(newList)
@@ -151,7 +230,7 @@ export default function SkillDrawer({
       title={mode === 'edit' ? '编辑技能' : '新增技能'}
       open={open}
       onClose={onClose}
-      width={480}
+      width={375}
       destroyOnClose
       forceRender
       footer={
@@ -163,47 +242,62 @@ export default function SkillDrawer({
         </div>
       }
     >
-      <Form
+      <CompanyForm
         form={form}
         layout="vertical"
       >
-        <Form.Item
+        <CompanyForm.Item
           name="skillName"
           label="服务技能"
           rules={[{ required: true, message: '请输入服务技能' }]}
         >
           <Input placeholder="请输入" />
-        </Form.Item>
+        </CompanyForm.Item>
 
-        <Form.Item
+        <CompanyForm.Item
           name="secondaryCategory"
           label="二级品类"
           rules={[{ required: true, message: '请选择二级品类' }]}
         >
           <Select placeholder="请选择" options={secondaryCategoryOptions} />
-        </Form.Item>
+        </CompanyForm.Item>
 
-        <Form.Item
+        <CompanyForm.Item
           name="certificateType"
           label="证件类型"
           rules={[{ required: true, message: '请选择证件类型' }]}
         >
-          <Select placeholder="请选择" options={certificateTypeOptions} />
-        </Form.Item>
+          <Select
+            placeholder="请选择"
+            options={certificateTypeOptions}
+            dropdownRender={certificateDropdownRender}
+            onChange={handleCertificateTypeChange}
+          />
+        </CompanyForm.Item>
 
-        <Form.Item name="exampleImage" hidden>
+        <CompanyForm.Item name="exampleImage" hidden>
           <Input />
-        </Form.Item>
+        </CompanyForm.Item>
 
-        <Form.Item label="示例图（最多5张）">
-          <Upload {...uploadProps}>
-            <div style={{ color: 'rgba(0,0,0,0.45)' }}>
-              <UploadOutlined style={{ fontSize: 20 }} />
-              <div style={{ marginTop: 4, fontSize: 12 }}>上传图片</div>
-            </div>
-          </Upload>
-        </Form.Item>
-      </Form>
+        <CompanyForm.Item label="示例图（最多5张）">
+          <ConfigProvider
+            theme={{
+              components: {
+                Upload: {
+                  pictureCardSize: 64,
+                },
+              },
+            }}
+          >
+            <Upload {...uploadProps}>
+              <div style={{ color: 'rgba(0,0,0,0.45)' }}>
+                <UploadOutlined style={{ fontSize: 16 }} />
+                <div style={{ marginTop: 2, fontSize: 12 }}>上传图片</div>
+              </div>
+            </Upload>
+          </ConfigProvider>
+        </CompanyForm.Item>
+      </CompanyForm>
     </CompanyDrawer>
   )
 }

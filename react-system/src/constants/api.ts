@@ -61,6 +61,9 @@ export const API_ENDPOINTS = {
   // 技能管理
   SKILLS: `${API_BASE}/skills`,
 
+  // 证件类型图片库
+  CERTIFICATE_IMAGES: `${API_BASE}/certificate-images`,
+
   // 文件上传
   FILE_UPLOAD: `${API_BASE}/files/upload`,
 } as const

@@ -175,3 +175,38 @@ WHERE d.is_default = 1 AND d.status = 1
 
 -- 注：超管角色(role_id=1) 的菜单权限由 15-rbac.sql 统一授予
 -- （该脚本末尾有 INSERT INTO sys_role_menu SELECT 1, id FROM nav_menu，会自动覆盖本文件新增的菜单）
+
+-- ============================================================
+-- 八、初始化「工匠平台」自定义域 + 该域可见菜单
+-- ============================================================
+-- 说明：工匠平台域只开放工单/配置/品质/工匠相关菜单，不含采购/商品等业务中心
+
+-- 8.1 创建工匠平台域（幂等）
+INSERT INTO sys_domain (domain_key, domain_name, description, is_default, status)
+SELECT 'gongjiangPT', '工匠平台', '工匠平台域，仅开放工单与工匠相关菜单', 0, 1
+WHERE NOT EXISTS (SELECT 1 FROM sys_domain WHERE domain_key = 'gongjiangPT');
+
+-- 8.2 工匠平台域可见的菜单 key 清单
+-- 包含：首页、收藏、工匠中心(含其下全部子菜单)
+INSERT INTO sys_domain_menu (domain_id, menu_id, custom_label, sort)
+SELECT d.id, m.id, m.label, m.sort
+FROM sys_domain d
+JOIN nav_menu m ON m.`key` IN (
+    'home', 'favorites',
+    'craftsman-center',
+    'craftsman-manage', 'craftsman-search', 'craftsman-skill', 'craftsman-application',
+    'workorder-center',
+    'workorder-pool', 'workorder-abnormal', 'workorder-sampling', 'workorder-return-visit',
+    'workorder-barcode-error', 'workorder-correction', 'workorder-sn-search',
+    'config-center',
+    'config-fault-phenomenon', 'config-fault-reason', 'config-repair-measure', 'config-repair-parts',
+    'config-workorder-rule', 'config-evaluation', 'config-device-link',
+    'quality-center',
+    'quality-feedback-list', 'quality-batch-list'
+)
+WHERE d.domain_key = 'gongjiangPT'
+  AND m.deleted = 0 AND m.status = 1
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_domain_menu sdm
+    WHERE sdm.domain_id = d.id AND sdm.menu_id = m.id
+  );
