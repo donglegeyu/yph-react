@@ -28,7 +28,4 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # 暴露端口
 EXPOSE 80
 
-# 切换到非特权用户
-USER nginx
-
 CMD ["nginx", "-g", "daemon off;"]
