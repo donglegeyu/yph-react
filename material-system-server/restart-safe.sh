@@ -34,9 +34,15 @@ fi
 
 # === 第二步：构建镜像 ===
 echo ""
-echo "[2/5] 构建后端镜像..."
+echo "[2/5] 构建后端镜像（本地开发用 Dockerfile.local）..."
 
-docker build -t material-backend-react:latest "$SCRIPT_DIR"
+# 本地开发用 Dockerfile.local（公共镜像），CI/CD 用 Dockerfile（公司镜像仓库）
+if [ -f "$SCRIPT_DIR/Dockerfile.local" ]; then
+    docker build -t material-backend-react:latest -f "$SCRIPT_DIR/Dockerfile.local" "$SCRIPT_DIR"
+else
+    echo "⚠️  Dockerfile.local 不存在，回退到 Dockerfile"
+    docker build -t material-backend-react:latest "$SCRIPT_DIR"
+fi
 
 echo "✅ 镜像构建完成"
 

@@ -1,14 +1,14 @@
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
 
 spring:
   application:
     name: material-system-server-react
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://material-mysql-react:3306/material_system_react?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&connectionCollation=utf8mb4_unicode_ci&initSql=SET NAMES utf8mb4
-    username: root
-    password: root123456
+    url: ${DB_URL:jdbc:mysql://material-mysql-react:3306/material_system_react?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&connectionCollation=utf8mb4_unicode_ci&initSql=SET NAMES utf8mb4}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root123456}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5

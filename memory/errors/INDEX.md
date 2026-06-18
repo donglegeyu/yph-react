@@ -9,3 +9,4 @@
 | TypeScript 类型 | 类型推断失败、undefined/null 处理 | [typescript-errors.md](./typescript-errors.md) |
 | G2 图表样式配置 | axis label 颜色显示浅，labelOpacity 默认透明度坑 | [g2-chart-style-config.md](./g2-chart-style-config.md) |
 | Vite 依赖缓存 | 升级组件库后项目未生效，需清理 .vite/deps 缓存 | [vite-deps-cache.md](./vite-deps-cache.md) |
+| Git 冲突未告知 | merge/stash pop 遇冲突必须先告知用户，不可自行决定 | [git-conflict-notify.md](./git-conflict-notify.md) |

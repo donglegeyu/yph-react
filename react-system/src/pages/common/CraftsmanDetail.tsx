@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Empty, Skeleton, Row, Col } from 'antd'
-import { DetailPageTemplate, CompanyButton, CompanyMessage, SectionTitle, type DetailFieldItem, type DetailTagItem } from '@donglegeyu/company-ui'
+import { Empty, Skeleton, Row, Col, Image, type TableColumnsType } from 'antd'
+const { PreviewGroup } = Image
+import { DetailPageTemplate, CompanyButton, CompanyMessage, CompanyTable, CompanyTag, SectionTitle, type DetailFieldItem, type DetailTagItem } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
 import { useStatusMap } from '@/hooks'
 
@@ -96,7 +97,7 @@ export default function CraftsmanDetail() {
       { label: '所属服务商', value: detail.craftsmanCategory === 'external' ? '--' : (detail.serviceProviderName || '--') },
       { label: '手机号', value: maskPhone(detail.phone) },
       { label: '用户账号', value: detail.userAccount || '--' },
-      { label: '服务技能', value: detail.serviceSkills || '--' },
+      { label: '服务技能', value: allSkillNames || '--' },
     ]
   }, [detail])
 
@@ -158,11 +159,7 @@ export default function CraftsmanDetail() {
         {
           key: 'capability',
           label: '接单能力',
-          children: (
-            <div style={{ padding: '32px 0' }}>
-              <Empty description="接单能力数据开发中" />
-            </div>
-          ),
+          children: <CapabilityTable craftsmanName={detail.name} />,
         },
         {
           key: 'workorder',
@@ -249,6 +246,140 @@ function DetailImages({ title, urls, background = false, width, height, objectFi
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+interface CertificateRecord {
+  id: number
+  certificateType: string
+  certificateNo: string
+  certificateImage: string
+  skillNames: string[]
+  status: 'valid' | 'expiring' | 'expired'
+  effectiveDate: string
+  expiryDate: string
+  remind: string
+}
+
+const certificateStatusMap: Record<CertificateRecord['status'], { text: string; color: string }> = {
+  valid: { text: '有效', color: 'success' },
+  expiring: { text: '即将过期', color: 'warning' },
+  expired: { text: '已过期', color: 'default' },
+}
+
+const certificateDataSource: CertificateRecord[] = [
+  {
+    id: 1,
+    certificateType: '燃气具安装维修工证',
+    certificateNo: 'RQ202103150001',
+    certificateImage: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?fit=crop',
+    skillNames: ['燃气具安装', '燃气具维修'],
+    status: 'valid',
+    effectiveDate: '2023-03-15',
+    expiryDate: '2026-03-14',
+    remind: '到期前30天提醒',
+  },
+  {
+    id: 2,
+    certificateType: '燃气安全操作证',
+    certificateNo: 'GA202205100001',
+    certificateImage: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?fit=crop',
+    skillNames: ['燃气安全检查'],
+    status: 'expiring',
+    effectiveDate: '2022-05-10',
+    expiryDate: '2025-07-09',
+    remind: '即将到期，请尽快更换',
+  },
+  {
+    id: 3,
+    certificateType: '管道工职业资格证',
+    certificateNo: 'GD202301200001',
+    certificateImage: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?fit=crop',
+    skillNames: ['管道安装', '管道维修'],
+    status: 'valid',
+    effectiveDate: '2023-01-20',
+    expiryDate: '2028-01-19',
+    remind: '到期前30天提醒',
+  },
+  {
+    id: 4,
+    certificateType: 'PE管焊接操作证',
+    certificateNo: 'PE202111050001',
+    certificateImage: 'https://images.unsplash.com/photo-1565728744382-61accd4aa148?fit=crop',
+    skillNames: ['PE管焊接'],
+    status: 'expired',
+    effectiveDate: '2021-11-05',
+    expiryDate: '2024-11-04',
+    remind: '已过期，请立即更换',
+  },
+]
+
+const allSkillNames = Array.from(new Set(certificateDataSource.flatMap((c) => c.skillNames))).join('、')
+
+function CapabilityTable({ craftsmanName }: { craftsmanName: string }) {
+  const dataSource = useMemo(() => certificateDataSource, [])
+
+  const columns: TableColumnsType<CertificateRecord> = [
+    {
+      title: '证照图片',
+      dataIndex: 'certificateImage',
+      key: 'certificateImage',
+      width: 100,
+      render: (url: string) => {
+        if (!url) return <span style={{ color: 'rgba(0,0,0,0.25)' }}>-</span>
+        return (
+          <PreviewGroup preview={{ maxScale: 3 }}>
+            <Image
+              src={`${url}&w=96&h=96`}
+              preview={{ src: `${url}&w=1200&q=85` }}
+              height={32}
+              style={{ height: 32, width: 32, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
+            />
+          </PreviewGroup>
+        )
+      },
+    },
+    { title: '证照类型', dataIndex: 'certificateType', key: 'certificateType', width: 180, ellipsis: true },
+    { title: '证照编号', dataIndex: 'certificateNo', key: 'certificateNo', width: 160 },
+    { title: '对应技能', dataIndex: 'skillNames', key: 'skillNames', width: 160, ellipsis: true, render: (skills: string[]) => (skills && skills.length > 0 ? skills.join('、') : '--') },
+    {
+      title: '证照状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (status: CertificateRecord['status']) => {
+        const conf = certificateStatusMap[status]
+        return <CompanyTag color={conf.color}>{conf.text}</CompanyTag>
+      },
+    },
+    { title: '生效日期', dataIndex: 'effectiveDate', key: 'effectiveDate', width: 120 },
+    { title: '失效日期', dataIndex: 'expiryDate', key: 'expiryDate', width: 120 },
+    { title: '提醒', dataIndex: 'remind', key: 'remind', width: 180, ellipsis: true },
+    {
+      title: '操作',
+      key: 'action',
+      width: 100,
+      fixed: 'right',
+      render: () => (
+        <CompanyButton type="link" style={{ padding: 0 }} onClick={() => CompanyMessage.info(`${craftsmanName} 的更换证照功能开发中`)}>
+          更换证照
+        </CompanyButton>
+      ),
+    },
+  ]
+
+  return (
+    <div style={{ padding: '0 0 16px' }}>
+      <CompanyTable
+        dataSource={dataSource}
+        columns={columns}
+        rowKey="id"
+        size="small"
+        pagination={false}
+        scroll={{ x: 1200 }}
+        locale={{ emptyText: '暂无证照数据' }}
+      />
     </div>
   )
 }
