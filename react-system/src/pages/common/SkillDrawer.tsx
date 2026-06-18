@@ -1,13 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Input, Select, Upload, ConfigProvider, type UploadFile, type UploadProps } from 'antd'
+import { Input, Select, Upload, ConfigProvider, Cascader, type UploadFile, type UploadProps } from 'antd'
 import { CompanyDrawer, CompanyButton, CompanyMessage, CompanyForm } from '@donglegeyu/company-ui'
 import { UploadOutlined, PlusOutlined } from '@ant-design/icons'
 import { API_ENDPOINTS } from '@/constants/api'
+import { categoryOptions } from './categoryOptions'
 
 export interface SkillFormData {
   id?: number
   skillName: string
-  secondaryCategory: string
+  category1?: string
+  category2?: string
+  category3?: string
   certificateType: string
   exampleImage: string
 }
@@ -19,11 +22,6 @@ interface SkillDrawerProps {
   onClose: () => void
   onSuccess: () => void
 }
-
-const secondaryCategoryOptions = [
-  { label: '到家/清洗类', value: '到家/清洗类' },
-  { label: '到家/家电类', value: '到家/家电类' },
-]
 
 const defaultCertificateTypeOptions = [
   { label: '特种作业操作证', value: '特种作业操作证' },
@@ -47,9 +45,16 @@ export default function SkillDrawer({
   useEffect(() => {
     if (!open) return
     if (initialValues && Object.keys(initialValues).length > 0) {
+      const categoryPath: string[] = []
+      if (initialValues.category1) categoryPath.push(initialValues.category1)
+      if (initialValues.category2) categoryPath.push(initialValues.category2)
+      if (initialValues.category3) categoryPath.push(initialValues.category3)
       form.setFieldsValue({
         skillName: initialValues.skillName,
-        secondaryCategory: initialValues.secondaryCategory,
+        category: categoryPath,
+        category1: initialValues.category1,
+        category2: initialValues.category2,
+        category3: initialValues.category3,
         certificateType: initialValues.certificateType,
         exampleImage: initialValues.exampleImage || '',
       })
@@ -69,6 +74,15 @@ export default function SkillDrawer({
       setFileList([])
     }
   }, [open, initialValues, form])
+
+  const handleCategoryChange = (value: (string | undefined)[]) => {
+    const [c1, c2, c3] = value || []
+    form.setFieldsValue({
+      category1: c1 || '',
+      category2: c2 || '',
+      category3: c3 || '',
+    })
+  }
 
   const handleAddCertificateType = () => {
     const value = certInputValue.trim()
@@ -187,12 +201,14 @@ export default function SkillDrawer({
     },
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (keepOpen = false) => {
     try {
       const values = await form.validateFields()
       const payload = {
         skillName: values.skillName,
-        secondaryCategory: values.secondaryCategory,
+        category1: values.category1 || '',
+        category2: values.category2 || '',
+        category3: values.category3 || '',
         certificateType: values.certificateType,
         exampleImage: values.exampleImage || '',
       }
@@ -214,7 +230,12 @@ export default function SkillDrawer({
       if (json.code === 200) {
         CompanyMessage.success(isEdit ? '编辑成功' : '新增成功')
         onSuccess()
-        onClose()
+        if (keepOpen && !isEdit) {
+          form.resetFields()
+          setFileList([])
+        } else {
+          onClose()
+        }
       } else {
         CompanyMessage.error(json.message || '操作失败')
       }
@@ -236,9 +257,20 @@ export default function SkillDrawer({
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <CompanyButton onClick={onClose}>取消</CompanyButton>
-          <CompanyButton type="primary" loading={submitting} onClick={handleSubmit}>
-            保存
-          </CompanyButton>
+          {mode === 'create' ? (
+            <>
+              <CompanyButton loading={submitting} onClick={() => handleSubmit(true)}>
+                提交并新建
+              </CompanyButton>
+              <CompanyButton type="primary" loading={submitting} onClick={() => handleSubmit(false)}>
+                提交
+              </CompanyButton>
+            </>
+          ) : (
+            <CompanyButton type="primary" loading={submitting} onClick={() => handleSubmit(false)}>
+              保存
+            </CompanyButton>
+          )}
         </div>
       }
     >
@@ -255,11 +287,38 @@ export default function SkillDrawer({
         </CompanyForm.Item>
 
         <CompanyForm.Item
-          name="secondaryCategory"
-          label="二级品类"
-          rules={[{ required: true, message: '请选择二级品类' }]}
+          name="category"
+          label="三级品类"
+          rules={[
+            {
+              required: true,
+              validator: (_rule, value: (string | undefined)[] | undefined) => {
+                if (!value || value.length < 3 || !value[0] || !value[1] || !value[2]) {
+                  return Promise.reject(new Error('请选择三级品类'))
+                }
+                return Promise.resolve()
+              },
+            },
+          ]}
         >
-          <Select placeholder="请选择" options={secondaryCategoryOptions} />
+          <Cascader
+            placeholder="请选择"
+            options={categoryOptions}
+            changeOnSelect={false}
+            fieldNames={{ label: 'label', value: 'value', children: 'children' }}
+            displayRender={(labels) => labels.join(' / ')}
+            onChange={handleCategoryChange}
+          />
+        </CompanyForm.Item>
+
+        <CompanyForm.Item name="category1" hidden>
+          <Input />
+        </CompanyForm.Item>
+        <CompanyForm.Item name="category2" hidden>
+          <Input />
+        </CompanyForm.Item>
+        <CompanyForm.Item name="category3" hidden>
+          <Input />
         </CompanyForm.Item>
 
         <CompanyForm.Item

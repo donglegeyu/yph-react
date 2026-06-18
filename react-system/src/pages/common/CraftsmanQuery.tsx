@@ -113,7 +113,7 @@ export default function CraftsmanQuery() {
 
   const toolbarActions = (
     <Space size={12}>
-      <CompanyButton type="primary" onClick={() => CompanyMessage.info('新增工匠功能开发中')}>
+      <CompanyButton type="primary" onClick={() => navigate('/craftsman-search/create')}>
         新增工匠
       </CompanyButton>
       <CompanyDropdown

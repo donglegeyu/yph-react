@@ -12,9 +12,10 @@
   "dependencies": {
     "@ant-design/charts": "^2.6.7",
     "@ant-design/icons": "^6.2.4",
-    "@donglegeyu/company-ui": "^1.2.12",
+    "@donglegeyu/company-ui": "^1.2.14",
     "antd": "^6.4.3",
     "axios": "^1.16.1",
+    "china-division": "^2.7.0",
     "dayjs": "^1.11.21",
     "pinyin-pro": "^3.28.1",
     "react": "^19.2.6",

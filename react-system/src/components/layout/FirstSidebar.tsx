@@ -448,8 +448,8 @@ export default function FirstSidebar() {
             }
           >
             <div className="person-info">
-              <div className="avatar">{userInfo.username?.charAt(0) || 'A'}</div>
-              <div className="name">{userInfo.username || 'admin'}</div>
+              <div className="avatar">{(userInfo.nickname || userInfo.username)?.charAt(0) || 'A'}</div>
+              <div className="name">{userInfo.nickname || userInfo.username || 'admin'}</div>
             </div>
           </CompanyPopover>
         </div>

@@ -1,3 +1,45 @@
+/* ============================================================
+ * LoginView - 登录页样式
+ * 所有设计稿值统一映射到公司组件库 Design Token（@donglegeyu/company-ui）
+ * ============================================================ */
+
+/* 登录页局部 Token（设计稿 1920×1080 基准值）
+ * — 小屏幕时通过 @media 覆盖这些变量，避免改多个选择器 */
+:root {
+  /* ===== 卡片 ===== */
+  --login-card-width: 440px;
+  --login-card-padding-x: 32px;
+  --login-card-padding-y: 32px;
+
+  /* ===== brand 区（logo 上方 padding） ===== */
+  --login-brand-padding-x: 32px;
+  --login-brand-padding-y: 32px;
+
+  /* ===== 输入框 ===== */
+  --login-input-affix-height: 52px;
+  --login-input-height: 32px;
+  --login-input-padding-x: 16px;
+
+  /* ===== 登录按钮 ===== */
+  --login-btn-height: 52px;
+  --login-btn-font-size: 16px;
+
+  /* ===== Tab ===== */
+  --login-tab-gap: 32px;
+  --login-tab-margin-bottom: 24px;
+  --login-tab-font-size: 20px;
+  --login-tab-line-height: 20px;
+  --login-tab-indicator-width: 32px;
+  --login-tab-indicator-height: 4px;
+
+  /* ===== 表单 items 间距 ===== */
+  --login-form-gap: 16px;
+
+  /* ===== 左侧插画 ===== */
+  --login-left-gradient-start: #667eea;
+  --login-left-gradient-end: #764ba2;
+}
+
 .login-view {
   display: flex;
   height: 100vh;
@@ -5,14 +47,16 @@
   overflow: hidden;
 }
 
+/* ===== 左侧插画区域 ===== */
 .login-left {
   flex: 0 0 auto;
   display: flex;
   align-items: stretch;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--login-left-gradient-start) 0%, var(--login-left-gradient-end) 100%);
   overflow: hidden;
+  width: var(--login-left-width, auto);
 
-  @media (max-width: 768px) {
+  @media (max-width: 767px) {
     display: none;
   }
 }
@@ -21,7 +65,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
 }
 
 .login-image {
@@ -31,17 +74,21 @@
   max-height: none;
 }
 
+/* ===== 右侧表单区域 ===== */
 .login-right {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: #fff;
+  background: var(--company-color-bg-container);
+  position: relative;
 }
 
+/* Logo 区（卡片上方，占满外部容器宽度） */
 .brand-area {
-  padding: 32px 40px 0 40px;
   text-align: left;
+  padding: var(--login-brand-padding-y) var(--login-brand-padding-x) 0;
+  width: 100%;
 
   .logo {
     width: auto;
@@ -50,63 +97,331 @@
   }
 }
 
-.form-area {
+/* 登录内容区（垂直居中卡片） */
+.login-content {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px 40px;
+  padding: var(--company-padding-lg) var(--login-brand-padding-x) var(--login-brand-padding-y);
+}
 
-  .ant-form {
-    width: 100%;
-    max-width: 400px;
-    background: #fff;
-    padding: 32px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
+/* 登录卡片 */
+.login-card {
+  width: var(--login-card-width);
+  max-width: 100%;
+  padding: var(--login-card-padding-y) var(--login-card-padding-x);
+  box-sizing: border-box;
+  background: var(--company-color-bg-container);
+  border-radius: var(--company-radius-lg);
+  box-shadow: var(--company-box-shadow-secondary);
+}
 
-  .remember-row {
+/* ===== 登录卡片（Tab + 表单输入 + 按钮） ===== */
+.login-card {
+
+  /* ===== 登录方式切换 Tab ===== */
+  .login-tabs {
     display: flex;
     align-items: center;
+    gap: var(--login-tab-gap);
+    margin-bottom: var(--login-tab-margin-bottom);
+
+    .login-tab {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      padding-bottom: var(--company-padding-xs);
+
+      .tab-text {
+        font-size: var(--login-tab-font-size);
+        line-height: var(--login-tab-line-height);
+        font-weight: var(--company-font-weight-regular);
+        color: var(--company-color-text-tertiary);
+        transition: color var(--company-motion-duration-mid);
+      }
+
+      .tab-indicator {
+        width: 0;
+        height: var(--login-tab-indicator-height);
+        border-radius: var(--company-radius-lg);
+        background: var(--company-color-primary);
+        margin-top: var(--company-padding-xs);
+        transition: width var(--company-motion-duration-mid);
+      }
+
+      &.active {
+        .tab-text {
+          font-weight: var(--company-font-weight-strong);
+          color: var(--company-color-text);
+        }
+
+        .tab-indicator {
+          width: var(--login-tab-indicator-width);
+        }
+      }
+    }
   }
 
-  .error-alert {
-    padding: 8px 12px;
-    border-radius: 6px;
-    background: #fff2f0;
-    border: 1px solid #ffccc7;
-    color: #cf1322;
-    font-size: 14px;
-    line-height: 1.5;
+  .ant-form,
+  .company-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--login-form-gap);
+  }
+
+  /* 输入框外层容器 —— 高度由 token 控制，默认描边与背景同色 */
+  .ant-input-affix-wrapper {
+    height: var(--login-input-affix-height);
+    padding-left: var(--login-input-padding-x);
+    padding-right: var(--login-input-padding-x);
+    border-radius: var(--company-radius-lg);
+    background: var(--company-color-bg-layout);
+
+    &:not(:focus-within):not(.ant-input-status-error) {
+      border-color: var(--company-color-bg-layout);
+    }
+  }
+
+  /* 输入框本体 —— 高度由 token 控制 */
+  .ant-input {
+    height: var(--login-input-height);
+    padding-left: 0;
+    padding-right: 0;
+    border-radius: var(--company-radius-lg);
+    background: var(--company-color-bg-layout);
+  }
+
+  /* 输入框前缀图标 —— 右间距 */
+  .ant-input-prefix {
+    margin-right: 12px;
+  }
+
+  .ant-form-item {
+    margin-bottom: 0;
+  }
+
+  /* 登录按钮 */
+  .ant-btn-primary,
+  .company-btn-primary {
+    height: var(--login-btn-height);
+    border-radius: var(--company-radius-sm);
+    font-size: var(--login-btn-font-size);
+    font-weight: var(--company-font-weight-strong);
+    margin-top: var(--company-padding);
   }
 }
 
+/* "记住我" + 重置密码行 */
+.form-extra-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: calc(var(--company-padding-xs) * -1);
+
+  .reset-link {
+    font-size: var(--company-font-size);
+    line-height: var(--company-line-height);
+    color: var(--company-color-text-tertiary);
+    cursor: pointer;
+    transition: color var(--company-motion-duration-mid);
+
+    &:hover {
+      color: var(--company-color-text-secondary);
+    }
+  }
+}
+
+/* ===== 验证码登录占位 ===== */
+.sms-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--company-padding-lg);
+
+  .sms-code-row {
+    display: flex;
+    gap: var(--company-padding-sm);
+
+    > .ant-input-affix-wrapper,
+    > .ant-input {
+      flex: 1;
+    }
+  }
+}
+
+/* ===== 底部演示账号区域 ===== */
+.demo-account {
+  margin-top: var(--company-padding-xxl);
+
+  .demo-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--company-padding-sm);
+    margin-bottom: var(--company-padding-lg);
+
+    .divider-line {
+      flex: 1;
+      height: var(--company-border-width);
+      background: var(--company-color-border-secondary);
+    }
+
+    .divider-text {
+      font-size: var(--company-font-size);
+      line-height: var(--company-line-height);
+      color: var(--company-color-text-tertiary);
+      white-space: nowrap;
+    }
+  }
+
+  .demo-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--company-padding-xl);
+    font-size: var(--company-font-size);
+    line-height: var(--company-line-height);
+    color: var(--company-color-text-tertiary);
+  }
+}
+
+/* ===== 版权区 ===== */
 .copyright-area {
-  padding: 20px 40px 40px;
+  padding: var(--company-padding-xl) var(--company-padding-xxl);
   text-align: center;
 
   .copyright-text {
     margin: 0;
-    font-size: 14px;
-    color: #999;
+    font-size: var(--company-font-size);
+    color: var(--company-color-text-tertiary);
   }
 }
 
-@media (max-width: 768px) {
-  .login-right {
-    flex: 1;
+/* ===== 错误提示消息 ===== */
+.login-error-message {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--company-padding-lg);
+}
+
+.login-error-close {
+  cursor: pointer;
+  font-size: var(--company-font-size-xs);
+}
+
+/* ============================================================
+ * 响应式断点：只覆盖 :root 变量，避免在选择器里重复写值
+ * - ≥ 1440px（含 1920）：基准值，无需额外覆盖
+ * - 1024–1439px：普通笔记本
+ * - 768–1023px： 小型笔记本 / 平板横
+ * - < 768px：     手机 / 平板竖
+ * - < 390px：     超小屏幕（iPhone SE/mini）
+ * ============================================================ */
+
+/* 1024–1439px — 普通笔记本 */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  :root {
+    --login-card-width: 400px;
+    --login-card-padding-x: 28px;
+    --login-card-padding-y: 28px;
+    --login-brand-padding-x: 24px;
+    --login-brand-padding-y: 24px;
+
+    --login-input-affix-height: 48px;
+    --login-input-height: 30px;
+    --login-input-padding-x: 14px;
+
+    --login-btn-height: 48px;
+    --login-btn-font-size: 15px;
+
+    --login-tab-gap: 28px;
+    --login-tab-margin-bottom: 20px;
+    --login-tab-font-size: 18px;
+    --login-tab-line-height: 18px;
+    --login-tab-indicator-width: 28px;
+
+    --login-form-gap: 14px;
+  }
+}
+
+/* 768–1023px — 小型笔记本 / 平板横 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    --login-card-width: 360px;
+    --login-card-padding-x: 24px;
+    --login-card-padding-y: 24px;
+    --login-brand-padding-x: 20px;
+    --login-brand-padding-y: 20px;
+
+    --login-input-affix-height: 44px;
+    --login-input-height: 28px;
+    --login-input-padding-x: 12px;
+
+    --login-btn-height: 44px;
+    --login-btn-font-size: 14px;
+
+    --login-tab-gap: 24px;
+    --login-tab-margin-bottom: 18px;
+    --login-tab-font-size: 16px;
+    --login-tab-line-height: 16px;
+    --login-tab-indicator-width: 24px;
+
+    --login-form-gap: 12px;
+  }
+}
+
+/* < 768px — 手机 / 平板竖：卡片占满，隐藏左侧插画 */
+@media (max-width: 767px) {
+  :root {
+    --login-card-width: 100%;
+    --login-card-padding-x: 20px;
+    --login-card-padding-y: 20px;
+    --login-brand-padding-x: 16px;
+    --login-brand-padding-y: 16px;
+
+    --login-input-affix-height: 44px;
+    --login-input-height: 28px;
+    --login-input-padding-x: 12px;
+
+    --login-btn-height: 44px;
+    --login-btn-font-size: 14px;
+
+    --login-tab-gap: 20px;
+    --login-tab-margin-bottom: 16px;
+    --login-tab-font-size: 16px;
+    --login-tab-line-height: 16px;
+    --login-tab-indicator-width: 24px;
+
+    --login-form-gap: 12px;
   }
 
-  .brand-area {
-    padding: 32px 20px 0 20px;
-  }
-
-  .form-area {
-    padding: 20px;
+  .login-card {
+    box-shadow: none;
   }
 
   .copyright-area {
-    padding: 20px;
+    padding: 16px;
+  }
+}
+
+/* < 390px — 超小屏幕 */
+@media (max-width: 389px) {
+  :root {
+    --login-card-padding-x: 16px;
+    --login-card-padding-y: 16px;
+
+    --login-input-affix-height: 40px;
+    --login-input-height: 26px;
+
+    --login-btn-height: 40px;
+    --login-btn-font-size: 13px;
+
+    --login-tab-font-size: 14px;
+    --login-tab-line-height: 14px;
+    --login-tab-indicator-width: 20px;
+
+    --login-form-gap: 10px;
   }
 }

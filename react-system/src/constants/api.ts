@@ -1,7 +1,9 @@
-// API 基础路径（通过 Vite 代理）
+// API 基础路径（通过 Vite 代理转发到后端 8081）
+// 注意：store/app.ts 中的菜单/收藏/偏好等接口使用原生 fetch（不走 axios baseURL），
+// 因此 API_ENDPOINTS 必须包含完整的 /api 前缀。
 export const API_BASE = '/api'
 
-// 后端服务 API
+// 后端服务 API（完整路径，原生 fetch 与 axios 均可直接使用）
 export const API_ENDPOINTS = {
   // 认证
   AUTH_LOGIN: `${API_BASE}/auth/login`,
