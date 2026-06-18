@@ -13,7 +13,11 @@ public class Skill {
 
     private String skillName;
 
-    private String secondaryCategory;
+    private String category1;
+
+    private String category2;
+
+    private String category3;
 
     private String certificateType;
 

@@ -55,6 +55,8 @@ export interface CustomNavMenu {
 export interface UserInfo {
   id?: number
   username?: string
+  nickname?: string
+  realName?: string
   avatar?: string
   role?: string
 }

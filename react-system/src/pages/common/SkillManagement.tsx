@@ -1,11 +1,10 @@
 import { useEffect, useCallback, useState } from 'react'
-import { Space, Image } from 'antd'
+import { Space, Image, Popconfirm } from 'antd'
 const { PreviewGroup } = Image
 import {
   CompanyButton,
   CompanyMessage,
   SmartListTemplate,
-  ActionCell,
   type FieldDefinition,
   type ColumnField,
 } from '@donglegeyu/company-ui'
@@ -13,21 +12,23 @@ import { API_ENDPOINTS } from '@/constants/api'
 import { useListData } from '@/hooks'
 import { useColumnSettings } from '@/hooks/useColumnSettings'
 import SkillDrawer, { type SkillFormData } from './SkillDrawer'
+import { category1Options, buildCategoryPath } from './categoryOptions'
 
 const fields: FieldDefinition[] = [
   { key: 'skillName', label: '服务技能', type: 'input', width: 160, fixed: 'left' },
-  { key: 'secondaryCategory', label: '二级品类', type: 'select', width: 160, options: [
+  { key: 'category1', label: '一级品类', type: 'select', width: 140, options: [
     { label: '全部', value: '' },
-    { label: '到家/清洗类', value: '到家/清洗类' },
-    { label: '到家/家电类', value: '到家/家电类' },
+    ...category1Options,
   ]},
+  { key: 'category2', label: '二级品类', type: 'input', width: 140 },
+  { key: 'category3', label: '三级品类', type: 'input', width: 160 },
   { key: 'certificateType', label: '证件类型', type: 'select', width: 160, options: [
     { label: '全部', value: '' },
     { label: '特种作业操作证', value: '特种作业操作证' },
     { label: '上岗证', value: '上岗证' },
   ]},
   { key: 'exampleImage', label: '示例图', type: 'input', width: 260 },
-  { key: 'action', label: '操作', width: 148, fixed: 'right' },
+  { key: 'action', label: '操作', width: 104, fixed: 'right' },
 ]
 
 const thumbUrl = (base: string) =>
@@ -37,7 +38,7 @@ const largeUrl = (base: string) =>
 
 const defaultColumnFields: ColumnField[] = [
   { key: 'skillName', label: '服务技能', visible: true, width: 160, fixed: 'left' },
-  { key: 'secondaryCategory', label: '二级品类', visible: true, width: 160 },
+  { key: 'category3', label: '三级品类', visible: true, width: 320 },
   { key: 'certificateType', label: '证件类型', visible: true, width: 160 },
   { key: 'exampleImage', label: '示例图', visible: true, width: 260 },
 ]
@@ -70,7 +71,9 @@ export default function SkillManagement() {
     setDrawerInitialValues({
       id: record.id as number,
       skillName: record.skillName as string,
-      secondaryCategory: record.secondaryCategory as string,
+      category1: record.category1 as string,
+      category2: record.category2 as string,
+      category3: record.category3 as string,
       certificateType: record.certificateType as string,
       exampleImage: record.exampleImage as string,
     })
@@ -129,10 +132,20 @@ export default function SkillManagement() {
 
   const bodyCell = useCallback(
     (column: Record<string, unknown>, record: Record<string, unknown>) => {
+      if (column.key === 'category3') {
+        const path = buildCategoryPath(
+          record.category1 as string,
+          record.category2 as string,
+          record.category3 as string,
+        )
+        return path
+          ? <span>{path}</span>
+          : <span style={{ color: 'rgba(0,0,0,0.25)' }}>-</span>
+      }
       if (column.key === 'exampleImage') {
         const raw = record.exampleImage as string
         if (!raw) {
-          return <span style={{ color: 'rgba(0,0,0,0.25)' }}>-</span>
+          return <span style={{ color: 'rgba(0,0,0,0.45)' }}>-</span>
         }
         const images = raw.split(',').map((u) => u.trim()).filter(Boolean).slice(0, 5)
         if (images.length === 0) {
@@ -159,19 +172,23 @@ export default function SkillManagement() {
         )
       }
       if (column.key === 'action') {
-        const buttons = [
-          { key: 'detail', label: '详情', onClick: () => CompanyMessage.info('详情功能开发中') },
-          { key: 'edit', label: '编辑', onClick: () => handleEdit(record) },
-          {
-            key: 'delete',
-            label: '删除',
-            danger: true,
-            confirm: true,
-            confirmTitle: '确定删除？',
-            onClick: () => handleDelete(record),
-          },
-        ]
-        return <ActionCell buttons={buttons} />
+        return (
+          <Space size={4}>
+            <CompanyButton type="link" onClick={() => handleEdit(record)}>
+              编辑
+            </CompanyButton>
+            <Popconfirm
+              title="确定删除？"
+              okText="确定"
+              cancelText="取消"
+              onConfirm={() => handleDelete(record)}
+            >
+              <CompanyButton type="link" danger>
+                删除
+              </CompanyButton>
+            </Popconfirm>
+          </Space>
+        )
       }
       return null
     },

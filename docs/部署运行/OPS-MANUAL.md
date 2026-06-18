@@ -2,7 +2,7 @@
 
 > **适用对象**：运维人员 / 部署工程师
 > **文档用途**：从 git 拉取代码后，按本手册操作即可完成服务器部署、日常运维、故障排查
-> **Last updated**: 2026-06-17（v2：补充完整初始化数据清单）
+> **Last updated**: 2026-06-18（v3：数据库变更改为 Flyway 自动增量执行，无需运维手动跑 SQL）
 
 ---
 
@@ -27,8 +27,8 @@ yph-react/                          ← git 仓库根目录
 │   ├── Dockerfile                  ← 前端镜像构建（多阶段：node 构建 + nginx 托管）
 │   └── package.json
 ├── material-system-server/         ← 后端源码 + 部署配置
-│   ├── src/
-│   ├── init/                       ← 数据库初始化 SQL（17 个文件，按序号执行）
+│   ├── src/main/resources/db/migration/  ← Flyway 增量 SQL（V2__xxx.sql, V3__xxx.sql...）
+│   ├── init/                       ← 数据库初始化 SQL（仅 MySQL 首次启动时执行）
 │   ├── docker-compose.yml          ← 容器编排（MySQL + 后端）
 │   ├── Dockerfile                  ← 后端镜像构建（多阶段：Maven 构建 + JRE 运行）
 │   ├── restart-safe.sh             ← 安全重启后端脚本
@@ -145,7 +145,13 @@ docker ps | grep material
 # 检查菜单数据是否完整（预期 56 条）
 docker exec -i material-mysql-react mysql -uroot -proot123456 -N -e \
   "SELECT COUNT(*) FROM material_system_react.sys_domain_menu WHERE domain_id=1;"
+
+# 检查 Flyway 基线是否已建立
+docker exec -i material-mysql-react mysql -uroot -proot123456 -N -e \
+  "SELECT version, description FROM material_system_react.flyway_schema_history ORDER BY version;"
 ```
+
+> 数据库结构初始化（`init/` 目录）只在 MySQL 容器**首次启动**时执行。后续变更通过 Flyway 增量脚本自动执行，详见 4.4 节。
 
 ### 3.3 第 3 步：构建并部署前端
 
@@ -328,8 +334,8 @@ git pull origin main
 
 # 2. 判断需要更新什么
 #    - 前端代码变更 → 重建前端镜像
-#    - 后端代码变更 → 重建后端镜像
-#    - 数据库 SQL 变更 → 手动执行（见第 4.4 节）
+#    - 后端代码变更 → 重建后端镜像（数据库 SQL 变更也一样）
+#    - 数据库 SQL 变更 → 后端启动时 Flyway 自动识别并执行 db/migration/ 下的新脚本，无需运维手动执行
 ```
 
 #### 更新前端
@@ -395,21 +401,73 @@ ls -1t backups/*.sql.gz | head -10
 
 > ⚠️ 恢复操作会**覆盖现有全部数据**，脚本会要求输入 `yes` 确认。
 
-### 4.4 执行数据库变更 SQL
+### 4.4 数据库增量更新（Flyway 自动执行，运维无需手动操作）
 
-**重要**：`init/` 目录下的 SQL **只在 MySQL 容器首次启动时执行**。之后要变更数据，必须手动执行。
+**关键变更**：从 v3 起，数据库变更不再需要运维手动连接 MySQL 执行 SQL。后端启动时 **Flyway** 会自动识别 `src/main/resources/db/migration/` 下的新脚本并按版本号顺序执行。
+
+#### 工作原理
+
+| 概念 | 说明 |
+|------|------|
+| **Baseline（基线）** | 当前数据库结构被标记为版本 0（`<< Flyway Baseline >>`），后续从 V1 开始递增 |
+| **版本表** | `flyway_schema_history` 表记录每个脚本的执行状态，已成功执行过的脚本不会重复执行 |
+| **脚本命名** | `V{版本号}__{描述}.sql`（注意是**两个下划线**），如 `V2__add_skill_table.sql` |
+| **幂等要求** | 每个脚本必须可重复执行不出错（用 `IF NOT EXISTS`、`WHERE NOT EXISTS` 等写法） |
+
+#### 运维只需做 3 件事
 
 ```bash
-# 先备份
-cd /opt/yph-react/material-system-server
-./backup.sh
+# 1. 拉取最新代码（开发同学会把新增的 Vxx__xxx.sql 放到 db/migration/ 目录下）
+cd /opt/yph-react
+git pull origin main
 
-# 执行 SQL 文件
-docker exec -i material-mysql-react mysql -uroot -proot123456 material_system_react < init/新文件.sql
+# 2. 重建后端镜像并重启（Flyway 在后端启动时自动执行新脚本）
+cd material-system-server
+./restart-safe.sh
 
-# 或直接执行 SQL 语句
-docker exec -i material-mysql-react mysql -uroot -proot123456 material_system_react -e "SELECT COUNT(*) FROM nav_menu;"
+# 3. 验证（可选）
+docker exec -i material-mysql-react mysql -uroot -proot123456 material_system_react -e \
+  "SELECT version, description, success FROM flyway_schema_history ORDER BY version;"
 ```
+
+#### Flyway 执行日志（在后端日志中）
+
+```bash
+docker logs material-backend-react --tail 50 | grep -i flyway
+# 成功时会看到类似：
+#   Creating Schema History table `material_system_react`.`flyway_schema_history` ...
+#   Migrating schema `material_system_react` to version "1 - baseline"
+#   Migrating schema `material_system_react` to version "2 - xxx"
+#   Successfully applied 2 migrations ...
+```
+
+#### 重要规则（给开发同学看，但运维需要了解）
+
+- ❌ **脚本一旦提交并执行过，就不能修改内容**（Flyway 会校验 checksum，修改后会报错）
+- ✅ 要改就新建一个更高版本号的脚本（如 V3、V4...）
+- ✅ 文件名版本号必须全局唯一，且递增（不能回头用已用过的版本号）
+- ✅ 脚本必须幂等（重复执行不出错）
+
+#### 验证当前数据库版本
+
+```bash
+docker exec -i material-mysql-react mysql -uroot -proot123456 material_system_react -e \
+  "SELECT version, description, script, success FROM flyway_schema_history ORDER BY version;"
+```
+
+预期输出（当前基线状态）：
+
+```
++---------+------------------------+-------------------------+---------+
+| version | description            | script                  | success |
++---------+------------------------+-------------------------+---------+
+| 0       | << Flyway Baseline >>  | << Flyway Baseline >>   |       1 |
+| 1       | baseline               | V1__baseline.sql        |       1 |
+| 2       | example template       | V2__example_template.sql|       1 |
++---------+------------------------+-------------------------+---------+
+```
+
+> 如发现 `success=0` 的记录，说明某脚本执行失败，需检查脚本内容和后端日志。
 
 ---
 
@@ -480,6 +538,7 @@ services:
 | 后端连不上数据库 | 检查是否有双 MySQL 容器，见 6.2 节 |
 | 上传文件失败 | 检查 Nginx `client_max_body_size` 和后端 `multipart.max-file-size` |
 | 容器频繁重启 | `docker logs <容器名>` 查看启动失败原因 |
+| Flyway 迁移失败（后端启动失败或报 checksum 错误） | 见下方 6.6 节 |
 
 ### 6.2 双 MySQL 容器事故处理
 
@@ -542,6 +601,56 @@ docker logs material-backend-react --tail 200
 # 1. MySQL 未就绪 → 检查 docker ps，等待 MySQL healthy
 # 2. 数据库连接失败 → 检查 SPRING_DATASOURCE_URL
 # 3. 端口被占用 → netstat -tlnp | grep 8081
+```
+
+### 6.6 Flyway 迁移失败排查
+
+Flyway 执行失败会导致后端容器启动失败或无法正常运行。常见场景：
+
+#### 场景 A：checksum 校验失败（日志中含 `checksum mismatch`）
+
+**原因**：已执行过的 SQL 脚本被修改了内容（违反脚本不可变原则）。
+
+```bash
+# 查看后端日志中的 Flyway 错误
+docker logs material-backend-react --tail 100 | grep -i -A5 'flyway\|checksum\|migration'
+
+# 查看 flyway_schema_history 表确认哪个版本出问题
+docker exec -i material-mysql-react mysql -uroot -proot123456 material_system_react -e \
+  "SELECT version, script, success, checksum FROM flyway_schema_history ORDER BY version;"
+```
+
+**处理**：通知开发同学，**不要修改已执行的脚本**，应新建更高版本的脚本。如确需修复：
+1. 先备份数据库 `./backup.sh`
+2. 由开发同学评估影响，再决定是回滚还是用新脚本修复
+
+#### 场景 B：新脚本执行失败（SQL 语法错误或表/字段已存在）
+
+**原因**：新的 Vxx__xxx.sql 中有语法错误或缺少幂等判断。
+
+```bash
+# 查看后端日志中 Flyway 的详细报错
+docker logs material-backend-react --tail 200 | grep -i -B2 -A10 'flyway\|error\|exception'
+
+# 标记失败脚本：success=0 的那条就是出问题的版本
+docker exec -i material-mysql-react mysql -uroot -proot123456 material_system_react -e \
+  "SELECT version, script, success FROM flyway_schema_history WHERE success=0;"
+```
+
+**处理**：由开发同学修复脚本内容 → 运维重新 `./restart-safe.sh`。
+
+#### 场景 C：全新环境部署后 flyway_schema_history 不存在
+
+**原因**：新部署的 MySQL 未执行基线。Flyway 的 `baseline-on-migrate: true` 配置会**自动**建立基线（版本 0），无需运维干预。如遇异常：
+
+```bash
+# 检查是否已有基线
+docker exec -i material-mysql-react mysql -uroot -proot123456 material_system_react -e \
+  "SELECT COUNT(*) FROM flyway_schema_history;"
+# 预期 >= 1（至少有版本 0 的基线记录）
+
+# 若为空表，重启后端触发 Flyway 重新初始化
+docker compose restart backend
 ```
 
 ---

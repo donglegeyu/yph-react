@@ -1,4 +1,5 @@
 import { ThemeProvider } from '@donglegeyu/company-ui'
+import { App as AntdApp } from 'antd'
 import { RouterProvider } from 'react-router-dom'
 import { Suspense, useEffect, Component, type ErrorInfo, type ReactNode } from 'react'
 import router from '@/router'
@@ -95,10 +96,12 @@ export default function App() {
   return (
     <GlobalErrorBoundary>
       <ThemeProvider>
-        <AppInit />
-        <Suspense fallback={null}>
-          <RouterProvider router={router} />
-        </Suspense>
+        <AntdApp>
+          <AppInit />
+          <Suspense fallback={null}>
+            <RouterProvider router={router} />
+          </Suspense>
+        </AntdApp>
       </ThemeProvider>
     </GlobalErrorBoundary>
   )

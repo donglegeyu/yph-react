@@ -26,7 +26,9 @@ public class SkillController {
             @RequestParam(defaultValue = "1") Integer current,
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(required = false) String skillName,
-            @RequestParam(required = false) String secondaryCategory,
+            @RequestParam(required = false) String category1,
+            @RequestParam(required = false) String category2,
+            @RequestParam(required = false) String category3,
             @RequestParam(required = false) String certificateType) {
 
         Page<Skill> page = new Page<>(current, size);
@@ -35,8 +37,14 @@ public class SkillController {
         if (skillName != null && !skillName.isEmpty()) {
             query.like(Skill::getSkillName, skillName);
         }
-        if (secondaryCategory != null && !secondaryCategory.isEmpty()) {
-            query.eq(Skill::getSecondaryCategory, secondaryCategory);
+        if (category1 != null && !category1.isEmpty()) {
+            query.eq(Skill::getCategory1, category1);
+        }
+        if (category2 != null && !category2.isEmpty()) {
+            query.like(Skill::getCategory2, category2);
+        }
+        if (category3 != null && !category3.isEmpty()) {
+            query.like(Skill::getCategory3, category3);
         }
         if (certificateType != null && !certificateType.isEmpty()) {
             query.eq(Skill::getCertificateType, certificateType);
@@ -74,9 +82,11 @@ public class SkillController {
     public Result<Long> create(@RequestBody Skill skill) {
         LambdaQueryWrapper<Skill> check = new LambdaQueryWrapper<Skill>()
                 .eq(Skill::getSkillName, skill.getSkillName())
-                .eq(Skill::getSecondaryCategory, skill.getSecondaryCategory());
+                .eq(Skill::getCategory1, skill.getCategory1())
+                .eq(Skill::getCategory2, skill.getCategory2())
+                .eq(Skill::getCategory3, skill.getCategory3());
         if (skillService.count(check) > 0) {
-            return Result.error("该服务技能与二级品类组合已存在");
+            return Result.error("该服务技能与三级品类组合已存在");
         }
         skillService.save(skill);
         upsertCertificateImage(skill.getCertificateType(), skill.getExampleImage());
@@ -88,10 +98,12 @@ public class SkillController {
         skill.setId(id);
         LambdaQueryWrapper<Skill> check = new LambdaQueryWrapper<Skill>()
                 .eq(Skill::getSkillName, skill.getSkillName())
-                .eq(Skill::getSecondaryCategory, skill.getSecondaryCategory())
+                .eq(Skill::getCategory1, skill.getCategory1())
+                .eq(Skill::getCategory2, skill.getCategory2())
+                .eq(Skill::getCategory3, skill.getCategory3())
                 .ne(Skill::getId, id);
         if (skillService.count(check) > 0) {
-            return Result.error("该服务技能与二级品类组合已存在");
+            return Result.error("该服务技能与三级品类组合已存在");
         }
         skillService.updateById(skill);
         upsertCertificateImage(skill.getCertificateType(), skill.getExampleImage());

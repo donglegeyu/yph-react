@@ -1,0 +1,98 @@
+:global(.base-info-form.base-info-form) {
+  --company-label-max-width: 8em;
+}
+
+.craftsman-form {
+  :global(.section-title) {
+    height: auto;
+    align-items: stretch;
+    gap: 2px;
+  }
+
+  :global(.section-title.section-title-with-desc) {
+    :global(.section-title-bar) {
+      align-self: stretch;
+    }
+  }
+
+  :global(.ant-row) :global(.ant-form-item) {
+    :global(.ant-form-item-control) {
+      min-width: 0;
+      flex: 1;
+    }
+  }
+
+  :global(.base-info-form) {
+    :global(.ant-form-item) {
+      :global(.ant-form-item-label) > label {
+        align-items: center;
+        height: 32px;
+      }
+
+      :global(.ant-form-item-control-input) {
+        min-width: 0;
+      }
+
+      :global(.ant-select),
+      :global(.ant-cascader),
+      :global(.ant-picker),
+      :global(.ant-input),
+      :global(.ant-input-affix-wrapper),
+      :global(.ant-input-number) {
+        width: 100%;
+      }
+    }
+  }
+
+  .service-area-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .service-area-list {
+    display: contents;
+  }
+
+  .service-area-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    background: #f5f5f5;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.85);
+    line-height: 1.4;
+  }
+
+  .service-area-text {
+    white-space: nowrap;
+  }
+
+  .service-area-remove {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #ff4d4f;
+    }
+  }
+
+  .service-area-adding {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  :global(.service-area-add-btn) {
+    padding-right: 16px;
+  }
+}

@@ -14,6 +14,7 @@ import {
 import { API_ENDPOINTS } from '@/constants/api'
 import { useListData, useMenuTitle, useSysUsers, useDomains } from '@/hooks'
 import type { Domain } from '@/hooks'
+import { useAppStore } from '@/store/app'
 
 interface DomainBrief {
   id: number
@@ -120,6 +121,9 @@ export default function UserManagement() {
 
   const menuTitle = useMenuTitle()
 
+  const currentUserId = useAppStore((s) => s.userInfo.id)
+  const setUserInfo = useAppStore((s) => s.setUserInfo)
+
   const { createUser, updateUser, updateUserStatus, resetPassword, fetchUserDomains, assignDomains } = useSysUsers()
   const { fetchAllDomains } = useDomains()
 
@@ -224,6 +228,14 @@ export default function UserManagement() {
           CompanyMessage.success('编辑成功')
           setFormVisible(false)
           refresh()
+          if (editingId === currentUserId) {
+            setUserInfo({
+              id: editingId,
+              username: values.username,
+              nickname: values.nickname,
+              realName: values.realName,
+            })
+          }
         } else {
           CompanyMessage.error('编辑失败，请稍后重试')
         }
@@ -233,7 +245,7 @@ export default function UserManagement() {
     } finally {
       setFormLoading(false)
     }
-  }, [form, editingId, selectedRoleIds, createUser, updateUser, refresh])
+  }, [form, editingId, selectedRoleIds, createUser, updateUser, refresh, currentUserId, setUserInfo])
 
   const handleToggleStatus = useCallback(async (record: UserRecord) => {
     const newStatus = record.status === 1 ? 0 : 1

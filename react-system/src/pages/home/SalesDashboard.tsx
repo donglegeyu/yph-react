@@ -150,7 +150,7 @@ const periodItems: MenuProps['items'] = [
 ]
 
 export default function SalesDashboard() {
-  const [activeView, setActiveView] = useState<'default' | 'sales'>('default')
+  const [activeView, setActiveView] = useState<'default' | 'sales'>('sales')
   const [trendMode, setTrendMode] = useState<'amount' | 'count'>('amount')
   const [colorKey, setColorKey] = useState(0)
 
