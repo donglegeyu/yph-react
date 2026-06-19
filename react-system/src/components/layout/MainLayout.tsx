@@ -10,7 +10,7 @@ export default function MainLayout() {
   const loadSidebarPreference = useAppStore((s) => s.loadSidebarPreference)
 
   useEffect(() => {
-    fetchMenus()
+    fetchMenus({ resetActive: false })
     loadSidebarPreference()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

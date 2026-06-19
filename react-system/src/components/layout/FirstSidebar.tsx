@@ -62,6 +62,7 @@ export default function FirstSidebar() {
   const systemBottomMenus = useAppStore((s) => s.systemBottomMenus)
   const selectFirstMenu = useAppStore((s) => s.selectFirstMenu)
   const promoteToNav = useAppStore((s) => s.promoteToNav)
+  const menusLoaded = useAppStore((s) => s.menusLoaded)
 
   const [activeKey, setActiveKey] = useState(() => {
     const path = window.location.pathname
@@ -139,11 +140,13 @@ export default function FirstSidebar() {
       return
     }
 
+    if (!menusLoaded) return
+
     const validKeys = Object.keys(appStore.secondMenusMap)
     if (appStore.activeFirstMenu && validKeys.includes(appStore.activeFirstMenu)) {
       setActiveKey(appStore.activeFirstMenu)
     }
-  }, [location.pathname])
+  }, [location.pathname, menusLoaded])
 
   useEffect(() => {
     const unsub = useAppStore.subscribe((state) => {

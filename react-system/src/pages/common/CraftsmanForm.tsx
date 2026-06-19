@@ -24,6 +24,7 @@ interface SkillOption {
   id: number
   skillName: string
   secondaryCategory: string
+  category3: string
   certificateType: string
   exampleImage?: string
 }
@@ -134,7 +135,13 @@ export default function CraftsmanForm() {
   const [formData, setFormData] = useState<CraftsmanFormData>(initialFormData)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [skills, setSkills] = useState<SkillOption[]>([])
-  const [brands] = useState<BrandOption[]>([])
+  const [brands] = useState<BrandOption[]>([
+    { value: 'midea', label: '美的' },
+    { value: 'haier', label: '海尔' },
+    { value: 'gree', label: '格力' },
+    { value: 'supor', label: '苏泊尔' },
+    { value: 'philips', label: '飞利浦' },
+  ])
   const baseInfoFormRef = useRef<BaseInfoFormRef>(null)
   const formContainerRef = useRef<HTMLDivElement>(null)
   const [colSpan, setColSpan] = useState(8)
@@ -164,6 +171,7 @@ export default function CraftsmanForm() {
           id: s.id,
           skillName: s.skillName,
           secondaryCategory: s.secondaryCategory,
+          category3: s.category3,
           certificateType: s.certificateType,
           exampleImage: s.exampleImage,
         })))
@@ -172,20 +180,6 @@ export default function CraftsmanForm() {
         // 技能加载失败时保持空列表
       })
   }, [])
-
-  const skillSelectOptions = useMemo(() => {
-    const categoryMap = new Map<string, SkillOption[]>()
-    skills.forEach((s) => {
-      const arr = categoryMap.get(s.secondaryCategory) || []
-      arr.push(s)
-      categoryMap.set(s.secondaryCategory, arr)
-    })
-    return Array.from(categoryMap.entries()).map(([category, items]) => ({
-      label: category,
-      title: category,
-      options: items.map((s) => ({ label: s.skillName, value: s.id })),
-    }))
-  }, [skills])
 
   const certificateItems = useMemo<CertificateUploadItem[]>(() => {
     const selected = skills.filter((s) => formData.serviceSkillIds.includes(s.id))
@@ -236,16 +230,97 @@ export default function CraftsmanForm() {
     setFormData((prev) => ({ ...prev, serviceAreas: prev.serviceAreas.filter((_, i) => i !== index) }))
   }
 
-  const handleSkillChange = (ids: number[]) => {
-    const selected = skills.filter((s) => ids.includes(s.id))
-    const validTypes = new Set(
-      selected.map((s) => s.certificateType).filter((t): t is string => Boolean(t)),
-    )
-    const nextCerts: Record<string, string[]> = {}
-    validTypes.forEach((t) => {
-      nextCerts[t] = formData.certificates[t] || []
+  const [skillAdding, setSkillAdding] = useState(false)
+  const [pendingCategory, setPendingCategory] = useState<string | null>(null)
+  const [pendingSkillIdList, setPendingSkillIdList] = useState<number[]>([])
+
+  const skillLabelMap = useMemo(() => {
+    const m = new Map<number, string>()
+    skills.forEach((s) => m.set(s.id, s.skillName))
+    return m
+  }, [skills])
+
+  const availableSkillCategories = useMemo(() => {
+    const set = new Set<string>()
+    skills.forEach((s) => {
+      if (s.category3 && !formData.serviceSkillIds.includes(s.id)) set.add(s.category3)
     })
-    setFormData((prev) => ({ ...prev, serviceSkillIds: ids, certificates: nextCerts }))
+    return Array.from(set).map((c) => ({ value: c, label: c }))
+  }, [skills, formData.serviceSkillIds])
+
+  const availableSkillsInPendingCategory = useMemo(() => {
+    if (!pendingCategory) return []
+    return skills
+      .filter((s) => s.category3 === pendingCategory && !formData.serviceSkillIds.includes(s.id))
+      .map((s) => ({ value: s.id, label: s.skillName }))
+  }, [skills, pendingCategory, formData.serviceSkillIds])
+
+  const skillGrouped = useMemo(() => {
+    const map = new Map<string, number[]>()
+    skills.forEach((s) => {
+      if (!formData.serviceSkillIds.includes(s.id)) return
+      if (!s.category3) return
+      const arr = map.get(s.category3) || []
+      arr.push(s.id)
+      map.set(s.category3, arr)
+    })
+    return Array.from(map.entries()).map(([category, ids]) => ({ category, ids }))
+  }, [skills, formData.serviceSkillIds])
+
+  const recalcCertificates = (ids: number[], prevCerts: Record<string, string[]>) => {
+    const allSelected = skills.filter((s) => ids.includes(s.id))
+    const allTypes = new Set(allSelected.map((s) => s.certificateType).filter((t): t is string => Boolean(t)))
+    const nextCerts: Record<string, string[]> = {}
+    allTypes.forEach((t) => { nextCerts[t] = prevCerts[t] || [] })
+    return nextCerts
+  }
+
+  const handleAddSkill = () => {
+    if (pendingSkillIdList.length === 0) return
+    setFormData((prev) => {
+      const nextIds = [...prev.serviceSkillIds, ...pendingSkillIdList.filter((id) => !prev.serviceSkillIds.includes(id))]
+      const nextCerts = recalcCertificates(nextIds, prev.certificates)
+      return { ...prev, serviceSkillIds: nextIds, certificates: nextCerts }
+    })
+    setPendingCategory(null)
+    setPendingSkillIdList([])
+    setSkillAdding(false)
+  }
+
+  const handleRemoveSkill = (id: number) => {
+    setFormData((prev) => {
+      const nextIds = prev.serviceSkillIds.filter((s) => s !== id)
+      const nextCerts = recalcCertificates(nextIds, prev.certificates)
+      return { ...prev, serviceSkillIds: nextIds, certificates: nextCerts }
+    })
+  }
+
+  const [brandAdding, setBrandAdding] = useState(false)
+  const [pendingBrand, setPendingBrand] = useState<string | null>(null)
+
+  const brandLabelMap = useMemo(() => {
+    const m = new Map<string, string>()
+    brands.forEach((b) => m.set(b.value, b.label))
+    return m
+  }, [brands])
+
+  const availableBrandOptions = useMemo(() => {
+    return brands.filter((b) => !formData.brands.includes(b.value))
+  }, [brands, formData.brands])
+
+  const handleAddBrand = () => {
+    if (!pendingBrand) return
+    if (formData.brands.includes(pendingBrand)) {
+      CompanyMessage.warning('该品牌已添加')
+      return
+    }
+    setFormData((prev) => ({ ...prev, brands: [...prev.brands, pendingBrand] }))
+    setPendingBrand(null)
+    setBrandAdding(false)
+  }
+
+  const handleRemoveBrand = (value: string) => {
+    setFormData((prev) => ({ ...prev, brands: prev.brands.filter((b) => b !== value) }))
   }
 
   const handleBaseInfoChange = (field: string, value: unknown) => {
@@ -359,7 +434,7 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="基础信息" />
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 8 }}>
             <BaseInfoForm
               ref={baseInfoFormRef}
               value={formData}
@@ -372,7 +447,7 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="常住地址" />
-          <CompanyForm form={residentialForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 16 }}>
+          <CompanyForm form={residentialForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="省/市/区" name="residentialArea" rules={[{ required: true, message: '请选择省/市/区' }]}>
@@ -402,7 +477,7 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="身份证信息" description="请上传身份证正反面照片，系统将自动识别身份信息，识别成功后将自动填充姓名和身份证号" />
-          <CompanyForm form={idCardForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 16 }}>
+          <CompanyForm form={idCardForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="身份证人像面" name="idCardFront" required>
@@ -459,7 +534,7 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="接单区域" description="点击「添加区域」选择省/市/区，支持添加多个接单区域，每个区域必须精确到区/县" />
-          <div className="service-area-picker" style={{ marginTop: 16 }}>
+          <div className="service-area-picker" style={{ marginTop: 8 }}>
             {formData.serviceAreas.length > 0 && (
               <div className="service-area-list">
                 {formData.serviceAreas.map((area, index) => (
@@ -482,8 +557,8 @@ export default function CraftsmanForm() {
                   changeOnSelect={false}
                   style={{ width: 260 }}
                 />
-                <CompanyButton type="primary" size="middle" onClick={handleAddServiceArea}>确定</CompanyButton>
-                <CompanyButton size="middle" onClick={() => { setServiceAreaAdding(false); setPendingAreaCodes([]) }}>取消</CompanyButton>
+                <CompanyButton type="text" size="middle" style={{ paddingInline: 6, color: pendingAreaCodes.length !== 3 ? 'rgba(0,0,0,0.25)' : '#F95914' }} disabled={pendingAreaCodes.length !== 3} onClick={handleAddServiceArea}>确定</CompanyButton>
+                <CompanyButton type="text" size="middle" style={{ paddingInline: 6, marginLeft: -6, color: '#F95914' }} onClick={() => { setServiceAreaAdding(false); setPendingAreaCodes([]) }}>取消</CompanyButton>
               </div>
             ) : (
               <CompanyButton className="service-area-add-btn" type="dashed" size="middle" icon={<PlusOutlined />} onClick={() => setServiceAreaAdding(true)}>
@@ -495,32 +570,102 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="服务技能" />
-          <CompanyForm form={skillForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 16 }}>
+          <CompanyForm form={skillForm} layout="vertical" component="div" className="skill-vertical-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={24}>
-                <CompanyForm.Item label="专业技能" name="serviceSkillIds" rules={[{ required: true, message: '请选择专业技能' }]}>
-                  <Select
-                    mode="multiple"
-                    maxTagCount="responsive"
-                    placeholder="请选择专业技能"
-                    options={skillSelectOptions}
-                    value={formData.serviceSkillIds}
-                    onChange={(value) => handleSkillChange(value as number[])}
-                  />
+                <CompanyForm.Item label="专业技能" required>
+                  <div className="tag-picker">
+                    {skillGrouped.length > 0 && (
+                      <div className="tag-list">
+                        {skillGrouped.map((group) => (
+                          <div key={group.category} className="tag-item tag-item-group">
+                            <span className="tag-category">{group.category}</span>
+                            <span className="tag-slash">/</span>
+                            {group.ids.map((id) => (
+                              <span key={id} className="tag-skill-chip">
+                                {skillLabelMap.get(id) || `技能${id}`}
+                                <CloseOutlined className="tag-remove" onClick={() => handleRemoveSkill(id)} />
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {skillAdding ? (
+                      <div className="tag-adding">
+                        <Select
+                          placeholder="请选择品类"
+                          options={availableSkillCategories}
+                          value={pendingCategory}
+                          onChange={(value) => { setPendingCategory(value as string); setPendingSkillIdList([]) }}
+                          style={{ width: 140 }}
+                          popupMatchSelectWidth={false}
+                          showSearch
+                          optionFilterProp="label"
+                        />
+                        <Select
+                          mode="multiple"
+                          maxTagCount="responsive"
+                          placeholder="请选择技能（可多选）"
+                          options={availableSkillsInPendingCategory}
+                          value={pendingSkillIdList}
+                          onChange={(value) => setPendingSkillIdList(value as number[])}
+                          style={{ width: 240 }}
+                          disabled={!pendingCategory}
+                          optionFilterProp="label"
+                        />
+                        <CompanyButton type="text" size="middle" style={{ paddingInline: 6, color: pendingSkillIdList.length === 0 ? 'rgba(0,0,0,0.25)' : '#F95914' }} onClick={handleAddSkill} disabled={pendingSkillIdList.length === 0}>确定</CompanyButton>
+                        <CompanyButton type="text" size="middle" style={{ paddingInline: 6, marginLeft: -8, color: '#F95914' }} onClick={() => { setSkillAdding(false); setPendingCategory(null); setPendingSkillIdList([]) }}>取消</CompanyButton>
+                      </div>
+                    ) : (
+                      availableSkillCategories.length > 0 && (
+                        <CompanyButton className="tag-add-btn" type="dashed" size="middle" icon={<PlusOutlined />} onClick={() => setSkillAdding(true)}>
+                          添加技能
+                        </CompanyButton>
+                      )
+                    )}
+                  </div>
                 </CompanyForm.Item>
               </CompanyCol>
             </CompanyRow>
             <CompanyRow gutter={24}>
               <CompanyCol span={24}>
-                <CompanyForm.Item label="品牌" name="brands">
-                  <Select
-                    mode="multiple"
-                    maxTagCount="responsive"
-                    placeholder="请选择品牌"
-                    options={brands}
-                    value={formData.brands}
-                    onChange={(value) => updateField('brands', value as string[])}
-                  />
+                <CompanyForm.Item label="品牌">
+                  <div className="tag-picker">
+                    {formData.brands.length > 0 && (
+                      <div className="tag-list">
+                        {formData.brands.map((value) => (
+                          <div key={value} className="tag-item">
+                            <span className="tag-text">{brandLabelMap.get(value) || value}</span>
+                            <CloseOutlined className="tag-remove" onClick={() => handleRemoveBrand(value)} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {brandAdding ? (
+                      <div className="tag-adding">
+                        <Select
+                          placeholder="请选择品牌"
+                          options={availableBrandOptions}
+                          value={pendingBrand}
+                          onChange={(value) => setPendingBrand(value as string)}
+                          style={{ width: 260 }}
+                          showSearch
+                          optionFilterProp="label"
+                        />
+                        <CompanyButton type="text" size="middle" style={{ paddingInline: 6, color: !pendingBrand ? 'rgba(0,0,0,0.25)' : '#F95914' }} disabled={!pendingBrand} onClick={handleAddBrand}>确定</CompanyButton>
+                        <CompanyButton type="text" size="middle" style={{ paddingInline: 6, marginLeft: -8, color: '#F95914' }} onClick={() => { setBrandAdding(false); setPendingBrand(null) }}>取消</CompanyButton>
+                      </div>
+                    ) : (
+                      availableBrandOptions.length > 0 && (
+                        <CompanyButton className="tag-add-btn" type="dashed" size="middle" icon={<PlusOutlined />} onClick={() => setBrandAdding(true)}>
+                          添加品牌
+                        </CompanyButton>
+                      )
+                    )}
+                  </div>
                 </CompanyForm.Item>
               </CompanyCol>
             </CompanyRow>
@@ -529,7 +674,7 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="资格证书" />
-          <CompanyForm form={certificateForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 16 }}>
+          <CompanyForm form={certificateForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
             {certificateItems.length === 0 ? (
               <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 14 }}>请先选择服务技能，系统将根据所选技能需要的证件类型自动生成对应证书上传项</div>
             ) : (
@@ -566,7 +711,7 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="佐证材料" />
-          <CompanyForm form={proofForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 16 }}>
+          <CompanyForm form={proofForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="材料类型" name="workProofType">
