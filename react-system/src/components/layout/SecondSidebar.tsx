@@ -130,6 +130,7 @@ export default function SecondSidebar() {
   useEffect(() => {
     const path = location.pathname
     if (path === '/home' || path === '/') return
+    if (!menusLoaded) return
 
     let result = navigateToPath(path)
 
@@ -153,7 +154,7 @@ export default function SecondSidebar() {
       useAppStore.getState().clearExpandedKeys()
       setLocalActiveKey('')
     }
-  }, [location.pathname])
+  }, [location.pathname, menusLoaded])
 
   const handleClick = useCallback(
     (menu: RenderMenuItem) => {

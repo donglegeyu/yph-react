@@ -51,7 +51,7 @@ interface AppState {
   closeTab: (key: string) => TabItem | null
   setActiveTabKey: (key: string) => void
 
-  fetchMenus: () => Promise<void>
+  fetchMenus: (options?: { resetActive?: boolean }) => Promise<void>
   fetchFavorites: () => Promise<void>
   fetchCustomNavMenus: () => Promise<void>
   saveCustomNavMenus: (menus: CustomNavMenu[]) => Promise<void>
@@ -301,16 +301,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  fetchMenus: async () => {
+  fetchMenus: async (options) => {
     try {
       const currentDomainId = localStorage.getItem('currentDomainId')
       const isDefaultDomain = currentDomainId === '1'
 
+      const resetActive = options?.resetActive !== false
       set({
         customNavMenus: [],
-        activeFirstMenu: 'home',
-        activeKey: '',
-        expandedKeys: [],
+        activeFirstMenu: resetActive ? 'home' : get().activeFirstMenu,
+        activeKey: resetActive ? '' : get().activeKey,
+        expandedKeys: resetActive ? [] : get().expandedKeys,
         secondSidebarHovered: false,
       })
 
@@ -552,13 +553,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     for (const [firstKey, seconds] of Object.entries(secondMenusMap)) {
       for (const menu of seconds) {
         if (menu.path === path) {
-          set({ activeFirstMenu: firstKey })
+          set({ activeFirstMenu: firstKey, activeKey: menu.key })
           return { firstKey, secondMenu: menu, thirdMenu: null }
         }
         if (menu.children?.length) {
           for (const sub of menu.children) {
             if (sub.path === path) {
-              set({ activeFirstMenu: firstKey })
+              set({ activeFirstMenu: firstKey, activeKey: sub.key })
               return { firstKey, secondMenu: menu, thirdMenu: sub }
             }
           }
