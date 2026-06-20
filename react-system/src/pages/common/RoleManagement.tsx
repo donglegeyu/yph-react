@@ -393,11 +393,11 @@ export default function RoleManagement() {
         }
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="roleName" label="角色名称" rules={[{ required: true, message: '请输入角色名称' }]}>
-            <Input placeholder="如：销售专员" maxLength={50} />
+          <Form.Item name="roleName" label="角色名称" rules={[{ required: true, message: '请输入' }]}>
+            <Input placeholder="请输入" maxLength={50} />
           </Form.Item>
-          <Form.Item name="roleCode" label="角色编码" rules={[{ required: true, message: '请输入角色编码' }]}>
-            <Input placeholder="如：ROLE_SALES" maxLength={50} />
+          <Form.Item name="roleCode" label="角色编码" rules={[{ required: true, message: '请输入' }]}>
+            <Input placeholder="请输入" maxLength={50} />
           </Form.Item>
           <Form.Item name="sortOrder" label="显示顺序">
             <InputNumber min={0} style={{ width: '100%' }} />

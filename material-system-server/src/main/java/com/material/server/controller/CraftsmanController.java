@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.material.server.common.PageResult;
 import com.material.server.common.Result;
+import com.material.server.dto.CraftsmanCreateDTO;
 import com.material.server.entity.Craftsman;
 import com.material.server.service.CraftsmanService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,12 @@ import org.springframework.web.bind.annotation.*;
 public class CraftsmanController {
 
     private final CraftsmanService craftsmanService;
+
+    @PostMapping
+    public Result<Long> create(@RequestBody CraftsmanCreateDTO dto) {
+        Long id = craftsmanService.createCraftsman(dto);
+        return Result.success(id);
+    }
 
     @GetMapping
     public Result<PageResult<Craftsman>> list(

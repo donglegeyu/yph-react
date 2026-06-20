@@ -101,7 +101,6 @@ const drawerFilterFields: FilterFieldConfig[] = [
     key: 'checkStatus',
     label: '安检状态',
     type: 'select',
-    placeholder: '请选择安检状态',
     options: [
       { label: '已安检', value: 'checked' },
       { label: '未安检', value: 'unchecked' },
@@ -112,7 +111,6 @@ const drawerFilterFields: FilterFieldConfig[] = [
     key: 'visitResult',
     label: '上门结果',
     type: 'select',
-    placeholder: '请选择上门结果',
     options: [
       { label: '到访不遇', value: 'home' },
       { label: '已完成', value: 'done' },
@@ -123,7 +121,6 @@ const drawerFilterFields: FilterFieldConfig[] = [
     key: 'hasDanger',
     label: '是否隐患',
     type: 'select',
-    placeholder: '请选择',
     options: [
       { label: '是', value: '1' },
       { label: '否', value: '0' },
@@ -133,7 +130,6 @@ const drawerFilterFields: FilterFieldConfig[] = [
     key: 'maxDangerLevel',
     label: '最高隐患等级',
     type: 'select',
-    placeholder: '请选择隐患等级',
     options: [
       { label: '一级', value: '1' },
       { label: '二级', value: '2' },
@@ -144,7 +140,6 @@ const drawerFilterFields: FilterFieldConfig[] = [
     key: 'company',
     label: '所属项目公司',
     type: 'select',
-    placeholder: '请选择所属项目公司',
     options: [
       { label: '公司A', value: 'a' },
       { label: '公司B', value: 'b' },
@@ -155,14 +150,12 @@ const drawerFilterFields: FilterFieldConfig[] = [
     key: 'address',
     label: '用户地址',
     type: 'select',
-    placeholder: '请选择用户地址',
     options: [],
   },
   {
     key: 'checkType',
     label: '安检类型',
     type: 'select',
-    placeholder: '请选择安检类型',
     options: [
       { label: '入户安检', value: 'indoor' },
       { label: '户外安检', value: 'outdoor' },

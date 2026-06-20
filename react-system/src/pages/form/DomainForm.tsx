@@ -59,9 +59,10 @@ const baseInfoFields = [
     name: 'domainName',
     label: '域名称',
     type: 'input' as const,
+    placeholder: '请输入',
     required: true,
     rules: [
-      { required: true, message: '请输入域名称' },
+      { required: true, message: '请输入' },
       { max: 50, message: '域名称不能超过50个字符' },
     ],
   },
@@ -73,7 +74,7 @@ const baseInfoFields = [
     readonly: true,
     required: true,
     rules: [
-      { required: true, message: '域标识自动生成' },
+      { required: true, message: '根据域名称自动生成' },
       { max: 100, message: '域标识不能超过100个字符' },
     ],
   },

@@ -271,6 +271,7 @@ interface CertificateRecord {
 }
 
 const certificateStatusMap: Record<CertificateRecord['status'], { text: string; color: string }> = {
+  '': { text: '-', color: 'default' },
   valid: { text: '有效', color: 'success' },
   expiring: { text: '即将过期', color: 'warning' },
   expired: { text: '已过期', color: 'default' },

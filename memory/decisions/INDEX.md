@@ -6,3 +6,4 @@
 |----|----------|--------|------|
 | D002 | 使用可选链（?.）防止数组越界和空指针 | Active | [optional-chaining.md](./optional-chaining.md) |
 | D003 | 新建文档按受众选择存放位置（docs/ vs memory/ vs .trae/） | Active | [doc-location-rules.md](./doc-location-rules.md) |
+| D004 | 🔴 运维的 Dockerfile、application.yml 等部署文件不可改动（红线） | Active | [ops-files-readonly.md](./ops-files-readonly.md) |
