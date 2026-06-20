@@ -1,10 +1,11 @@
 import { useEffect, useCallback, useState } from 'react'
-import { Space, Image, Popconfirm } from 'antd'
+import { Space, Image } from 'antd'
 const { PreviewGroup } = Image
 import {
   CompanyButton,
   CompanyMessage,
   SmartListTemplate,
+  ActionCell,
   type FieldDefinition,
   type ColumnField,
 } from '@donglegeyu/company-ui'
@@ -172,23 +173,18 @@ export default function SkillManagement() {
         )
       }
       if (column.key === 'action') {
-        return (
-          <Space size={4}>
-            <CompanyButton type="link" onClick={() => handleEdit(record)}>
-              编辑
-            </CompanyButton>
-            <Popconfirm
-              title="确定删除？"
-              okText="确定"
-              cancelText="取消"
-              onConfirm={() => handleDelete(record)}
-            >
-              <CompanyButton type="link" danger>
-                删除
-              </CompanyButton>
-            </Popconfirm>
-          </Space>
-        )
+        const buttons = [
+          { key: 'edit', label: '编辑', onClick: () => handleEdit(record) },
+          {
+            key: 'delete',
+            label: '删除',
+            danger: true,
+            confirm: true,
+            confirmTitle: '确定删除？',
+            onClick: () => handleDelete(record),
+          },
+        ]
+        return <ActionCell buttons={buttons} />
       }
       return null
     },

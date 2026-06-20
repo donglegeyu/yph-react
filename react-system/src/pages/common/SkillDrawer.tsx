@@ -8,6 +8,7 @@ import { categoryOptions } from './categoryOptions'
 export interface SkillFormData {
   id?: number
   skillName: string
+  category?: string[]
   category1?: string
   category2?: string
   category3?: string
@@ -281,7 +282,7 @@ export default function SkillDrawer({
         <CompanyForm.Item
           name="skillName"
           label="服务技能"
-          rules={[{ required: true, message: '请输入服务技能' }]}
+          rules={[{ required: true, message: '请输入' }]}
         >
           <Input placeholder="请输入" />
         </CompanyForm.Item>
@@ -294,7 +295,7 @@ export default function SkillDrawer({
               required: true,
               validator: (_rule, value: (string | undefined)[] | undefined) => {
                 if (!value || value.length < 3 || !value[0] || !value[1] || !value[2]) {
-                  return Promise.reject(new Error('请选择三级品类'))
+                  return Promise.reject(new Error('请选择'))
                 }
                 return Promise.resolve()
               },
@@ -324,7 +325,7 @@ export default function SkillDrawer({
         <CompanyForm.Item
           name="certificateType"
           label="证件类型"
-          rules={[{ required: true, message: '请选择证件类型' }]}
+          rules={[{ required: true, message: '请选择' }]}
         >
           <Select
             placeholder="请选择"

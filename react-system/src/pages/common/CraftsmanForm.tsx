@@ -95,16 +95,16 @@ const initialFormData: CraftsmanFormData = {
 }
 
 const baseInfoFields: FormField[] = [
-  { name: 'name', label: '姓名', type: 'input', placeholder: '请输入姓名', required: true, rules: [{ required: true, message: '请输入姓名' }] },
-  { name: 'phone', label: '手机号', type: 'input', placeholder: '请输入11位手机号', required: true, rules: [{ required: true, message: '请输入手机号' }, { pattern: /^1\d{10}$/, message: '请输入正确的手机号' }] },
+  { name: 'name', label: '姓名', type: 'input', placeholder: '请输入', required: true, rules: [{ required: true, message: '请输入' }] },
+  { name: 'phone', label: '手机号', type: 'input', placeholder: '请输入', required: true, rules: [{ required: true, message: '请输入' }, { pattern: /^1\d{10}$/, message: '请输入正确的手机号' }] },
   {
-    name: 'craftsmanCategory', label: '工匠类别', type: 'select', placeholder: '请选择工匠类别', required: true, rules: [{ required: true, message: '请选择工匠类别' }],
+    name: 'craftsmanCategory', label: '工匠类别', type: 'select', placeholder: '请选择', required: true, rules: [{ required: true, message: '请选择' }],
     options: [
       { value: 'internal', label: '内部员工' },
       { value: 'outsource', label: '外部员工' },
     ],
   },
-  { name: 'serviceProviderName', label: '所属服务商', type: 'input', placeholder: '请输入所属服务商' },
+  { name: 'serviceProviderName', label: '所属服务商', type: 'input' },
 ]
 
 function urlsToFileList(urls: string[], prefix: string): UploadFile[] {
@@ -450,12 +450,12 @@ export default function CraftsmanForm() {
           <CompanyForm form={residentialForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="省/市/区" name="residentialArea" rules={[{ required: true, message: '请选择省/市/区' }]}>
+                <CompanyForm.Item label="省/市/区" name="residentialArea" rules={[{ required: true, message: '请选择' }]}>
                   <Cascader
-                    placeholder="请选择省/市/区"
                     options={pcaCodeData as DivisionRegion[]}
                     fieldNames={{ label: 'name', value: 'code', children: 'children' }}
                     changeOnSelect
+                    placeholder="请选择"
                     value={formData.residentialArea as string[]}
                     onChange={(value) => updateField('residentialArea', value as string[])}
                   />
@@ -468,7 +468,7 @@ export default function CraftsmanForm() {
               </CompanyCol>
               <CompanyCol span={colSpan} className="label-top">
                 <CompanyForm.Item label="详细地址" name="residentialDetail">
-                  <Input.TextArea rows={2} placeholder="请输入详细地址" value={formData.residentialDetail} onChange={(e) => updateField('residentialDetail', e.target.value)} />
+                  <Input.TextArea rows={2} placeholder="请输入" value={formData.residentialDetail} onChange={(e) => updateField('residentialDetail', e.target.value)} />
                 </CompanyForm.Item>
               </CompanyCol>
             </CompanyRow>
@@ -480,7 +480,7 @@ export default function CraftsmanForm() {
           <CompanyForm form={idCardForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="身份证人像面" name="idCardFront" required>
+                <CompanyForm.Item label="身份证人像面" required>
                   <ConfigProvider theme={uploadTheme}>
                     <Upload {...buildUploadProps(urlsToFileList(formData.idCardFrontUrl ? [formData.idCardFrontUrl] : [], 'front'), (urls) => updateField('idCardFrontUrl', urls[0] || ''), 1)}>
                       {!formData.idCardFrontUrl && (
@@ -494,7 +494,7 @@ export default function CraftsmanForm() {
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="身份证国徽面" name="idCardBack" required>
+                <CompanyForm.Item label="身份证国徽面" required>
                   <ConfigProvider theme={uploadTheme}>
                     <Upload {...buildUploadProps(urlsToFileList(formData.idCardBackUrl ? [formData.idCardBackUrl] : [], 'back'), (urls) => updateField('idCardBackUrl', urls[0] || ''), 1)}>
                       {!formData.idCardBackUrl && (

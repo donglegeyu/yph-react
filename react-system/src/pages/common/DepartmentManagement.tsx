@@ -302,26 +302,26 @@ export default function DepartmentManagement() {
         }
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="parentId" label="上级部门" rules={[{ required: true }]}>
+          <Form.Item name="parentId" label="上级部门" rules={[{ required: true, message: '请选择' }]}>
             <TreeSelect
               treeData={buildTreeSelectData(treeData, editingId || undefined)}
-              placeholder="请选择上级部门"
+              placeholder="请选择"
               treeDefaultExpandAll
             />
           </Form.Item>
           <Form.Item
             name="deptName"
             label="部门名称"
-            rules={[{ required: true, message: '请输入部门名称' }]}
+            rules={[{ required: true, message: '请输入' }]}
           >
-            <Input placeholder="请输入部门名称" maxLength={50} />
+            <Input placeholder="请输入" maxLength={50} />
           </Form.Item>
           <Form.Item
             name="deptCode"
             label="部门编码"
-            rules={[{ required: true, message: '请输入部门编码' }]}
+            rules={[{ required: true, message: '请输入' }]}
           >
-            <Input placeholder="请输入部门编码（唯一）" maxLength={50} />
+            <Input placeholder="请输入" maxLength={50} />
           </Form.Item>
           <Form.Item name="sortOrder" label="显示顺序">
             <InputNumber min={0} style={{ width: '100%' }} />

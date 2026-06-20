@@ -415,32 +415,32 @@ export default function UserManagement() {
           <Form.Item
             name="username"
             label="用户名"
-            rules={[{ required: true, message: '请输入用户名' }]}
+            rules={[{ required: true, message: '请输入' }]}
           >
-            <Input placeholder="请输入用户名" maxLength={50} />
+            <Input placeholder="请输入" maxLength={50} />
           </Form.Item>
           <Form.Item
             name="nickname"
             label="昵称"
-            rules={[{ required: true, message: '请输入昵称' }]}
+            rules={[{ required: true, message: '请输入' }]}
           >
-            <Input placeholder="请输入昵称" maxLength={50} />
+            <Input placeholder="请输入" maxLength={50} />
           </Form.Item>
           <Form.Item name="realName" label="真实姓名">
-            <Input placeholder="请输入真实姓名" maxLength={50} />
+            <Input placeholder="请输入" maxLength={50} />
           </Form.Item>
           <Form.Item
             name="password"
             label="密码"
-            rules={editingId === null ? [{ required: true, message: '请输入密码' }] : []}
+            rules={editingId === null ? [{ required: true, message: '请输入' }] : []}
             extra={editingId !== null ? '留空则不修改密码' : '默认密码 123123，可修改'}
           >
-            <Input.Password placeholder="请输入密码" maxLength={50} />
+            <Input.Password placeholder="请输入" maxLength={50} />
           </Form.Item>
           <Form.Item name="deptId" label="所属部门">
             <TreeSelect
               treeData={buildDeptTreeData(deptTree)}
-              placeholder="请选择部门"
+              placeholder="请选择"
               allowClear
               treeDefaultExpandAll
             />
@@ -448,11 +448,11 @@ export default function UserManagement() {
           <Form.Item
             name="roleIds"
             label="角色"
-            rules={[{ required: true, message: '请选择角色' }]}
+            rules={[{ required: true, message: '请选择' }]}
           >
             <Select
               mode="multiple"
-              placeholder="请选择角色（可多选）"
+              placeholder="请选择"
               onChange={(values) => setSelectedRoleIds(values as number[])}
               options={roleList.map((r) => ({ label: r.roleName, value: r.id }))}
               allowClear

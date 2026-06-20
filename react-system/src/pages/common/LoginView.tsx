@@ -187,13 +187,13 @@ export default function LoginView() {
               <CompanyForm.Item
                 name="username"
                 rules={[
-                  { required: true, message: '请输入用户名', trigger: 'onBlur' },
-                  { min: 2, max: 20, message: '用户名长度在 2-20 个字符', trigger: 'onBlur' },
+                  { required: true, message: '请输入' },
+                  { min: 2, max: 20, message: '用户名长度在 2-20 个字符' },
                 ]}
               >
                 <CompanyInput
                   prefix={<UserOutlined />}
-                  placeholder="请输入您的账号"
+                  placeholder="请输入"
                   size="large"
                   autoComplete="username"
                 />
@@ -202,13 +202,13 @@ export default function LoginView() {
               <CompanyForm.Item
                 name="password"
                 rules={[
-                  { required: true, message: '请输入密码', trigger: 'onBlur' },
-                  { min: 6, max: 20, message: '密码长度在 6-20 个字符', trigger: 'onBlur' },
+                  { required: true, message: '请输入' },
+                  { min: 6, max: 20, message: '密码长度在 6-20 个字符' },
                 ]}
               >
                 <CompanyInput.Password
                   prefix={<LockOutlined />}
-                  placeholder="请输入密码"
+                  placeholder="请输入"
                   size="large"
                   autoComplete="current-password"
                 />
