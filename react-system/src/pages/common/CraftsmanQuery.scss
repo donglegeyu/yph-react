@@ -1,0 +1,46 @@
+.craftsman-import-footer {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.craftsman-import-body {
+  padding: 0;
+}
+
+.craftsman-import-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.craftsman-import-hint {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.craftsman-import-template-btn {
+  padding: 0;
+}
+
+.craftsman-upload-icon {
+  margin-bottom: 8px;
+  color: #f95914;
+
+  svg {
+    font-size: 40px;
+  }
+}
+
+.craftsman-upload-text {
+  margin: 0 0 4px;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.craftsman-upload-subhint {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}

@@ -1,11 +1,14 @@
 package com.material.server.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.material.server.common.Result;
 import com.material.server.entity.CertificateImage;
 import com.material.server.entity.CertificateType;
+import com.material.server.entity.Skill;
 import com.material.server.service.CertificateImageService;
 import com.material.server.service.CertificateTypeService;
+import com.material.server.service.SkillService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +21,7 @@ public class CertificateTypeController {
 
     private final CertificateTypeService certificateTypeService;
     private final CertificateImageService certificateImageService;
+    private final SkillService skillService;
 
     @GetMapping
     public Result<List<CertificateType>> list() {
@@ -61,6 +65,10 @@ public class CertificateTypeController {
                     img.setCertificateType(newName);
                     certificateImageService.updateById(img);
                 }
+                LambdaUpdateWrapper<Skill> skillUpdate = new LambdaUpdateWrapper<Skill>()
+                        .eq(Skill::getCertificateType, oldName)
+                        .set(Skill::getCertificateType, newName);
+                skillService.update(skillUpdate);
             }
         } else {
             if (body.getSortOrder() == null) {

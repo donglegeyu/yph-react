@@ -1,0 +1,32 @@
+.capability-tab-wrap {
+  padding: 0 0 16px;
+}
+
+.detail-info-grid {
+  margin-top: 16px;
+}
+
+.capability-info-bar {
+  display: flex;
+  gap: 48px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.capability-info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.capability-info-label {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.capability-info-value {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.88);
+}

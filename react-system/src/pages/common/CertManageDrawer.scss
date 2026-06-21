@@ -1,0 +1,128 @@
+.cert-manage-drawer {
+  .cmd-add-trigger {
+    border-style: dashed !important;
+    background: transparent !important;
+    color: rgba(0, 0, 0, 0.45) !important;
+
+    &:hover {
+      color: var(--color-primary, #f95914) !important;
+      border-color: var(--color-primary, #f95914) !important;
+    }
+  }
+
+  .cmd-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .cmd-card {
+    border: 1px solid rgba(5, 5, 5, 0.1);
+    border-radius: 6px;
+    padding: 12px 16px;
+
+    .cmd-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+
+      .cmd-title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+
+        .cmd-title {
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .cmd-count {
+          font-size: 12px;
+          color: rgba(0, 0, 0, 0.45);
+        }
+      }
+
+      .cmd-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+
+        .cmd-icon-edit {
+          color: rgba(0, 0, 0, 0.45);
+          cursor: pointer;
+          font-size: 13px;
+
+          &:hover {
+            color: rgba(0, 0, 0, 0.65);
+          }
+        }
+
+        .cmd-icon-delete {
+          color: rgba(0, 0, 0, 0.25);
+          cursor: not-allowed;
+          font-size: 13px;
+        }
+      }
+    }
+
+    .cmd-body {
+      .cmd-edit-form {
+        .cmd-form-item {
+          margin-bottom: 12px;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+      }
+
+      .cmd-edit-actions {
+        display: flex;
+        justify-content: flex-start;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .cmd-img-loading {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        .cmd-skeleton {
+          width: 64px;
+          height: 64px;
+          border-radius: 4px;
+          background: rgba(5, 5, 5, 0.04);
+        }
+      }
+
+      .cmd-empty {
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.45);
+      }
+
+      .cmd-img-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .cmd-upload-trigger {
+        color: rgba(0, 0, 0, 0.45);
+
+        .cmd-upload-icon {
+          font-size: 16px;
+        }
+
+        .cmd-upload-text {
+          margin-top: 2px;
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}

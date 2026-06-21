@@ -91,6 +91,7 @@ const routes: RouteObject[] = [
       { path: 'construction-library', element: <ConstructionList /> },
       { path: 'craftsman-search', element: <CraftsmanQuery /> },
       { path: 'craftsman-search/create', element: <CraftsmanForm /> },
+      { path: 'craftsman-search/:id/edit', element: <CraftsmanForm /> },
       { path: 'craftsman-search/:id', element: <CraftsmanDetail /> },
       { path: 'construction-apply', element: <ConstructionApplicationList /> },
       { path: 'tag-list', element: <TagListView /> },

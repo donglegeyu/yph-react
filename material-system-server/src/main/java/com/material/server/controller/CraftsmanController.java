@@ -7,8 +7,13 @@ import com.material.server.common.Result;
 import com.material.server.dto.CraftsmanCreateDTO;
 import com.material.server.entity.Craftsman;
 import com.material.server.service.CraftsmanService;
+import com.material.server.vo.CraftsmanEditVO;
+import com.material.server.vo.CraftsmanListVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Collections;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/craftsmen")
@@ -24,7 +29,7 @@ public class CraftsmanController {
     }
 
     @GetMapping
-    public Result<PageResult<Craftsman>> list(
+    public Result<PageResult<CraftsmanListVO>> list(
             @RequestParam(defaultValue = "1") Integer current,
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(required = false) String craftsmanCode,
@@ -35,7 +40,6 @@ public class CraftsmanController {
             @RequestParam(required = false) String craftsmanCategory,
             @RequestParam(required = false) Integer craftsmanType,
             @RequestParam(required = false) String region,
-            @RequestParam(required = false) String serviceSkills,
             @RequestParam(required = false) Integer status) {
 
         Page<Craftsman> page = new Page<>(current, size);
@@ -64,9 +68,6 @@ public class CraftsmanController {
         if (region != null && !region.isEmpty()) {
             query.like(Craftsman::getRegion, region);
         }
-        if (serviceSkills != null && !serviceSkills.isEmpty()) {
-            query.like(Craftsman::getServiceSkills, serviceSkills);
-        }
         if (status != null) {
             query.eq(Craftsman::getStatus, status);
         }
@@ -75,15 +76,34 @@ public class CraftsmanController {
         Page<Craftsman> result = craftsmanService.page(page, query);
         long total = craftsmanService.count(query);
 
-        PageResult<Craftsman> pageResult = PageResult.of(
-                result.getRecords(), total, result.getCurrent(), result.getSize());
+        // 批量补齐技能名和证书示例图（来自 craftsman_skill 中间表 + skill 表）
+        List<CraftsmanListVO> records = craftsmanService.toListVO(result.getRecords());
+
+        PageResult<CraftsmanListVO> pageResult = PageResult.of(
+                records, total, result.getCurrent(), result.getSize());
         return Result.success(pageResult);
     }
 
     @GetMapping("/{id}")
-    public Result<Craftsman> detail(@PathVariable Long id) {
+    public Result<CraftsmanListVO> detail(@PathVariable Long id) {
         Craftsman craftsman = craftsmanService.getById(id);
-        return Result.success(craftsman);
+        if (craftsman == null) {
+            return Result.success(null);
+        }
+        List<CraftsmanListVO> list = craftsmanService.toListVO(Collections.singletonList(craftsman));
+        return Result.success(list.isEmpty() ? null : list.get(0));
+    }
+
+    @GetMapping("/{id}/edit")
+    public Result<CraftsmanEditVO> editDetail(@PathVariable Long id) {
+        CraftsmanEditVO vo = craftsmanService.getEditDetail(id);
+        return Result.success(vo);
+    }
+
+    @PutMapping("/{id}")
+    public Result<Void> update(@PathVariable Long id, @RequestBody CraftsmanCreateDTO dto) {
+        craftsmanService.updateCraftsman(id, dto);
+        return Result.success();
     }
 
     @PutMapping("/{id}/status")

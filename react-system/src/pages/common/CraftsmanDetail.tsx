@@ -1,10 +1,15 @@
 import { useEffect, useState, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Empty, Skeleton, Row, Col, Image, type TableColumnsType } from 'antd'
 const { PreviewGroup } = Image
 import { DetailPageTemplate, CompanyButton, CompanyMessage, CompanyTable, CompanyTag, SectionTitle, type DetailFieldItem, type DetailTagItem } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
+import { mockCertificateInfo, isCertificateExpired } from '@/utils/craftsman'
+import { formatAreaCode } from '@/utils/address'
 import { useStatusMap } from '@/hooks'
+import { useSmartBack } from '@/hooks/useSmartBack'
+import { formatBrandNames } from '@/constants/brands'
+import './CraftsmanDetail.scss'
 
 interface CraftsmanRecord {
   [key: string]: unknown
@@ -17,17 +22,25 @@ interface CraftsmanRecord {
   craftsmanCategory: string
   craftsmanType: number
   region: string
-  serviceSkills: string
+  serviceSkillNames?: string
+  serviceSkillImages?: string
+  brandNames?: string
+  certificates?: CertificateItem[]
   registerTime: string
   status: number
   createTime: string
   birthday?: string
   idCardNo?: string
+  idCardValidDate?: string
   age?: number | string
   residentialAddress?: string
+  residentialAreaCode?: string
+  residentialStreet?: string
+  residentialDetail?: string
   serviceArea?: string
   idCardImages?: string
   workCertificate?: string
+  serviceRecord?: string
   noCriminalCertificate?: string
 }
 
@@ -46,26 +59,29 @@ function maskPhone(phone: string | undefined): string {
   return `${phone.slice(0, 3)}****${phone.slice(-4)}`
 }
 
+function formatIdCardValidDate(raw: string | undefined): string {
+  if (!raw) return '--'
+  const parts = raw.split(',').map((s) => s.trim()).filter(Boolean)
+  if (parts.length === 0) return '--'
+  if (parts.length === 1) return parts[0]
+  return `${parts[0]} ~ ${parts[1]}`
+}
+
 function formatServiceArea(raw: string | undefined): string {
   if (!raw) return '--'
   return raw
-    .split(/[,，]/)
+    .split(/[,，;；]/)
     .map((s) => s.trim().replace(/\//g, ' / '))
     .filter(Boolean)
-    .join('，')
+    .join('、')
 }
 
-function formatResidentialAddress(raw: string | undefined): string {
-  if (!raw) return '--'
-  const match = raw.match(/^(.+?[市省])(.+?[市区县])(.+?(?:街道|镇|乡))?(.*)$/s)
-  if (!match) return raw
-  const [, province, district, street = '', detail = ''] = match
-  return [province, district, street, detail].filter(Boolean).join(' ')
-}
 
 export default function CraftsmanDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const handleSmartBack = useSmartBack()
   const { registerStatusMap, getStatusText } = useStatusMap()
   const [detail, setDetail] = useState<CraftsmanRecord | null>(null)
   const [loading, setLoading] = useState(true)
@@ -109,12 +125,19 @@ export default function CraftsmanDetail() {
 
   const infoFields: DetailFieldItem[] = useMemo(() => {
     if (!detail) return []
+    const allNames = detail.serviceSkillNames ? detail.serviceSkillNames.split(',') : []
+    const certs = detail.certificates || []
+    const validNames = allNames.filter((_, idx) => {
+      const cert = certs[idx]
+      if (!cert) return true
+      return !isCertificateExpired(cert.certificateType, idx)
+    })
     return [
       { label: '工匠编号', value: detail.craftsmanCode || '--' },
       { label: '所属服务商', value: detail.craftsmanCategory === 'external' ? '--' : (detail.serviceProviderName || '--') },
       { label: '手机号', value: maskPhone(detail.phone) },
       { label: '用户账号', value: detail.userAccount || '--' },
-      { label: '服务技能', value: allSkillNames || '--' },
+      { label: '服务技能', value: validNames.length > 0 ? validNames.join('、') : '--' },
     ]
   }, [detail])
 
@@ -139,9 +162,9 @@ export default function CraftsmanDetail() {
     <DetailPageTemplate
       title="工匠详情"
       showBack
-      onBack={() => navigate('/craftsman-search')}
+      onBack={handleSmartBack}
       titleActions={
-        <CompanyButton type="primary" onClick={() => CompanyMessage.info('编辑功能开发中')}>
+        <CompanyButton type="primary" onClick={() => navigate(`/craftsman-search/${detail.id}/edit`, { state: { from: location.pathname } })}>
           编辑
         </CompanyButton>
       }
@@ -155,20 +178,28 @@ export default function CraftsmanDetail() {
           label: '详情',
           children: (
             <div style={{ padding: '0 0 16px' }}>
-              <DetailSection title="个人信息">
+              <DetailSection title="常驻地址">
+                <DetailGrid items={[
+                  { label: '省市区', value: formatAreaCode(detail.residentialAreaCode) },
+                  { label: '街道', value: detail.residentialStreet || '--' },
+                  { label: '详细地址', value: detail.residentialDetail || '--' },
+                ]} />
+              </DetailSection>
+
+              <DetailSection title="身份证信息">
+                <DetailImages title="身份证图片" urls={detail.idCardImages} background width={152} height={96} />
                 <DetailGrid items={[
                   { label: '出生日期', value: detail.birthday || '--' },
                   { label: '身份证号', value: detail.idCardNo || '--' },
                   { label: '年龄', value: detail.age != null ? `${detail.age}岁` : '--' },
-                  { label: '常住地址', value: formatResidentialAddress(detail.residentialAddress) },
-                  { label: '接单区域', value: formatServiceArea(detail.serviceArea) },
+                  { label: '有效期', value: formatIdCardValidDate(detail.idCardValidDate) },
                 ]} />
-                <DetailImages title="身份证图片" urls={detail.idCardImages} background topGap={12} />
               </DetailSection>
 
               <DetailSection title="佐证材料">
-                <DetailImages title="工作证明" urls={detail.workCertificate} background width={116} />
-                <DetailImages title="无犯罪证明" urls={detail.noCriminalCertificate} background width={116} topGap={12} />
+                <DetailImages title="工作证明" urls={detail.workCertificate} background width={116} height={155} />
+                {detail.serviceRecord && <DetailImages title="服务记录" urls={detail.serviceRecord} background width={116} height={155} topGap={12} />}
+                <DetailImages title="无犯罪证明" urls={detail.noCriminalCertificate} background width={116} height={155} topGap={12} />
               </DetailSection>
             </div>
           ),
@@ -176,7 +207,14 @@ export default function CraftsmanDetail() {
         {
           key: 'capability',
           label: '接单能力',
-          children: <CapabilityTable craftsmanName={detail.name} />,
+          children: (
+            <CapabilityTable
+              craftsmanName={detail.name}
+              certificates={detail.certificates}
+              serviceArea={detail.serviceArea}
+              brandNames={detail.brandNames}
+            />
+          ),
         },
         {
           key: 'workorder',
@@ -207,7 +245,7 @@ function DetailSection({ title, children }: { title: string; children: React.Rea
 
 function DetailGrid({ items }: { items: { label: string; value: React.ReactNode }[] }) {
   return (
-    <Row gutter={[24, 16]}>
+    <Row className="detail-info-grid" gutter={[24, 16]}>
       {items.map((item) => (
         <Col key={item.label} xs={24} sm={12} md={8} lg={6}>
           <div style={{ display: 'flex', alignItems: 'flex-start', lineHeight: '22px' }}>
@@ -257,6 +295,12 @@ function DetailImages({ title, urls, background = false, width, height, objectFi
       )}
     </div>
   )
+}
+
+interface CertificateItem {
+  skillName: string
+  certificateType: string
+  certificateImage: string
 }
 
 interface CertificateRecord {
@@ -322,29 +366,58 @@ const certificateDataSource: CertificateRecord[] = [
 
 const allSkillNames = Array.from(new Set(certificateDataSource.map((c) => c.skillName))).join('、')
 
-function CapabilityTable({ craftsmanName }: { craftsmanName: string }) {
-  const dataSource = useMemo(() => certificateDataSource, [])
+function CapabilityTable({
+  craftsmanName,
+  certificates,
+  serviceArea,
+  brandNames,
+}: {
+  craftsmanName: string
+  certificates?: CertificateItem[]
+  serviceArea?: string
+  brandNames?: string
+}) {
+  const dataSource = useMemo<CertificateRecord[]>(() => {
+    if (!certificates || certificates.length === 0) return []
+    return certificates.map((c, i) => {
+      const info = mockCertificateInfo(c.certificateType, i)
+      return {
+        id: i + 1,
+        certificateType: c.certificateType || '',
+        certificateNo: info.certificateNo,
+        certificateImage: c.certificateImage || '',
+        skillName: c.skillName || '',
+        status: info.status,
+        effectiveDate: info.effectiveDate,
+        expiryDate: info.expiryDate,
+      }
+    })
+  }, [certificates])
 
   const renderText = (v: string) => v || <span style={{ color: 'rgba(0,0,0,0.25)' }}>--</span>
 
   const columns: TableColumnsType<CertificateRecord> = [
-    { title: '服务技能', dataIndex: 'skillName', key: 'skillName', width: 160, ellipsis: true },
+    { title: '服务技能', dataIndex: 'skillName', key: 'skillName', width: 160, ellipsis: true, render: renderText },
     { title: '证件类型', dataIndex: 'certificateType', key: 'certificateType', width: 180, ellipsis: true, render: renderText },
     {
       title: '证照图片',
       dataIndex: 'certificateImage',
       key: 'certificateImage',
       width: 100,
-      render: (url: string) => {
-        if (!url) return <span style={{ color: 'rgba(0,0,0,0.25)' }}>--</span>
+      render: (raw: string) => {
+        if (!raw) return <span style={{ color: 'rgba(0,0,0,0.25)' }}>--</span>
+        const urls = raw.split(',').filter(Boolean)
         return (
-          <PreviewGroup preview={{ maxScale: 3 }}>
-            <Image
-              src={`${url}&w=96&h=96`}
-              preview={{ src: `${url}&w=1200&q=85` }}
-              height={32}
-              style={{ height: 32, width: 32, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
-            />
+          <PreviewGroup>
+            {urls.map((url, idx) => (
+              <Image
+                key={idx}
+                src={url}
+                width={32}
+                height={32}
+                style={{ height: 32, width: 32, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', marginRight: 4, border: '1px solid rgba(0,0,0,0.08)' }}
+              />
+            ))}
           </PreviewGroup>
         )
       },
@@ -368,24 +441,35 @@ function CapabilityTable({ craftsmanName }: { craftsmanName: string }) {
       key: 'action',
       width: 100,
       fixed: 'right',
-      render: (_: unknown, record: CertificateRecord) => {
-        const hasCert = !!record.certificateNo
-        return (
-          <CompanyButton
-            type="link"
-            disabled={!hasCert}
-            style={{ padding: 0 }}
-            onClick={() => CompanyMessage.info(`${craftsmanName} 的更换证照功能开发中`)}
-          >
-            更换证照
-          </CompanyButton>
-        )
-      },
+      render: (_: unknown, record: CertificateRecord) => (
+        <CompanyButton
+          type="link"
+          disabled={!record.certificateNo}
+          style={{ padding: 0 }}
+          onClick={() => CompanyMessage.info(`${craftsmanName} 的更换证照功能开发中`)}
+        >
+          更换证照
+        </CompanyButton>
+      ),
     },
   ]
 
   return (
-    <div style={{ padding: '0 0 16px' }}>
+    <div className="capability-tab-wrap">
+      <div className="capability-info-bar">
+        <div className="capability-info-item">
+          <span className="capability-info-label">接单区域</span>
+          <span className="capability-info-value">
+            {serviceArea ? formatServiceArea(serviceArea) : '--'}
+          </span>
+        </div>
+        <div className="capability-info-item">
+          <span className="capability-info-label">品牌</span>
+          <span className="capability-info-value">
+            {brandNames ? formatBrandNames(brandNames) : '--'}
+          </span>
+        </div>
+      </div>
       <CompanyTable
         dataSource={dataSource}
         columns={columns}

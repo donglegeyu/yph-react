@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Input, Select, Cascader, Upload, Radio, DatePicker, ConfigProvider, Space, Modal, Image, type UploadFile, type UploadProps } from 'antd'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { Input, Select, Cascader, Upload, Radio, DatePicker, ConfigProvider, Space, Modal, Image, Skeleton, type UploadFile, type UploadProps } from 'antd'
 const { RangePicker } = DatePicker
 import { UploadOutlined, PlusOutlined, CloseOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -16,7 +16,9 @@ import {
   SectionTitle,
 } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
-import { SERVICE_PROVIDER_LIST, getServiceProviderById } from '@/constants/serviceProviders'
+import { SERVICE_PROVIDER_LIST, getServiceProviderById, getServiceProviderByName } from '@/constants/serviceProviders'
+import { BRAND_LIST, type BrandOption } from '@/constants/brands'
+import { useSmartBack } from '@/hooks/useSmartBack'
 import './CraftsmanForm.scss'
 
 interface SkillOption {
@@ -28,10 +30,6 @@ interface SkillOption {
   exampleImage?: string
 }
 
-interface BrandOption {
-  value: string
-  label: string
-}
 
 interface CertificateUploadItem {
   certificateType: string
@@ -52,8 +50,10 @@ interface CraftsmanFormData {
   serviceProviderId: number | undefined
   region: string
   idCardNo: string
+  age: string
   idCardValidDate: string[]
   residentialArea: (string | number)[]
+  residentialAreaLabels: string[]
   residentialStreet: string
   residentialDetail: string
   idCardFrontUrl: string
@@ -77,8 +77,10 @@ const initialFormData: CraftsmanFormData = {
   serviceProviderId: undefined,
   region: '',
   idCardNo: '',
+  age: '',
   idCardValidDate: [],
   residentialArea: [],
+  residentialAreaLabels: [],
   residentialStreet: '',
   residentialDetail: '',
   idCardFrontUrl: '',
@@ -95,7 +97,6 @@ const initialFormData: CraftsmanFormData = {
 
 const LONG_TERM_LABEL = '长期'
 const LONG_TERM_DATE = '2099-12-31'
-const toLongTermIfMatch = (dateStr: string) => (dateStr === LONG_TERM_DATE ? LONG_TERM_LABEL : dateStr)
 const toDateStrOrLongTerm = (dateStr: string) => (dateStr === LONG_TERM_LABEL ? LONG_TERM_DATE : dateStr)
 
 function fileListToUrls(list: UploadFile[]): string[] {
@@ -105,18 +106,63 @@ function fileListToUrls(list: UploadFile[]): string[] {
     .filter(Boolean)
 }
 
+function urlsToFileList(urls: string[], prefix: string): UploadFile[] {
+  return urls.filter(Boolean).map((url, index) => ({
+    uid: `${prefix}-${index}`,
+    name: url.split('/').pop() || `${prefix}-${index}`,
+    status: 'done' as const,
+    url,
+  }))
+}
+
+function findCascaderPath(codes: string[]): DivisionRegion[] | null {
+  const path: DivisionRegion[] = []
+  let list: DivisionRegion[] = pcaCodeData as DivisionRegion[]
+  for (const code of codes) {
+    const hit = list.find((n) => String(n.code) === String(code))
+    if (!hit) return null
+    path.push(hit)
+    list = hit.children || []
+  }
+  return path
+}
+
+function findCascaderPathByLastCode(lastCode: string): DivisionRegion[] | null {
+  const target = String(lastCode)
+  const pca = pcaCodeData as DivisionRegion[]
+  for (const prov of pca) {
+    for (const city of prov.children || []) {
+      for (const area of city.children || []) {
+        if (String(area.code) === target) {
+          return [prov, city, area]
+        }
+      }
+    }
+  }
+  return null
+}
+
 export default function CraftsmanForm() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const handleSmartBack = useSmartBack()
+  const params = useParams<{ id?: string }>()
+  const editId = params.id ? Number(params.id) : null
+  const fromPath = (location.state as { from?: string } | null)?.from || '/craftsman-search'
+  const isEdit = editId !== null
+  const pendingEditCertificatesRef = useRef<Record<string, string[]> | null>(null)
   const [baseInfoForm] = CompanyForm.useForm()
   const [residentialForm] = CompanyForm.useForm()
   const [idCardForm] = CompanyForm.useForm()
   const [skillForm] = CompanyForm.useForm()
   const [certificateForm] = CompanyForm.useForm()
   const [proofForm] = CompanyForm.useForm()
+  const [serviceAreaForm] = CompanyForm.useForm()
   const sectionForms = [baseInfoForm, residentialForm, idCardForm, skillForm, certificateForm, proofForm]
   const [formData, setFormData] = useState<CraftsmanFormData>(initialFormData)
   const [uploadFileLists, setUploadFileLists] = useState<Record<string, UploadFile[]>>({})
   const [submitLoading, setSubmitLoading] = useState(false)
+  const [pageLoading, setPageLoading] = useState(isEdit)
   const [userAccountMode, setUserAccountMode] = useState<'new' | 'link'>('new')
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([])
   const [skills, setSkills] = useState<SkillOption[]>([])
@@ -125,13 +171,10 @@ export default function CraftsmanForm() {
   const [backRecognized, setBackRecognized] = useState(false)
   const [recognizingFront, setRecognizingFront] = useState(false)
   const [recognizingBack, setRecognizingBack] = useState(false)
-  const [brands] = useState<BrandOption[]>([
-    { value: 'midea', label: '美的' },
-    { value: 'haier', label: '海尔' },
-    { value: 'gree', label: '格力' },
-    { value: 'supor', label: '苏泊尔' },
-    { value: 'philips', label: '飞利浦' },
-  ])
+  const [idCardName, setIdCardName] = useState('')
+  const [idCardIdNo, setIdCardIdNo] = useState('')
+  const [idCardAge, setIdCardAge] = useState('')
+  const [brands] = useState<BrandOption[]>(BRAND_LIST)
   const formContainerRef = useRef<HTMLDivElement>(null)
   const [colSpan, setColSpan] = useState(8)
 
@@ -156,14 +199,32 @@ export default function CraftsmanForm() {
       .then((res) => res.json())
       .then((json) => {
         const records = json.data?.records || []
-        setSkills(records.map((s: SkillOption) => ({
+        const loadedSkills: SkillOption[] = records.map((s: SkillOption) => ({
           id: s.id,
           skillName: s.skillName,
           secondaryCategory: s.secondaryCategory,
           category3: s.category3,
           certificateType: s.certificateType,
           exampleImage: s.exampleImage,
-        })))
+        }))
+        setSkills(loadedSkills)
+
+        const pendingCerts = pendingEditCertificatesRef.current
+        if (pendingCerts && Object.keys(pendingCerts).length > 0) {
+          setFormData((prev) => {
+            const validTypes = new Set(
+              loadedSkills
+                .filter((s) => prev.serviceSkillIds.includes(s.id) && s.certificateType)
+                .map((s) => s.certificateType as string)
+            )
+            const merged: Record<string, string[]> = {}
+            validTypes.forEach((t) => {
+              merged[t] = pendingCerts[t] || []
+            })
+            return { ...prev, certificates: merged }
+          })
+          pendingEditCertificatesRef.current = null
+        }
       })
       .catch(() => {
         // 技能加载失败时保持空列表
@@ -182,6 +243,180 @@ export default function CraftsmanForm() {
       })
       .catch(() => {})
   }, [])
+
+  interface CraftsmanEditData {
+    name?: string
+    phone?: string
+    userAccount?: string
+    serviceProviderName?: string
+    craftsmanCategory?: string
+    craftsmanType?: number
+    region?: string
+    age?: number
+    idCardNo?: string
+    idCardValidDate?: string
+    idCardFrontUrl?: string
+    idCardBackUrl?: string
+    residentialAreaCodeList?: string[]
+    residentialStreet?: string
+    residentialDetail?: string
+    serviceAreaCodes?: string[]
+    serviceAreaLabels?: string[]
+    serviceSkillIds?: number[]
+    brands?: string[]
+    certificates?: Record<string, string[]>
+    workProofType?: number
+    workCertificate?: string[]
+    serviceRecord?: string[]
+    noCriminalCertificate?: string[]
+  }
+
+  const applyEditData = (data: CraftsmanEditData) => {
+    pendingEditCertificatesRef.current = data.certificates || {}
+    const sp = data.serviceProviderName ? getServiceProviderByName(data.serviceProviderName) : undefined
+    const rawCodes = (data.residentialAreaCodeList || []).map((c) => String(c))
+    let residentialArea: string[] = rawCodes
+    let residentialAreaLabels: string[] = []
+
+    if (rawCodes.length > 0) {
+      const exactPath = findCascaderPath(rawCodes)
+      if (exactPath) {
+        residentialArea = exactPath.map((n) => String(n.code))
+        residentialAreaLabels = exactPath.map((n) => n.name)
+      } else {
+        const lastCode = rawCodes[rawCodes.length - 1]
+        const fuzzyPath = findCascaderPathByLastCode(lastCode)
+        if (fuzzyPath) {
+          residentialArea = fuzzyPath.map((n) => String(n.code))
+          residentialAreaLabels = fuzzyPath.map((n) => n.name)
+        }
+      }
+    }
+
+    const resolveLabels = (codes: string[]): string[] => {
+      const exactPath = findCascaderPath(codes)
+      if (exactPath) return exactPath.map((n) => n.name)
+      if (codes.length > 0) {
+        const fuzzyPath = findCascaderPathByLastCode(codes[codes.length - 1])
+        if (fuzzyPath) return fuzzyPath.map((n) => n.name)
+      }
+      return []
+    }
+
+    const serviceAreas: ServiceArea[] = (data.serviceAreaCodes || []).map((codes, i) => {
+      const codeArr = codes.split(',').map((c) => c.trim()).filter(Boolean)
+      const labelStr = data.serviceAreaLabels?.[i] || ''
+      return {
+        codes: codeArr,
+        labels: labelStr ? labelStr.split('/').map((l) => l.trim()) : resolveLabels(codeArr),
+      }
+    })
+
+    const idCardValidDate: string[] = data.idCardValidDate
+      ? data.idCardValidDate.split(',').map((s) => toDateStrOrLongTerm(s.trim()))
+      : []
+
+    const certificates: Record<string, string[]> = {}
+    if (data.certificates) {
+      Object.entries(data.certificates).forEach(([k, v]) => {
+        certificates[k] = Array.isArray(v) ? v : []
+      })
+    }
+
+    setFormData({
+      ...initialFormData,
+      name: data.name || '',
+      phone: data.phone || '',
+      userAccount: data.userAccount || '',
+      craftsmanCategory: data.craftsmanCategory || sp?.category,
+      craftsmanType: data.craftsmanType ?? 2,
+      serviceProviderId: sp?.id,
+      region: data.region || '',
+      idCardNo: data.idCardNo || '',
+      age: data.age != null ? String(data.age) : '',
+      idCardValidDate,
+      residentialArea,
+      residentialAreaLabels,
+      residentialStreet: data.residentialStreet || '',
+      residentialDetail: data.residentialDetail || '',
+      idCardFrontUrl: data.idCardFrontUrl || '',
+      idCardBackUrl: data.idCardBackUrl || '',
+      serviceAreas,
+      serviceSkillIds: data.serviceSkillIds || [],
+      brands: data.brands || [],
+      certificates,
+      workProofType: data.workProofType ?? 1,
+      workCertificate: data.workProofType === 2 ? [] : (data.workCertificate || []),
+      serviceRecord: data.workProofType === 2 ? (data.serviceRecord || []) : [],
+      noCriminalCertificate: data.noCriminalCertificate || [],
+    })
+
+    const nextFileLists: Record<string, UploadFile[]> = {}
+    if (data.idCardFrontUrl) nextFileLists.idCardFront = urlsToFileList([data.idCardFrontUrl], 'idCardFront')
+    if (data.idCardBackUrl) nextFileLists.idCardBack = urlsToFileList([data.idCardBackUrl], 'idCardBack')
+    if (data.workProofType === 2) {
+      nextFileLists.serviceRecord = urlsToFileList(data.serviceRecord || [], 'serviceRecord')
+    } else {
+      nextFileLists.workCertificate = urlsToFileList(data.workCertificate || [], 'workCertificate')
+    }
+    nextFileLists.noCriminalCertificate = urlsToFileList(data.noCriminalCertificate || [], 'noCriminalCertificate')
+    if (data.certificates) {
+      Object.entries(data.certificates).forEach(([k, v]) => {
+        nextFileLists[`cert-${k}`] = urlsToFileList(v || [], `cert-${k}`)
+      })
+    }
+    setUploadFileLists(nextFileLists)
+
+    setUserAccountMode(data.userAccount ? 'link' : 'new')
+    setFrontRecognized(Boolean(data.idCardFrontUrl))
+    setBackRecognized(Boolean(data.idCardBackUrl))
+    setIdCardName(data.name || '')
+    setIdCardIdNo(data.idCardNo || '')
+    setIdCardAge(data.age != null ? String(data.age) : '')
+
+    baseInfoForm.setFieldsValue({
+      name: data.name || '',
+      phone: data.phone || '',
+      userAccount: data.userAccount || '',
+      serviceProviderId: sp?.id,
+    })
+    residentialForm.setFieldsValue({
+      residentialArea: residentialArea,
+      residentialStreet: data.residentialStreet || '',
+      residentialDetail: data.residentialDetail || '',
+    })
+    idCardForm.setFieldsValue({
+      idCardNo: data.idCardNo || '',
+      idCardFrontUrl: data.idCardFrontUrl || '',
+      idCardBackUrl: data.idCardBackUrl || '',
+    })
+  }
+
+  useEffect(() => {
+    if (!isEdit || editId === null) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(`${API_ENDPOINTS.CRAFTSMEN}/${editId}/edit`)
+        const json = await res.json()
+        if (!cancelled && json.code === 200 && json.data) {
+          applyEditData(json.data as CraftsmanEditData)
+        } else if (!cancelled) {
+          CompanyMessage.error(json.message || '加载工匠信息失败')
+          navigate('/craftsman-search')
+        }
+      } catch {
+        if (!cancelled) {
+          CompanyMessage.error('加载工匠信息失败')
+          navigate('/craftsman-search')
+        }
+      } finally {
+        if (!cancelled) setPageLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId, isEdit])
 
   const certificateItems = useMemo<CertificateUploadItem[]>(() => {
     const selected = skills.filter((s) => formData.serviceSkillIds.includes(s.id))
@@ -205,8 +440,22 @@ export default function CraftsmanForm() {
     if (side === 'front') {
       setRecognizingFront(true)
       setTimeout(() => {
-        updateField('name', '张三')
-        updateField('idCardNo', '110101199001011234')
+        const idCardNo = idCardIdNo || '110101199001011234'
+        let age = idCardAge
+        if (!age && /^\d{17}[\dXx]$/.test(idCardNo)) {
+          const y = idCardNo.substring(6, 10)
+          const m = idCardNo.substring(10, 12)
+          const d = idCardNo.substring(12, 14)
+          const birth = new Date(`${y}-${m}-${d}`)
+          const now = new Date()
+          let calculated = now.getFullYear() - birth.getFullYear()
+            const m0 = now.getMonth() - birth.getMonth()
+            if (m0 < 0 || (m0 === 0 && now.getDate() < birth.getDate())) calculated--
+            if (!isNaN(calculated) && calculated >= 0) age = String(calculated)
+        }
+        setIdCardName(idCardName || '张三')
+        setIdCardIdNo(idCardNo)
+        setIdCardAge(age || '')
         setFrontRecognized(true)
         setRecognizingFront(false)
         CompanyMessage.success('身份证人像面识别成功')
@@ -225,8 +474,9 @@ export default function CraftsmanForm() {
   const handleIdCardRemove = (side: 'front' | 'back') => {
     if (side === 'front') {
       updateField('idCardFrontUrl', '')
-      updateField('name', '')
-      updateField('idCardNo', '')
+      setIdCardName('')
+      setIdCardIdNo('')
+      setIdCardAge('')
       setFrontRecognized(false)
     } else {
       updateField('idCardBackUrl', '')
@@ -258,14 +508,34 @@ export default function CraftsmanForm() {
       return
     }
     const next: ServiceArea = { codes: pendingAreaCodes, labels: resolveAreaLabels(pendingAreaCodes) }
-    setFormData((prev) => ({ ...prev, serviceAreas: [...prev.serviceAreas, next] }))
+    const nextAreas = [...formData.serviceAreas, next]
+    setFormData((prev) => ({ ...prev, serviceAreas: nextAreas }))
+    serviceAreaForm.setFieldValue('serviceAreas', nextAreas)
     setPendingAreaCodes([])
     setServiceAreaAdding(false)
+    serviceAreaForm.validateFields(['serviceAreas'])
   }
 
   const handleRemoveServiceArea = (index: number) => {
-    setFormData((prev) => ({ ...prev, serviceAreas: prev.serviceAreas.filter((_, i) => i !== index) }))
+    const nextAreas = formData.serviceAreas.filter((_, i) => i !== index)
+    setFormData((prev) => ({ ...prev, serviceAreas: nextAreas }))
+    serviceAreaForm.setFieldValue('serviceAreas', nextAreas)
+    serviceAreaForm.validateFields(['serviceAreas'])
   }
+
+  const handleCancelServiceArea = () => {
+    setServiceAreaAdding(false)
+    setPendingAreaCodes([])
+    serviceAreaForm.validateFields(['serviceAreas'])
+  }
+
+  useEffect(() => { serviceAreaForm.setFieldValue('serviceAreas', formData.serviceAreas) }, [formData.serviceAreas, serviceAreaForm])
+  useEffect(() => { skillForm.setFieldValue('serviceSkillIds', formData.serviceSkillIds) }, [formData.serviceSkillIds, skillForm])
+  useEffect(() => { certificateForm.setFieldsValue(formData.certificates) }, [formData.certificates, certificateForm])
+  useEffect(() => {
+    const workProofVal = formData.workProofType === 1 ? formData.workCertificate : formData.serviceRecord
+    proofForm.setFieldsValue({ workProof: workProofVal, noCriminalCertificate: formData.noCriminalCertificate })
+  }, [formData.workProofType, formData.workCertificate, formData.serviceRecord, formData.noCriminalCertificate, proofForm])
 
   const [skillAdding, setSkillAdding] = useState(false)
   const [pendingCategory, setPendingCategory] = useState<string | null>(null)
@@ -314,22 +584,29 @@ export default function CraftsmanForm() {
 
   const handleAddSkill = () => {
     if (pendingSkillIdList.length === 0) return
-    setFormData((prev) => {
-      const nextIds = [...prev.serviceSkillIds, ...pendingSkillIdList.filter((id) => !prev.serviceSkillIds.includes(id))]
-      const nextCerts = recalcCertificates(nextIds, prev.certificates)
-      return { ...prev, serviceSkillIds: nextIds, certificates: nextCerts }
-    })
+    const nextIds = [...formData.serviceSkillIds, ...pendingSkillIdList.filter((id) => !formData.serviceSkillIds.includes(id))]
+    const nextCerts = recalcCertificates(nextIds, formData.certificates)
+    setFormData((prev) => ({ ...prev, serviceSkillIds: nextIds, certificates: nextCerts }))
+    skillForm.setFieldValue('serviceSkillIds', nextIds)
     setPendingCategory(null)
     setPendingSkillIdList([])
     setSkillAdding(false)
+    skillForm.validateFields(['serviceSkillIds'])
+  }
+
+  const handleCancelSkill = () => {
+    setSkillAdding(false)
+    setPendingCategory(null)
+    setPendingSkillIdList([])
+    skillForm.validateFields(['serviceSkillIds'])
   }
 
   const handleRemoveSkill = (id: number) => {
-    setFormData((prev) => {
-      const nextIds = prev.serviceSkillIds.filter((s) => s !== id)
-      const nextCerts = recalcCertificates(nextIds, prev.certificates)
-      return { ...prev, serviceSkillIds: nextIds, certificates: nextCerts }
-    })
+    const nextIds = formData.serviceSkillIds.filter((s) => s !== id)
+    const nextCerts = recalcCertificates(nextIds, formData.certificates)
+    setFormData((prev) => ({ ...prev, serviceSkillIds: nextIds, certificates: nextCerts }))
+    skillForm.setFieldValue('serviceSkillIds', nextIds)
+    skillForm.validateFields(['serviceSkillIds'])
   }
 
   const [brandAdding, setBrandAdding] = useState(false)
@@ -391,31 +668,14 @@ export default function CraftsmanForm() {
     }
   }
 
-  const handleCancel = () => navigate('/craftsman-search')
+  const handleCancel = handleSmartBack
 
   const handleSubmit = async () => {
-    try {
-      await Promise.all(sectionForms.map((f) => f.validateFields()))
-    } catch {
+    const allForms = [...sectionForms, serviceAreaForm]
+    const results = await Promise.allSettled(allForms.map((f) => f.validateFields()))
+    const hasError = results.some((r) => r.status === 'rejected')
+    if (hasError) {
       CompanyMessage.warning('请完善必填项')
-      return
-    }
-
-    if (!formData.idCardFrontUrl || !formData.idCardBackUrl) {
-      CompanyMessage.warning('请上传身份证正反面照片')
-      return
-    }
-    if (formData.serviceAreas.length === 0) {
-      CompanyMessage.warning('请添加至少一个接单区域')
-      return
-    }
-    if (formData.serviceSkillIds.length === 0) {
-      CompanyMessage.warning('请选择服务技能')
-      return
-    }
-    const missingCert = certificateItems.find((item) => (formData.certificates[item.certificateType] || []).length === 0)
-    if (missingCert) {
-      CompanyMessage.warning(`请至少上传一张「${missingCert.certificateType}」`)
       return
     }
 
@@ -423,32 +683,38 @@ export default function CraftsmanForm() {
     try {
       const payload = {
         ...formData,
+        idCardNo: idCardIdNo,
+        age: idCardAge,
         serviceProviderName: getServiceProviderById(formData.serviceProviderId || 0)?.name,
         idCardValidDate: formData.idCardValidDate.length === 2 ? formData.idCardValidDate.join(',') : null,
         idCardImages: [formData.idCardFrontUrl, formData.idCardBackUrl].filter(Boolean).join(','),
+        residentialAreaLabels: formData.residentialAreaLabels,
         serviceAreas: formData.serviceAreas.map((a) => a.codes.join(',')),
         serviceAreaLabels: formData.serviceAreas.map((a) => a.labels.join('/')),
-        workCertificate: formData.workProofType === 1 ? formData.workCertificate.join(',') : '',
-        serviceRecord: formData.workProofType === 2 ? formData.serviceRecord.join(',') : '',
-        noCriminalCertificate: formData.noCriminalCertificate.join(','),
+        workCertificate: formData.workProofType === 1 ? formData.workCertificate : [],
+        serviceRecord: formData.workProofType === 2 ? formData.serviceRecord : [],
+        noCriminalCertificate: formData.noCriminalCertificate,
         certificates: Object.fromEntries(
           Object.entries(formData.certificates).map(([k, v]) => [k, v.join(',')]),
         ),
       }
-      const res = await fetch(API_ENDPOINTS.CRAFTSMEN, {
-        method: 'POST',
+      const url = isEdit && editId !== null ? `${API_ENDPOINTS.CRAFTSMEN}/${editId}` : API_ENDPOINTS.CRAFTSMEN
+      const method = isEdit ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       const json = await res.json()
       if (json.code === 200) {
-        CompanyMessage.success('新增工匠成功')
-        navigate('/craftsman-search')
+        CompanyMessage.success(isEdit ? '编辑工匠成功' : '新增工匠成功')
+        const targetId = isEdit && editId !== null ? editId : (json.data as number)
+        navigate(`/craftsman-search/${targetId}`, { replace: true, state: { from: fromPath } })
       } else {
-        CompanyMessage.error(json.message || '新增失败，请稍后重试')
+        CompanyMessage.error(json.message || (isEdit ? '编辑失败，请稍后重试' : '新增失败，请稍后重试'))
       }
     } catch {
-      CompanyMessage.error('新增失败，请稍后重试')
+      CompanyMessage.error(isEdit ? '编辑失败，请稍后重试' : '新增失败，请稍后重试')
     } finally {
       setSubmitLoading(false)
     }
@@ -456,13 +722,21 @@ export default function CraftsmanForm() {
 
   const uploadTheme = { components: { Upload: { pictureCardSize: 96 } } }
 
+  if (pageLoading) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Skeleton active paragraph={{ rows: 10 }} />
+      </div>
+    )
+  }
+
   return (
     <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
     <FormPageTemplate
-      title="新增工匠"
+      title={isEdit ? '编辑工匠' : '新增工匠'}
       showBack
-      onBack={() => navigate('/craftsman-search')}
-      submitText="确定"
+      onBack={handleSmartBack}
+      submitText="提交"
       submitLoading={submitLoading}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
@@ -471,7 +745,7 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="基础信息" />
-          <CompanyForm form={baseInfoForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
+          <CompanyForm form={baseInfoForm} layout="horizontal" labelAlign="right" requiredMark validateTrigger="onBlur" component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="姓名" name="name" rules={[{ required: true, message: '请输入' }]}>
@@ -484,7 +758,7 @@ export default function CraftsmanForm() {
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="所属服务商" rules={[{ required: true, message: '请选择' }]}>
+                <CompanyForm.Item label="所属服务商" name="serviceProviderId" rules={[{ required: true, message: '请选择' }]}>
                   <Select
                     placeholder="请选择"
                     value={formData.serviceProviderId}
@@ -492,6 +766,7 @@ export default function CraftsmanForm() {
                       const opt = getServiceProviderById(val)
                       updateField('serviceProviderId', val)
                       updateField('craftsmanCategory', opt?.category)
+                      baseInfoForm.setFieldValue('serviceProviderId', val)
                     }}
                     options={SERVICE_PROVIDER_LIST.map((o) => ({ value: o.id, label: o.name }))}
                   />
@@ -541,7 +816,7 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="常住地址" />
-          <CompanyForm form={residentialForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
+          <CompanyForm form={residentialForm} layout="horizontal" labelAlign="right" requiredMark validateTrigger="onBlur" component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="省/市/区" name="residentialArea" rules={[{ required: true, message: '请选择' }]}>
@@ -551,17 +826,20 @@ export default function CraftsmanForm() {
                     changeOnSelect
                     placeholder="请选择"
                     value={formData.residentialArea as string[]}
-                    onChange={(value) => updateField('residentialArea', value as string[])}
+                    onChange={(value, selectedOptions) => {
+                      updateField('residentialArea', value as string[])
+                      updateField('residentialAreaLabels', selectedOptions.map((o: DivisionRegion) => o.name))
+                    }}
                   />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="街道" name="residentialStreet">
+                <CompanyForm.Item label="街道" name="residentialStreet" rules={[{ required: true, message: '请输入街道/乡镇' }]}>
                   <Input placeholder="请输入街道/乡镇" value={formData.residentialStreet} onChange={(e) => updateField('residentialStreet', e.target.value)} />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan} className="label-top">
-                <CompanyForm.Item label="详细地址" name="residentialDetail">
+                <CompanyForm.Item label="详细地址" name="residentialDetail" rules={[{ required: true, message: '请输入' }]}>
                   <Input.TextArea rows={2} placeholder="请输入" value={formData.residentialDetail} onChange={(e) => updateField('residentialDetail', e.target.value)} />
                 </CompanyForm.Item>
               </CompanyCol>
@@ -571,12 +849,12 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="身份证信息" description="请上传身份证正反面照片，系统将自动识别身份信息，识别成功后将自动填充姓名和身份证号" />
-          <CompanyForm form={idCardForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
+          <CompanyForm form={idCardForm} layout="horizontal" labelAlign="right" requiredMark validateTrigger="onBlur" component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="身份证人像面" required>
+                <CompanyForm.Item label="身份证人像面" name="idCardFrontUrl" rules={[{ required: true, message: '请上传' }]}>
                   <ConfigProvider theme={uploadTheme}>
-                    <Upload {...buildUploadProps('idCardFront', (urls) => { const u = urls[0] || ''; updateField('idCardFrontUrl', u); recognizeIdCard('front', u) }, 1, () => handleIdCardRemove('front'))}>
+                    <Upload {...buildUploadProps('idCardFront', (urls) => { const u = urls[0] || ''; updateField('idCardFrontUrl', u); recognizeIdCard('front', u); idCardForm.setFieldValue('idCardFrontUrl', u) }, 1, () => handleIdCardRemove('front'))}>
                       {!formData.idCardFrontUrl && (
                         <div style={{ color: 'rgba(0,0,0,0.45)' }}>
                           <UploadOutlined style={{ fontSize: 16 }} />
@@ -588,9 +866,9 @@ export default function CraftsmanForm() {
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="身份证国徽面" required>
+                <CompanyForm.Item label="身份证国徽面" name="idCardBackUrl" rules={[{ required: true, message: '请上传' }]}>
                   <ConfigProvider theme={uploadTheme}>
-                    <Upload {...buildUploadProps('idCardBack', (urls) => { const u = urls[0] || ''; updateField('idCardBackUrl', u); recognizeIdCard('back', u) }, 1, () => handleIdCardRemove('back'))}>
+                    <Upload {...buildUploadProps('idCardBack', (urls) => { const u = urls[0] || ''; updateField('idCardBackUrl', u); recognizeIdCard('back', u); idCardForm.setFieldValue('idCardBackUrl', u) }, 1, () => handleIdCardRemove('back'))}>
                       {!formData.idCardBackUrl && (
                         <div style={{ color: 'rgba(0,0,0,0.45)' }}>
                           <UploadOutlined style={{ fontSize: 16 }} />
@@ -605,12 +883,17 @@ export default function CraftsmanForm() {
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="姓名">
-                  <Input placeholder="上传身份证后自动识别" disabled={!frontRecognized || recognizingFront} value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
+                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardName} onChange={(e) => setIdCardName(e.target.value)} />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="身份证号" rules={[{ pattern: /^\d{17}[\dXx]$/, message: '请输入正确的身份证号' }]}>
-                  <Input placeholder="上传身份证后自动识别" disabled={!frontRecognized || recognizingFront} value={formData.idCardNo} onChange={(e) => updateField('idCardNo', e.target.value)} />
+                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardIdNo} onChange={(e) => setIdCardIdNo(e.target.value)} />
+                </CompanyForm.Item>
+              </CompanyCol>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="年龄">
+                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardAge} onChange={(e) => setIdCardAge(e.target.value)} />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
@@ -619,7 +902,7 @@ export default function CraftsmanForm() {
                     <Input
                       value={`${formData.idCardValidDate[0].replace(/-/g, '.')} - ${LONG_TERM_LABEL}`}
                       readOnly
-                                      disabled={!backRecognized || recognizingBack}
+                                      disabled={isEdit ? false : (!backRecognized || recognizingBack)}
                       suffix={
                         <CloseOutlined style={{ color: 'rgba(0,0,0,0.25)', cursor: 'pointer' }} onClick={() => updateField('idCardValidDate', [])} />
                       }
@@ -629,7 +912,7 @@ export default function CraftsmanForm() {
                       style={{ width: '100%' }}
                       placeholder={['开始日期', '结束日期']}
                       format="YYYY.MM.DD"
-                      disabled={!backRecognized || recognizingBack}
+                      disabled={isEdit ? false : (!backRecognized || recognizingBack)}
                       value={formData.idCardValidDate.length === 2 ? [dayjs(formData.idCardValidDate[0]), dayjs(formData.idCardValidDate[1])] : null}
                       renderExtraFooter={() => (
                         <CompanyButton
@@ -662,7 +945,11 @@ export default function CraftsmanForm() {
 
         <section>
           <SectionTitle title="接单区域" description="点击「添加区域」选择省/市/区，支持添加多个接单区域，每个区域必须精确到区/县" />
-          <div className="service-area-picker" style={{ marginTop: 8, marginBottom: 32 }}>
+          <CompanyForm form={serviceAreaForm} layout="vertical" validateTrigger="onBlur" component="div" className="base-info-form" style={{ marginTop: 8 }}>
+            <CompanyRow gutter={24}>
+              <CompanyCol span={24}>
+                <CompanyForm.Item label="接单区域" name="serviceAreas" validateTrigger={[]} rules={[{ required: true, message: '请添加至少一个接单区域' }]} style={{ paddingLeft: 12, marginBottom: 32 }}>
+                  <div className="service-area-picker">
             {formData.serviceAreas.length > 0 && (
               <div className="service-area-list">
                 {formData.serviceAreas.map((area, index) => (
@@ -686,22 +973,26 @@ export default function CraftsmanForm() {
                   style={{ width: 260 }}
                 />
                 <CompanyButton type="text" size="middle" style={{ paddingInline: 6, color: pendingAreaCodes.length !== 3 ? 'rgba(0,0,0,0.25)' : '#F95914' }} disabled={pendingAreaCodes.length !== 3} onClick={handleAddServiceArea}>确定</CompanyButton>
-                <CompanyButton type="text" size="middle" style={{ paddingInline: 6, marginLeft: -6, color: '#F95914' }} onClick={() => { setServiceAreaAdding(false); setPendingAreaCodes([]) }}>取消</CompanyButton>
+                <CompanyButton type="text" size="middle" style={{ paddingInline: 6, marginLeft: -6, color: '#F95914' }} onClick={handleCancelServiceArea}>取消</CompanyButton>
               </div>
             ) : (
-              <CompanyButton className="service-area-add-btn" type="dashed" size="middle" icon={<PlusOutlined />} style={{ marginLeft: 12 }} onClick={() => setServiceAreaAdding(true)}>
+              <CompanyButton className="service-area-add-btn" type="dashed" size="middle" icon={<PlusOutlined />} onClick={() => setServiceAreaAdding(true)}>
                 添加区域
               </CompanyButton>
             )}
-          </div>
+                  </div>
+                </CompanyForm.Item>
+              </CompanyCol>
+            </CompanyRow>
+          </CompanyForm>
         </section>
 
         <section>
           <SectionTitle title="服务技能" description="请选择工匠具备的服务技能，选择后系统将自动生成对应的资格证书上传项" />
-          <CompanyForm form={skillForm} layout="vertical" component="div" className="skill-vertical-form" style={{ marginTop: 8 }}>
+          <CompanyForm form={skillForm} layout="vertical" validateTrigger="onBlur" component="div" className="skill-vertical-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={24}>
-                <CompanyForm.Item label="专业技能" required style={{ paddingLeft: 12 }}>
+                <CompanyForm.Item label="专业技能" name="serviceSkillIds" validateTrigger={[]} rules={[{ required: true, message: '请选择技能（可多选）' }]} style={{ paddingLeft: 12 }}>
                   <div className="tag-picker">
                     {skillGrouped.length > 0 && (
                       <div className="tag-list">
@@ -744,7 +1035,7 @@ export default function CraftsmanForm() {
                           optionFilterProp="label"
                         />
                         <CompanyButton type="text" size="middle" style={{ paddingInline: 6, color: pendingSkillIdList.length === 0 ? 'rgba(0,0,0,0.25)' : '#F95914' }} onClick={handleAddSkill} disabled={pendingSkillIdList.length === 0}>确定</CompanyButton>
-                        <CompanyButton type="text" size="middle" style={{ paddingInline: 6, marginLeft: -8, color: '#F95914' }} onClick={() => { setSkillAdding(false); setPendingCategory(null); setPendingSkillIdList([]) }}>取消</CompanyButton>
+                        <CompanyButton type="text" size="middle" style={{ paddingInline: 6, marginLeft: -8, color: '#F95914' }} onClick={handleCancelSkill}>取消</CompanyButton>
                       </div>
                     ) : (
                       availableSkillCategories.length > 0 && (
@@ -801,15 +1092,15 @@ export default function CraftsmanForm() {
         </section>
 
         <section>
-          <SectionTitle title="资格证书" description="请上传对应技能所需的资格证书照片" />
-          <CompanyForm form={certificateForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
+          <SectionTitle title="资格证书" description="请上传对应技能所需的资格证书照片，支持 jpg/png/pdf 格式，单张图片大小 ≤ 1M" />
+          <CompanyForm form={certificateForm} layout="horizontal" labelAlign="right" requiredMark validateTrigger="onBlur" component="div" className="base-info-form" style={{ marginTop: 8 }}>
             {certificateItems.length === 0 ? (
               <div style={{ height: 120, paddingLeft: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,0,0,0.45)', fontSize: 14 }}>选择服务技能后，系统匹配上传证书</div>
             ) : (
               <CompanyRow gutter={24}>
                 {certificateItems.map((item) => (
                   <CompanyCol key={item.certificateType} span={colSpan}>
-                    <CompanyForm.Item label={item.certificateType} required>
+                    <CompanyForm.Item label={item.certificateType} name={item.certificateType} rules={[{ required: true, message: '请上传' }]}>
                       <ConfigProvider theme={uploadTheme}>
                         <Upload
                           {...buildUploadProps(
@@ -851,11 +1142,11 @@ export default function CraftsmanForm() {
         </section>
 
         <section>
-          <SectionTitle title="佐证材料" description="请上传工作证明、服务记录或无犯罪证明等佐证材料" />
-          <CompanyForm form={proofForm} layout="horizontal" labelAlign="right" requiredMark component="div" className="base-info-form" style={{ marginTop: 8 }}>
+          <SectionTitle title="佐证材料" description="请上传工作证明、服务记录或无犯罪证明等佐证材料，支持 jpg/png/pdf 格式，单张图片大小 ≤ 1M" />
+          <CompanyForm form={proofForm} layout="horizontal" labelAlign="right" requiredMark validateTrigger="onBlur" component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="工作证明" required className="label-top">
+                <CompanyForm.Item label="工作证明" name="workProof" rules={[{ required: true, message: '请上传' }]} className="label-top">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <Radio.Group
                       value={formData.workProofType}
@@ -871,15 +1162,17 @@ export default function CraftsmanForm() {
                           {...buildUploadProps(
                             'workCertificate',
                             (urls) => updateField('workCertificate', urls),
-                            5,
+                            1,
                             undefined,
-                            'image/jpeg,image/png,image/gif,image/webp,application/pdf',
+                            'image/jpeg,image/png,application/pdf',
                           )}
                         >
-                          <div style={{ color: 'rgba(0,0,0,0.45)' }}>
-                            <UploadOutlined style={{ fontSize: 16 }} />
-                            <div style={{ marginTop: 2, fontSize: 12 }}>上传</div>
-                          </div>
+                          {(uploadFileLists['workCertificate'] || []).length < 1 && (
+                            <div style={{ color: 'rgba(0,0,0,0.45)' }}>
+                              <UploadOutlined style={{ fontSize: 16 }} />
+                              <div style={{ marginTop: 2, fontSize: 12 }}>上传</div>
+                            </div>
+                          )}
                         </Upload>
                       </ConfigProvider>
                     ) : (
@@ -888,15 +1181,17 @@ export default function CraftsmanForm() {
                           {...buildUploadProps(
                             'serviceRecord',
                             (urls) => updateField('serviceRecord', urls),
-                            5,
+                            1,
                             undefined,
-                            'image/jpeg,image/png,image/gif,image/webp,application/pdf',
+                            'image/jpeg,image/png,application/pdf',
                           )}
                         >
-                          <div style={{ color: 'rgba(0,0,0,0.45)' }}>
-                            <UploadOutlined style={{ fontSize: 16 }} />
-                            <div style={{ marginTop: 2, fontSize: 12 }}>上传</div>
-                          </div>
+                          {(uploadFileLists['serviceRecord'] || []).length < 1 && (
+                            <div style={{ color: 'rgba(0,0,0,0.45)' }}>
+                              <UploadOutlined style={{ fontSize: 16 }} />
+                              <div style={{ marginTop: 2, fontSize: 12 }}>上传</div>
+                            </div>
+                          )}
                         </Upload>
                       </ConfigProvider>
                     )}
@@ -919,21 +1214,23 @@ export default function CraftsmanForm() {
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="无犯罪证明" required>
+                <CompanyForm.Item label="无犯罪证明" name="noCriminalCertificate" rules={[{ required: true, message: '请上传' }]}>
                   <ConfigProvider theme={uploadTheme}>
                     <Upload
                       {...buildUploadProps(
                         'noCriminalCertificate',
                         (urls) => updateField('noCriminalCertificate', urls),
-                        5,
+                        1,
                         undefined,
-                        'image/jpeg,image/png,image/gif,image/webp,application/pdf',
+                        'image/jpeg,image/png,application/pdf',
                       )}
                     >
-                      <div style={{ color: 'rgba(0,0,0,0.45)' }}>
-                        <UploadOutlined style={{ fontSize: 16 }} />
-                        <div style={{ marginTop: 2, fontSize: 12 }}>上传</div>
-                      </div>
+                      {(uploadFileLists['noCriminalCertificate'] || []).length < 1 && (
+                        <div style={{ color: 'rgba(0,0,0,0.45)' }}>
+                          <UploadOutlined style={{ fontSize: 16 }} />
+                          <div style={{ marginTop: 2, fontSize: 12 }}>上传</div>
+                        </div>
+                      )}
                     </Upload>
                   </ConfigProvider>
                   <div style={{ marginTop: 4, fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `craftsman` (
   `service_area` varchar(500) DEFAULT NULL COMMENT '接单区域',
   `id_card_images` varchar(1000) DEFAULT NULL COMMENT '身份证图片（正反面，逗号分隔）',
   `work_certificate` varchar(1000) DEFAULT NULL COMMENT '工作证明（图片URL，逗号分隔）',
+  `service_record` varchar(1000) DEFAULT NULL COMMENT '服务记录（图片URL，逗号分隔）',
   `no_criminal_certificate` varchar(1000) DEFAULT NULL COMMENT '无犯罪证明（图片URL，逗号分隔）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

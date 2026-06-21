@@ -107,10 +107,10 @@ export default function SkillDrawer({
       <div style={{ borderTop: '1px solid rgba(5,5,5,0.06)', padding: '4px 8px' }}>
         <div
           onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); setSelectOpen(false); onOpenManageDrawer() }}
-          style={{ cursor: 'pointer', paddingBlock: 6, color: 'var(--color-primary)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}
+          style={{ cursor: 'pointer', paddingBlock: 6, color: 'var(--ant-color-primary)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}
         >
           <EditOutlined />
-          <span>管理证件类型</span>
+          <span>证件类型管理</span>
         </div>
       </div>
     </>
@@ -259,7 +259,7 @@ export default function SkillDrawer({
                     src={src}
                     width={64}
                     height={64}
-                    style={{ objectFit: 'cover', borderRadius: 4 }}
+                    style={{ objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(5,5,5,0.06)' }}
                   />
                 ))}
               </div>
