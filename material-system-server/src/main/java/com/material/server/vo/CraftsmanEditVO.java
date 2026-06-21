@@ -1,41 +1,43 @@
-package com.material.server.dto;
+package com.material.server.vo;
 
 import lombok.Data;
 import java.util.List;
-import java.util.Map;
 
 /**
- * 工匠创建 DTO
- * 对齐前端 CraftsmanForm 的提交 payload
+ * 工匠编辑详情 VO
+ * 返回主表字段 + 4 张关联表数据，用于前端编辑表单回填
  */
 @Data
-public class CraftsmanCreateDTO {
+public class CraftsmanEditVO {
 
+    private Long id;
+    private String craftsmanCode;
     private String name;
     private String phone;
     private String userAccount;
+    private String serviceProviderName;
     private String craftsmanCategory;
     private Integer craftsmanType;
-    private String serviceProviderName;
     private String region;
+
     private String idCardNo;
     private String idCardValidDate;
+    private String idCardFrontUrl;
+    private String idCardBackUrl;
 
-    private List<Object> residentialArea;
+    private String residentialAreaCode;
+    private List<String> residentialAreaCodeList;
     private List<String> residentialAreaLabels;
     private String residentialStreet;
     private String residentialDetail;
 
-    private String idCardFrontUrl;
-    private String idCardBackUrl;
-
-    private List<String> serviceAreas;
+    private List<String> serviceAreaCodes;
     private List<String> serviceAreaLabels;
 
     private List<Long> serviceSkillIds;
     private List<String> brands;
 
-    private Map<String, String> certificates;
+    private java.util.Map<String, List<String>> certificates;
 
     private Integer workProofType;
     private List<String> workCertificate;

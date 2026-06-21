@@ -1,18 +1,23 @@
 import { useEffect, useCallback, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, Space, Menu } from 'antd'
+import { Tag, Space, Upload, ConfigProvider, App } from 'antd'
+import { InboxOutlined } from '@ant-design/icons'
+import type { UploadFile } from 'antd'
 import {
   CompanyButton,
-  CompanyDropdown,
+  CompanyDrawer,
   CompanyMessage,
   SmartListTemplate,
   ActionCell,
+  companyTheme,
   type FieldDefinition,
   type ColumnField,
 } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
 import { SERVICE_PROVIDER_LIST } from '@/constants/serviceProviders'
 import { useListData, useStatusMap, useMenuTitle } from '@/hooks'
+import { isCertificateExpired } from '@/utils/craftsman'
+import './CraftsmanQuery.scss'
 
 interface CraftsmanRecord {
   [key: string]: unknown
@@ -25,7 +30,9 @@ interface CraftsmanRecord {
   craftsmanCategory: string
   craftsmanType: number
   region: string
-  serviceSkills: string
+  serviceSkillNames: string
+  serviceSkillImages: string
+  certificates?: { skillName: string; certificateType: string; certificateImage: string }[]
   registerTime: string
   status: number
   createTime: string
@@ -55,7 +62,7 @@ const fields: FieldDefinition[] = [
     { label: '停用', value: 0 },
   ]},
   { key: 'userAccount', label: '用户账号', type: 'input', width: 150 },
-  { key: 'serviceSkills', label: '服务技能', type: 'input', width: 150 },
+  { key: 'serviceSkillNames', label: '服务技能', type: 'input', width: 150 },
   { key: 'registerTime', label: '注册时间', type: 'input', width: 160 },
   { key: 'action', label: '操作', width: 180, fixed: 'right' },
 ]
@@ -69,7 +76,7 @@ const defaultColumnFields: ColumnField[] = [
   { key: 'craftsmanType', label: '工匠类型', visible: true, width: 100 },
   { key: 'status', label: '状态', visible: true, width: 100 },
   { key: 'userAccount', label: '用户账号', visible: true, width: 150 },
-  { key: 'serviceSkills', label: '服务技能', visible: true, width: 150 },
+  { key: 'serviceSkillNames', label: '服务技能', visible: true, width: 150 },
   { key: 'registerTime', label: '注册时间', visible: true, width: 160 },
 ]
 
@@ -84,6 +91,7 @@ const craftsmanTypeMap: Record<number, string> = {
 }
 
 export default function CraftsmanQuery() {
+  const { modal } = App.useApp()
   const navigate = useNavigate()
   const { loading, dataSource, pagination, filterParams, setFilterParams, fetchData, refresh } = useListData<CraftsmanRecord>({
     apiEndpoint: API_ENDPOINTS.CRAFTSMEN,
@@ -107,33 +115,72 @@ export default function CraftsmanQuery() {
     setColumnFields(defaultColumnFields)
   }, [])
 
-  const handleImportClick = useCallback(({ key }: { key: string }) => {
-    if (key === 'import-template') {
-      CompanyMessage.info('下载模板功能开发中')
-    } else if (key === 'import-data') {
-      CompanyMessage.info('导入数据功能开发中')
-    }
+  const [importOpen, setImportOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [fileList, setFileList] = useState<UploadFile[]>([])
+
+  const handleImportClick = useCallback(() => {
+    setFileList([])
+    setImportOpen(true)
   }, [])
+
+  const handleDownloadTemplate = useCallback(() => {
+    CompanyMessage.info('下载模板功能开发中')
+  }, [])
+
+  const handleBeforeUpload = useCallback((file: File) => {
+    const isValidType = file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.xlsx')
+    if (!isValidType) {
+      CompanyMessage.error('仅支持 xls、xlsx 格式的文件')
+      return Upload.LIST_IGNORE
+    }
+    const isLt5M = file.size / 1024 / 1024 <= 5
+    if (!isLt5M) {
+      CompanyMessage.error('文件大小不能超过 5M')
+      return Upload.LIST_IGNORE
+    }
+    return false
+  }, [])
+
+  const handleUploadChange = useCallback((info: any) => {
+    setFileList(info.fileList.slice(-1))
+  }, [])
+
+  const handleUploadSubmit = useCallback(async () => {
+    if (fileList.length === 0) {
+      CompanyMessage.warning('请先选择文件')
+      return
+    }
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', fileList[0].originFileObj as Blob)
+      const res = await fetch(`${API_ENDPOINTS.CRAFTSMEN}/import`, {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await res.json()
+      if (json.code === 200) {
+        CompanyMessage.success('导入成功')
+        setImportOpen(false)
+        setFileList([])
+        refresh()
+      } else {
+        CompanyMessage.error(json.message || '导入失败，请检查文件格式')
+      }
+    } catch {
+      CompanyMessage.error('导入失败，请稍后重试')
+    } finally {
+      setUploading(false)
+    }
+  }, [fileList, refresh])
 
   const toolbarActions = (
     <Space size={12}>
-      <CompanyButton type="primary" onClick={() => navigate('/craftsman-search/create')}>
+      <CompanyButton type="primary" onClick={() => navigate('/craftsman-search/create', { state: { from: '/craftsman-search' } })}>
         新增工匠
       </CompanyButton>
-      <CompanyDropdown
-        trigger={['click']}
-        popupRender={() => (
-          <Menu
-            onClick={handleImportClick}
-            items={[
-              { key: 'import-template', label: '下载模板' },
-              { key: 'import-data', label: '导入数据' },
-            ]}
-          />
-        )}
-      >
-        <CompanyButton>导入</CompanyButton>
-      </CompanyDropdown>
+      <CompanyButton onClick={handleImportClick}>导入</CompanyButton>
     </Space>
   )
 
@@ -158,7 +205,7 @@ export default function CraftsmanQuery() {
   }, [refresh])
 
   const showDetail = useCallback((record: CraftsmanRecord) => {
-    navigate(`/craftsman-search/${record.id}`)
+    navigate(`/craftsman-search/${record.id}`, { state: { from: '/craftsman-search' } })
   }, [navigate])
 
   useEffect(() => {
@@ -193,6 +240,18 @@ export default function CraftsmanQuery() {
         return <span>{categoryMap[craftsmanRecord.craftsmanCategory] || craftsmanRecord.craftsmanCategory}</span>
       }
 
+      if (column.key === 'serviceSkillNames') {
+        const raw = craftsmanRecord.serviceSkillNames as string
+        if (!raw) return <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
+        const certs = craftsmanRecord.certificates || []
+        const validNames = raw.split(',').filter((_, idx) => {
+          const cert = certs[idx]
+          if (!cert) return true
+          return !isCertificateExpired(cert.certificateType, idx)
+        })
+        return <span>{validNames.length > 0 ? validNames.join('、') : '--'}</span>
+      }
+
       if (column.key === 'craftsmanType') {
         return <span>{craftsmanTypeMap[craftsmanRecord.craftsmanType] || craftsmanRecord.craftsmanType}</span>
       }
@@ -216,12 +275,25 @@ export default function CraftsmanQuery() {
           {
             key: 'edit',
             label: '编辑',
-            onClick: () => CompanyMessage.info('编辑功能开发中'),
+            onClick: () => navigate(`/craftsman-search/${craftsmanRecord.id}/edit`, { state: { from: '/craftsman-search' } }),
           },
           {
             key: 'toggle',
             label: toggleLabel,
-            onClick: () => handleToggleStatus(craftsmanRecord),
+            onClick: () => {
+              const isDisable = craftsmanRecord.status === 1
+              modal.confirm({
+                title: isDisable ? '确认要禁用这项内容吗？' : '确认要启用这项内容吗？',
+                content: isDisable
+                  ? '禁用后相关业务流程可能受影响，请核实无误后再操作。是否确定禁用？'
+                  : '启用后该条目将恢复正常使用权限，相关功能可正常操作。是否确定执行？',
+                okText: '确定',
+                cancelText: '取消',
+                centered: true,
+                width: 360,
+                onOk: () => handleToggleStatus(craftsmanRecord),
+              })
+            },
           },
         ]
         return <ActionCell buttons={buttons} />
@@ -261,6 +333,50 @@ export default function CraftsmanQuery() {
         toolbarActions={toolbarActions}
         bodyCell={bodyCell}
       />
+      <CompanyDrawer
+        title="导入"
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        width={380}
+        footer={null}
+      >
+        <div className="craftsman-import-body">
+          <div className="craftsman-import-header">
+            <span className="craftsman-import-hint">
+              支持 xls、xlsx 格式，文件大小不超过 5M
+            </span>
+            <CompanyButton type="link" className="craftsman-import-template-btn" onClick={handleDownloadTemplate}>
+              下载模板
+            </CompanyButton>
+          </div>
+          <ConfigProvider theme={companyTheme}>
+            <Upload.Dragger
+              accept=".xls,.xlsx"
+              maxCount={1}
+              fileList={fileList}
+              beforeUpload={handleBeforeUpload}
+              onChange={handleUploadChange}
+              onRemove={() => { setFileList([]); return true }}
+            >
+              <p className="ant-upload-drag-icon craftsman-upload-icon">
+                <InboxOutlined />
+              </p>
+              <p className="ant-upload-text craftsman-upload-text">
+                点击或拖拽文件到此区域上传
+              </p>
+              <p className="ant-upload-hint craftsman-upload-subhint">
+                支持单次上传，上传内容后需清空再继续上传
+              </p>
+            </Upload.Dragger>
+          </ConfigProvider>
+          <div className="craftsman-import-footer">
+            <CompanyButton type="primary" loading={uploading} onClick={handleUploadSubmit}>
+              确定
+            </CompanyButton>
+            <CompanyButton onClick={() => setFileList([])}>重置</CompanyButton>
+          </div>
+        </div>
+      </CompanyDrawer>
     </>
   )
 }

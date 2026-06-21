@@ -39,13 +39,23 @@ public class Craftsman {
 
     private Integer age;                // 年龄
 
-    private String residentialAddress;  // 常住地址
+    private String residentialAddress;  // 常住地址（拼接展示用）
+
+    private String residentialAreaCode; // 常住地址省市区编码（逗号分隔，编辑回填用）
+
+    private String residentialStreet;   // 常住地址街道/乡镇
+
+    private String residentialDetail;   // 常住地址详细地址
+
+    private String idCardValidDate;     // 身份证有效期（逗号分隔，结束为2099-12-31表示长期）
 
     private String serviceArea;         // 接单区域
 
     private String idCardImages;        // 身份证图片（正反面，逗号分隔）
 
     private String workCertificate;     // 工作证明（图片URL，逗号分隔）
+
+    private String serviceRecord;       // 服务记录（图片URL，逗号分隔）
 
     private String noCriminalCertificate;  // 无犯罪证明（图片URL，逗号分隔）
 

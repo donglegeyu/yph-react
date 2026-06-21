@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState, useMemo, type ReactNode } from 'react'
-import { Space, Image } from 'antd'
+import { Space, Image, App } from 'antd'
 const { PreviewGroup } = Image
 import {
   CompanyButton,
@@ -26,8 +26,6 @@ const baseFields: FieldDefinition[] = [
   { key: 'category3', label: '三级品类', type: 'input', width: 160 },
   { key: 'certificateType', label: '证件类型', type: 'select', width: 160, options: [
     { label: '全部', value: '' },
-    { label: '特种作业操作证', value: '特种作业操作证' },
-    { label: '上岗证', value: '上岗证' },
   ]},
   { key: 'exampleImage', label: '示例图', type: 'input', width: 260, hideInFilter: true },
   { key: 'action', label: '操作', width: 104, fixed: 'right' },
@@ -46,6 +44,7 @@ const defaultColumnFields: ColumnField[] = [
 ]
 
 export default function SkillManagement() {
+  const { modal } = App.useApp()
   const { loading, dataSource, pagination, filterParams, setFilterParams, fetchData, refresh } = useListData({
     apiEndpoint: API_ENDPOINTS.SKILLS,
     defaultPageSize: 100,
@@ -181,7 +180,7 @@ export default function SkillManagement() {
 
   const titleRightActions: ReactNode = (
     <Space size={4}>
-      <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)' }}>证件类型及示例图管理从这里进</span>
+      <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)' }}>证件类型及示例图管理</span>
       <CompanyButton type="link" size="small" style={{ padding: 0, height: 'auto', fontSize: 13 }} onClick={openManageDrawer}>
         立即前往
       </CompanyButton>
@@ -222,8 +221,9 @@ export default function SkillManagement() {
                   key={src}
                   src={thumbUrl(src)}
                   preview={{ src: largeUrl(src) }}
-                  height={24}
-                  style={{ height: 24, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
+                  width={32}
+                  height={32}
+                  style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', border: '1px solid rgba(5,5,5,0.06)' }}
                 />
               ))}
             </Space>
@@ -237,9 +237,17 @@ export default function SkillManagement() {
             key: 'delete',
             label: '删除',
             danger: true,
-            confirm: true,
-            confirmTitle: '确定删除？',
-            onClick: () => handleDelete(record),
+            onClick: () => {
+              modal.confirm({
+                title: '确认要删除这项内容吗？',
+                content: '删除后数据将永久消失，无法恢复。是否确定执行删除操作？',
+                okText: '确定',
+                cancelText: '取消',
+                centered: true,
+                width: 360,
+                onOk: () => handleDelete(record),
+              })
+            },
           },
         ]
         return <ActionCell buttons={buttons} />
