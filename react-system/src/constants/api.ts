@@ -66,8 +66,14 @@ export const API_ENDPOINTS = {
   // 证件类型图片库
   CERTIFICATE_IMAGES: `${API_BASE}/certificate-images`,
 
+  // 证件类型字典
+  CERTIFICATE_TYPES: `${API_BASE}/certificate-types`,
+
   // 文件上传
   FILE_UPLOAD: `${API_BASE}/files/upload`,
+
+  // 服务商列表（后端就绪后替换 mock）
+  SERVICE_PROVIDERS: `${API_BASE}/service-providers`,
 } as const
 
 // 图标服务 API
