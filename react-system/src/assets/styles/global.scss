@@ -228,15 +228,7 @@
   --color-error-bg: var(--red-1);
   --color-info-bg: var(--blue-1);
 
-  /* Ant Design 主题色映射 */
-  --ant-color-primary: #F95914;
-  --ant-color-primary-hover: #FF7043;
-  --ant-color-primary-active: #E64A19;
-  --ant-color-primary-bg: #FBE9E7;
-  --ant-color-primary-border: #FFAB91;
-  --ant-color-primary-text: #F95914;
-  --ant-color-primary-text-active: #D84315;
-  --ant-color-primary-text-hover: #FF7043;
+  /* Ant Design 主题色 — 由 ThemeProvider (companyTheme) 通过 ConfigProvider 自动注入，无需硬编码 */
 
   /* 功能色 */
   --color-success: #52C41A;
@@ -265,10 +257,7 @@
   --color-border: #D9D9D9;
   --color-border-secondary: #F0F0F0;
 
-  /* 文字可读性 */
-  --ant-color-text: rgba(0, 0, 0, 0.88);
-  --ant-color-text-light-solid: #FFFFFF;
-  --ant-color-bg-layout: #F5F5F5;
+  /* Ant Design 文本/背景色 — 由 ThemeProvider 自动注入 */
 
   /* 状态色（用于状态标签） */
   --color-status-pending: #FA541C;
@@ -315,55 +304,9 @@ body {
   }
 }
 
-/* Ant Design 主题覆盖 */
-.ant-btn {
-  transition: all 0.3s;
-  border-radius: 6px !important;
-  box-shadow: none !important;
-}
+/* Ant Design 交互修复（companyTheme 未覆盖的部分） */
 
-.ant-btn-primary {
-  background-color: var(--primary-color) !important;
-  border-color: var(--primary-color) !important;
-  color: #fff !important;
-
-  &:hover, &:focus {
-    background-color: var(--primary-hover) !important;
-    border-color: var(--primary-hover) !important;
-    color: #fff !important;
-  }
-
-  &:active {
-    background-color: var(--primary-active) !important;
-    border-color: var(--primary-active) !important;
-    color: #fff !important;
-  }
-}
-
-.ant-btn-default {
-  background-color: var(--color-bg-container) !important;
-  border-color: var(--color-border) !important;
-  color: var(--color-text) !important;
-
-  &:hover {
-    color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-  }
-
-  &:focus {
-    color: var(--color-text) !important;
-    border-color: var(--color-border) !important;
-    background-color: var(--color-bg-container) !important;
-  }
-
-  &:active {
-    color: var(--color-text) !important;
-    background-color: var(--color-bg-container) !important;
-    border-color: var(--color-border) !important;
-    box-shadow: none !important;
-  }
-}
-
+/* 按钮交互：去除 focus/active 的默认阴影和位移 */
 .ant-btn {
   &:focus {
     box-shadow: none !important;
@@ -377,38 +320,13 @@ body {
   }
 }
 
-.ant-btn-default:active {
-  color: rgba(0, 0, 0, 0.88) !important;
-  background-color: #fff !important;
-  border-color: #D9D9D9 !important;
-}
-
-.ant-btn-primary:active {
-  background-color: var(--primary-color) !important;
-  border-color: var(--primary-color) !important;
-  color: #fff !important;
-}
-
+/* 链接按钮 active 状态保持不透明 */
 .ant-btn-variant-link:active,
 .ant-btn-link:active {
-  color: var(--primary-color) !important;
   opacity: 1 !important;
 }
 
-/* 链接式按钮 */
-.ant-btn-variant-link,
-.ant-btn-link {
-  color: var(--primary-color) !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-
-  &:hover, &:focus {
-    color: var(--primary-hover) !important;
-  }
-}
-
-/* 删除按钮危险色覆盖 */
+/* 删除按钮危险色覆盖 — 项目规范：危险操作用主色而非红色 */
 .ant-btn-variant-link[class][danger],
 .ant-btn-variant-link.danger,
 .ant-btn-link[danger],
@@ -458,19 +376,53 @@ body {
   width: 0 !important;
 }
 
-/* 表格样式优化 */
-.ant-table-thead > tr > th {
-  background: var(--color-bg-light) !important;
-  font-weight: 600;
-  border-top: none !important;
-}
+/* 表格样式 — 作用于 SmartListTemplate 内的表格 */
+.smart-list-template {
+  .ant-table-thead > tr > th {
+    background: var(--color-bg-light) !important;
+    font-weight: 600;
+    border-top: none !important;
+  }
 
-.ant-table-thead > tr > th.ant-table-cell-fix-end {
-  padding-left: 24px !important;
-}
+  .ant-table-thead > tr > th.ant-table-cell-fix-end {
+    padding-left: 24px !important;
+  }
 
-.ant-table-cell {
-  white-space: nowrap !important;
+  .ant-table-cell {
+    white-space: nowrap !important;
+  }
+
+  /* 表格操作列按钮样式 */
+  .ant-table-cell .ant-btn-variant-link,
+  .ant-table-cell .ant-btn-link {
+    height: 32px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 0 8px !important;
+    gap: 8px;
+    border-radius: 6px;
+    color: var(--primary-color) !important;
+    background: transparent !important;
+    border: none !important;
+
+    &:hover, &:focus {
+      background: rgba(0, 0, 0, 0.04) !important;
+      color: var(--primary-hover) !important;
+    }
+
+    &:active {
+      background: rgba(0, 0, 0, 0.06) !important;
+      color: var(--primary-hover) !important;
+    }
+  }
+
+  /* 隐藏表格滚动阴影 */
+  .ant-table-cell-fix-left,
+  .ant-table-cell-fix-right {
+    box-shadow: none !important;
+  }
 }
 
 /* 状态标签样式 - Ghost Tag */
@@ -535,33 +487,10 @@ body {
   color: var(--color-text-placeholder) !important;
 }
 
-/* 表格操作列按钮样式 */
-.ant-table-cell .ant-btn-variant-link,
-.ant-table-cell .ant-btn-link {
-  height: 32px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 0 8px !important;
-  gap: 8px;
-  border-radius: 6px;
-  color: var(--primary-color) !important;
+/* FormPageTemplate 标题背景色修复 — 与 SmartListTemplate 保持一致（继承 #f5f5f5） */
+.form-page-title {
   background: transparent !important;
-  border: none !important;
-
-  &:hover, &:focus {
-    background: rgba(0, 0, 0, 0.04) !important;
-    color: var(--primary-hover) !important;
-  }
-
-  &:active {
-    background: rgba(0, 0, 0, 0.06) !important;
-    color: var(--primary-hover) !important;
-  }
 }
-
-/* 表格单元格内容不换行 + 行高 46px（已在上方统一设置，此处保留占位） */
 
 /* 强制隐藏 Ant Design Table 测量行，不影响列宽计算（最安全方案） */
 .ant-table {
@@ -580,12 +509,6 @@ body {
 
 .ant-table-measure-row {
   visibility: collapse !important;
-}
-
-/* 隐藏表格滚动阴影 */
-.ant-table-cell-fix-left,
-.ant-table-cell-fix-right {
-  box-shadow: none !important;
 }
 
 /* 下拉菜单最小宽度 */
@@ -649,4 +572,9 @@ body {
   .ant-form-item {
     margin-bottom: 16px;
   }
+}
+
+.detail-page-template .dpt-page-title,
+.form-page-template .form-page-title {
+  background: transparent !important;
 }

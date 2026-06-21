@@ -135,7 +135,7 @@ export default function CraftsmanDetail() {
   }
 
   return (
-    <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
+    <div className="craftsman-detail-page" style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
     <DetailPageTemplate
       title="工匠详情"
       showBack

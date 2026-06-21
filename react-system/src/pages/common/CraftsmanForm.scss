@@ -201,3 +201,27 @@
     }
   }
 }
+
+.example-preview-modal .ant-modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.example-preview-modal .ant-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.example-preview-modal .ant-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.example-preview-modal .ant-modal-body::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 3px;
+}
+
+.example-preview-modal .ant-modal-body:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.25);
+}

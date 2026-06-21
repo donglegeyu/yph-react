@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="accentBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5eead4"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#00000033"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="900" fill="#f0f2f5"/>
+
+  <g filter="url(#shadow)">
+    <rect x="120" y="120" width="960" height="660" rx="24" fill="url(#bg)"/>
+  </g>
+
+  <rect x="120" y="120" width="960" height="10" fill="url(#accentBar)"/>
+
+  <text x="180" y="230" font-family="'PingFang SC','Microsoft YaHei',sans-serif" font-size="40" font-weight="700" fill="#ffffff">特种作业操作证</text>
+  <text x="180" y="280" font-family="'PingFang SC',sans-serif" font-size="22" fill="#ffffffcc">电工作业 / 高压电工作业</text>
+
+  <line x1="180" y1="310" x2="1020" y2="310" stroke="#ffffff55" stroke-width="1"/>
+
+  <rect x="180" y="360" width="240" height="300" rx="12" fill="#ffffff22" stroke="#ffffff55" stroke-width="1.5"/>
+  <text x="300" y="520" font-family="sans-serif" font-size="18" fill="#ffffffaa" text-anchor="middle">照片</text>
+
+  <g font-family="'PingFang SC',sans-serif" font-size="24" fill="#ffffff">
+    <text x="480" y="400"><tspan fill="#ffffffaa">证书编号</tspan></text>
+    <text x="480" y="438" font-weight="600">TZY-2024-005678</text>
+
+    <text x="480" y="490"><tspan fill="#ffffffaa">持证人</tspan></text>
+    <text x="480" y="528" font-weight="600">李志强</text>
+
+    <text x="480" y="580"><tspan fill="#ffffffaa">证件号码</tspan></text>
+    <text x="480" y="618" font-weight="600">4401**********5678</text>
+  </g>
+
+  <g font-family="'PingFang SC',sans-serif" font-size="20" fill="#ffffffcc">
+    <text x="180" y="720"><tspan fill="#ffffffaa">有效期：</tspan>2024.06.20 — 2030.06.19</text>
+    <text x="180" y="755"><tspan fill="#ffffffaa">发证机关：</tspan>市应急管理局</text>
+  </g>
+
+  <g transform="translate(880,660)">
+    <circle cx="0" cy="0" r="60" fill="none" stroke="#5eead4" stroke-width="3"/>
+    <circle cx="0" cy="0" r="54" fill="none" stroke="#5eead4" stroke-width="1"/>
+    <text x="0" y="-8" font-family="sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">官方</text>
+    <text x="0" y="14" font-family="sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">印章</text>
+  </g>
+</svg>

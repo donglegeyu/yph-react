@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useMemo, type ReactNode } from 'react'
 import { Space, Image } from 'antd'
 const { PreviewGroup } = Image
 import {
@@ -13,9 +13,10 @@ import { API_ENDPOINTS } from '@/constants/api'
 import { useListData } from '@/hooks'
 import { useColumnSettings } from '@/hooks/useColumnSettings'
 import SkillDrawer, { type SkillFormData } from './SkillDrawer'
+import CertManageDrawer, { type CertOption } from './CertManageDrawer'
 import { category1Options, buildCategoryPath } from './categoryOptions'
 
-const fields: FieldDefinition[] = [
+const baseFields: FieldDefinition[] = [
   { key: 'skillName', label: '服务技能', type: 'input', width: 160, fixed: 'left' },
   { key: 'category1', label: '一级品类', type: 'select', width: 140, options: [
     { label: '全部', value: '' },
@@ -28,7 +29,7 @@ const fields: FieldDefinition[] = [
     { label: '特种作业操作证', value: '特种作业操作证' },
     { label: '上岗证', value: '上岗证' },
   ]},
-  { key: 'exampleImage', label: '示例图', type: 'input', width: 260 },
+  { key: 'exampleImage', label: '示例图', type: 'input', width: 260, hideInFilter: true },
   { key: 'action', label: '操作', width: 104, fixed: 'right' },
 ]
 
@@ -60,6 +61,54 @@ export default function SkillManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create')
   const [drawerInitialValues, setDrawerInitialValues] = useState<Partial<SkillFormData>>({})
+  const [certImageMap, setCertImageMap] = useState<Record<string, string>>({})
+  const [certOptions, setCertOptions] = useState<CertOption[]>([
+    { label: '特种作业操作证', value: '特种作业操作证' },
+    { label: '上岗证', value: '上岗证' },
+  ])
+  const [manageDrawerOpen, setManageDrawerOpen] = useState(false)
+
+  const openManageDrawer = useCallback(() => {
+    setManageDrawerOpen(true)
+  }, [])
+
+  const fetchCertImages = useCallback(async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.CERTIFICATE_IMAGES)
+      const json = await res.json()
+      const list = (json.data || []) as Array<{ certificateType: string; exampleImage: string }>
+      const map: Record<string, string> = {}
+      list.forEach((item) => {
+        if (item.certificateType) {
+          map[item.certificateType] = item.exampleImage || ''
+        }
+      })
+      setCertImageMap(map)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchCertImages()
+  }, [fetchCertImages, dataSource])
+
+  const loadCertOptions = useCallback(async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.CERTIFICATE_TYPES)
+      const json = await res.json()
+      const list = (json.data || []) as Array<{ id: number; name: string }>
+      if (list.length > 0) {
+        setCertOptions(list.map((item) => ({ id: item.id, label: item.name, value: item.name })))
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    loadCertOptions()
+  }, [loadCertOptions])
 
   const handleCreate = useCallback(() => {
     setDrawerMode('create')
@@ -76,7 +125,6 @@ export default function SkillManagement() {
       category2: record.category2 as string,
       category3: record.category3 as string,
       certificateType: record.certificateType as string,
-      exampleImage: record.exampleImage as string,
     })
     setDrawerOpen(true)
   }, [])
@@ -131,6 +179,15 @@ export default function SkillManagement() {
     </Space>
   )
 
+  const titleRightActions: ReactNode = (
+    <Space size={4}>
+      <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)' }}>证件类型及示例图管理从这里进</span>
+      <CompanyButton type="link" size="small" style={{ padding: 0, height: 'auto', fontSize: 13 }} onClick={openManageDrawer}>
+        立即前往
+      </CompanyButton>
+    </Space>
+  )
+
   const bodyCell = useCallback(
     (column: Record<string, unknown>, record: Record<string, unknown>) => {
       if (column.key === 'category3') {
@@ -144,7 +201,8 @@ export default function SkillManagement() {
           : <span style={{ color: 'rgba(0,0,0,0.25)' }}>-</span>
       }
       if (column.key === 'exampleImage') {
-        const raw = record.exampleImage as string
+        const certType = record.certificateType as string
+        const raw = certType ? (certImageMap[certType] || '') : ''
         if (!raw) {
           return <span style={{ color: 'rgba(0,0,0,0.45)' }}>-</span>
         }
@@ -188,7 +246,7 @@ export default function SkillManagement() {
       }
       return null
     },
-    [handleDelete, handleEdit]
+    [handleDelete, handleEdit, certImageMap]
   )
 
   useEffect(() => {
@@ -196,10 +254,21 @@ export default function SkillManagement() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const fields = useMemo(() => baseFields.map((f) => {
+    if (f.key === 'certificateType') {
+      return {
+        ...f,
+        options: [{ label: '全部', value: '' }, ...certOptions.map((o) => ({ label: o.label, value: o.value }))],
+      }
+    }
+    return f
+  }), [certOptions])
+
   return (
     <>
     <SmartListTemplate
       title="技能管理"
+      titleRightActions={titleRightActions}
       fields={fields}
       dataSource={dataSource}
       loading={loading}
@@ -223,8 +292,15 @@ export default function SkillManagement() {
       open={drawerOpen}
       mode={drawerMode}
       initialValues={drawerInitialValues}
+      certOptions={certOptions}
+      onOpenManageDrawer={openManageDrawer}
       onClose={() => setDrawerOpen(false)}
       onSuccess={refresh}
+    />
+    <CertManageDrawer
+      open={manageDrawerOpen}
+      onClose={() => setManageDrawerOpen(false)}
+      onOptionsChange={(next) => { setCertOptions(next); fetchCertImages() }}
     />
     </>
   )

@@ -11,6 +11,7 @@ import {
   type ColumnField,
 } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
+import { SERVICE_PROVIDER_LIST } from '@/constants/serviceProviders'
 import { useListData, useStatusMap, useMenuTitle } from '@/hooks'
 
 interface CraftsmanRecord {
@@ -34,7 +35,10 @@ const fields: FieldDefinition[] = [
   { key: 'craftsmanCode', label: '工匠编码', type: 'input', width: 150 },
   { key: 'name', label: '姓名', type: 'input', width: 120 },
   { key: 'phone', label: '手机号', type: 'input', width: 130 },
-  { key: 'serviceProviderName', label: '所属服务商', type: 'input', width: 180 },
+  { key: 'serviceProviderName', label: '所属服务商', type: 'select', width: 180, options: [
+    { label: '全部', value: '' },
+    ...SERVICE_PROVIDER_LIST.map((o) => ({ label: o.name, value: o.name })),
+  ]},
   { key: 'craftsmanCategory', label: '工匠类别', type: 'select', width: 100, options: [
     { label: '全部', value: '' },
     { label: '外部员工', value: 'outsource' },
