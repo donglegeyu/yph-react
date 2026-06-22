@@ -202,41 +202,6 @@ export default function SkillDrawer({
         </CompanyForm.Item>
 
         <CompanyForm.Item
-          name="category"
-          label="三级品类"
-          rules={[
-            {
-              required: true,
-              validator: (_rule, value: (string | undefined)[] | undefined) => {
-                if (!value || value.length < 3 || !value[0] || !value[1] || !value[2]) {
-                  return Promise.reject(new Error('请选择'))
-                }
-                return Promise.resolve()
-              },
-            },
-          ]}
-        >
-          <Cascader
-            placeholder="请选择"
-            options={categoryOptions}
-            changeOnSelect={false}
-            fieldNames={{ label: 'label', value: 'value', children: 'children' }}
-            displayRender={(labels) => labels.join(' / ')}
-            onChange={handleCategoryChange}
-          />
-        </CompanyForm.Item>
-
-        <CompanyForm.Item name="category1" hidden>
-          <Input />
-        </CompanyForm.Item>
-        <CompanyForm.Item name="category2" hidden>
-          <Input />
-        </CompanyForm.Item>
-        <CompanyForm.Item name="category3" hidden>
-          <Input />
-        </CompanyForm.Item>
-
-        <CompanyForm.Item
           name="certificateType"
           label="证件类型"
           rules={[{ required: true, message: '请选择' }]}
@@ -271,6 +236,41 @@ export default function SkillDrawer({
         {previewLoading && (
           <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', marginBottom: 16 }}>加载示例图...</div>
         )}
+
+        <CompanyForm.Item
+          name="category"
+          label="三级品类"
+          rules={[
+            {
+              required: true,
+              validator: (_rule, value: (string | undefined)[] | undefined) => {
+                if (!value || value.length < 3 || !value[0] || !value[1] || !value[2]) {
+                  return Promise.reject(new Error('请选择'))
+                }
+                return Promise.resolve()
+              },
+            },
+          ]}
+        >
+          <Cascader
+            placeholder="请选择"
+            options={categoryOptions}
+            changeOnSelect={false}
+            fieldNames={{ label: 'label', value: 'value', children: 'children' }}
+            displayRender={(labels) => labels.join(' / ')}
+            onChange={handleCategoryChange}
+          />
+        </CompanyForm.Item>
+
+        <CompanyForm.Item name="category1" hidden>
+          <Input />
+        </CompanyForm.Item>
+        <CompanyForm.Item name="category2" hidden>
+          <Input />
+        </CompanyForm.Item>
+        <CompanyForm.Item name="category3" hidden>
+          <Input />
+        </CompanyForm.Item>
       </CompanyForm>
     </CompanyDrawer>
   )
