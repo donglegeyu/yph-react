@@ -12,9 +12,13 @@ CREATE TABLE IF NOT EXISTS `certificate_type` (
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_certificate_type_name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证件类型字典表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='证件类型字典表';
+
+-- 修复已有表的字段排序规则（防止历史遗留数据不匹配）
+ALTER TABLE `certificate_type` MODIFY `name` VARCHAR(100) NOT NULL COLLATE utf8mb4_general_ci COMMENT '证件类型名称（唯一）';
 
 -- 迁移：从 certificate_image 表反查已有的证件类型，写入新表（幂等）
+-- 使用 COLLATE utf8mb4_general_ci 防止 MySQL 5.7 报字符集冲突（1267）
 INSERT INTO `certificate_type` (`name`, `sort_order`)
 SELECT t.certificate_type, t.sort_order
 FROM (
@@ -23,7 +27,8 @@ FROM (
   GROUP BY `certificate_type`
 ) t
 WHERE NOT EXISTS (
-  SELECT 1 FROM `certificate_type` ct WHERE ct.`name` = t.certificate_type
+  SELECT 1 FROM `certificate_type` ct 
+  WHERE ct.`name` COLLATE utf8mb4_general_ci = t.certificate_type COLLATE utf8mb4_general_ci
 );
 
 -- 兜底：保证两个内置默认类型存在

@@ -86,15 +86,15 @@ CREATE TABLE IF NOT EXISTS `certificate_type` (
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_certificate_type_name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='证件类型字典表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='证件类型字典表';
 
 INSERT INTO `certificate_type` (`name`, `sort_order`)
 SELECT '特种作业操作证', 1
-WHERE NOT EXISTS (SELECT 1 FROM `certificate_type` WHERE `name` = '特种作业操作证');
+WHERE NOT EXISTS (SELECT 1 FROM `certificate_type` WHERE `name` COLLATE utf8mb4_general_ci = '特种作业操作证');
 
 INSERT INTO `certificate_type` (`name`, `sort_order`)
 SELECT '上岗证', 2
-WHERE NOT EXISTS (SELECT 1 FROM `certificate_type` WHERE `name` = '上岗证');
+WHERE NOT EXISTS (SELECT 1 FROM `certificate_type` WHERE `name` COLLATE utf8mb4_general_ci = '上岗证');
 
 -- ============================================================
 -- 4. skill 表三级品类字段兜底（防 18 号 init SQL 未执行）
