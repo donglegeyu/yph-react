@@ -18,6 +18,7 @@ interface CraftsmanRecord {
   name: string
   phone: string
   userAccount: string
+  email: string
   serviceProviderName: string
   craftsmanCategory: string
   craftsmanType: number
@@ -137,6 +138,7 @@ export default function CraftsmanDetail() {
       { label: '所属服务商', value: detail.craftsmanCategory === 'external' ? '--' : (detail.serviceProviderName || '--') },
       { label: '手机号', value: maskPhone(detail.phone) },
       { label: '用户账号', value: detail.userAccount || '--' },
+      { label: '邮箱', value: detail.email || '--' },
       { label: '服务技能', value: validNames.length > 0 ? validNames.join('、') : '--' },
     ]
   }, [detail])

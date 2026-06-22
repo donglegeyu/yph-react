@@ -14,6 +14,7 @@ public class CraftsmanCreateDTO {
     private String name;
     private String phone;
     private String userAccount;
+    private String email;
     private String craftsmanCategory;
     private Integer craftsmanType;
     private String serviceProviderName;

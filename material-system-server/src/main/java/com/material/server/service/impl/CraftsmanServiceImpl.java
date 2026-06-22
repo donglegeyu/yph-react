@@ -100,6 +100,7 @@ public class CraftsmanServiceImpl
         vo.setName(c.getName());
         vo.setPhone(c.getPhone());
         vo.setUserAccount(c.getUserAccount());
+        vo.setEmail(c.getEmail());
         vo.setServiceProviderName(c.getServiceProviderName());
         vo.setCraftsmanCategory(c.getCraftsmanCategory());
         vo.setCraftsmanType(c.getCraftsmanType());
@@ -285,6 +286,7 @@ public class CraftsmanServiceImpl
         vo.setName(c.getName());
         vo.setPhone(c.getPhone());
         vo.setUserAccount(c.getUserAccount());
+        vo.setEmail(c.getEmail());
         vo.setServiceProviderName(c.getServiceProviderName());
         vo.setCraftsmanCategory(c.getCraftsmanCategory());
         vo.setCraftsmanType(c.getCraftsmanType());
@@ -326,6 +328,7 @@ public class CraftsmanServiceImpl
         c.setName(dto.getName());
         c.setPhone(dto.getPhone());
         c.setUserAccount(dto.getUserAccount());
+        c.setEmail(dto.getEmail());
         c.setCraftsmanCategory(dto.getCraftsmanCategory());
         c.setCraftsmanType(dto.getCraftsmanType());
         c.setServiceProviderName(dto.getServiceProviderName());

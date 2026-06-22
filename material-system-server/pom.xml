@@ -21,6 +21,8 @@
     <properties>
         <java.version>17</java.version>
         <mybatis-plus.version>3.5.6</mybatis-plus.version>
+        <!-- Flyway 降级到 7.15.0：支持服务器 MySQL 5.7（社区版 9.x 不再支持 MySQL 5.7） -->
+        <flyway.version>7.15.0</flyway.version>
     </properties>
 
     <dependencies>
@@ -42,13 +44,11 @@
         </dependency>
 
         <!-- Flyway 数据库版本迁移：后端启动时自动执行增量 SQL -->
+        <!-- 版本 7.15.0：最后一个支持 MySQL 5.7 的社区版（MySQL 驱动已内置于 flyway-core，无需 flyway-mysql） -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-mysql</artifactId>
+            <version>${flyway.version}</version>
         </dependency>
 
         <dependency>

@@ -19,6 +19,8 @@ public class Craftsman {
 
     private String userAccount;
 
+    private String email;
+
     private String serviceProviderName;
 
     private String craftsmanCategory;  // 工匠类别: outsource外部员工, internal内部员工

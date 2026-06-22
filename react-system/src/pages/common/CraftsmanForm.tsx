@@ -45,6 +45,7 @@ interface CraftsmanFormData {
   name: string
   phone: string
   userAccount: string
+  email: string
   craftsmanCategory: string | undefined
   craftsmanType: number | string
   serviceProviderId: number | undefined
@@ -72,6 +73,7 @@ const initialFormData: CraftsmanFormData = {
   name: '',
   phone: '',
   userAccount: '',
+  email: '',
   craftsmanCategory: undefined,
   craftsmanType: 2,
   serviceProviderId: undefined,
@@ -248,6 +250,7 @@ export default function CraftsmanForm() {
     name?: string
     phone?: string
     userAccount?: string
+    email?: string
     serviceProviderName?: string
     craftsmanCategory?: string
     craftsmanType?: number
@@ -328,6 +331,7 @@ export default function CraftsmanForm() {
       name: data.name || '',
       phone: data.phone || '',
       userAccount: data.userAccount || '',
+      email: data.email || '',
       craftsmanCategory: data.craftsmanCategory || sp?.category,
       craftsmanType: data.craftsmanType ?? 2,
       serviceProviderId: sp?.id,
@@ -378,6 +382,7 @@ export default function CraftsmanForm() {
       name: data.name || '',
       phone: data.phone || '',
       userAccount: data.userAccount || '',
+      email: data.email || '',
       serviceProviderId: sp?.id,
     })
     residentialForm.setFieldsValue({
@@ -808,6 +813,11 @@ export default function CraftsmanForm() {
                       />
                     )}
                   </Space.Compact>
+                </CompanyForm.Item>
+              </CompanyCol>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="邮箱" name="email" rules={[{ type: 'email', message: '请输入正确的邮箱' }]}>
+                  <Input placeholder="请输入" value={formData.email} onChange={(e) => updateField('email', e.target.value)} />
                 </CompanyForm.Item>
               </CompanyCol>
             </CompanyRow>

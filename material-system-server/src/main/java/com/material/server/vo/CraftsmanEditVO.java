@@ -15,6 +15,7 @@ public class CraftsmanEditVO {
     private String name;
     private String phone;
     private String userAccount;
+    private String email;
     private String serviceProviderName;
     private String craftsmanCategory;
     private Integer craftsmanType;

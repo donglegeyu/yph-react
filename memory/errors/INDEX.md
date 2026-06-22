@@ -11,3 +11,4 @@
 | Vite 依赖缓存 | 升级组件库后项目未生效，需清理 .vite/deps 缓存 | [vite-deps-cache.md](./vite-deps-cache.md) |
 | Git 冲突未告知 | merge/stash pop 遇冲突必须先告知用户，不可自行决定 | [git-conflict-notify.md](./git-conflict-notify.md) |
 | portal 样式丢失 | Drawer/Modal 内 antd 组件样式异常，ConfigProvider theme 链断裂 | [portal-configprovider-theme.md](./portal-configprovider-theme.md) |
+| Flyway 与 MySQL 5.7 不兼容 | 服务器 MySQL 5.7 跑不动 Flyway 9.x，必须降级到 7.15.0 | [flyway-mysql57-incompatible.md](./flyway-mysql57-incompatible.md) |
