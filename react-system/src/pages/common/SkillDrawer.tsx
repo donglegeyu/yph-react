@@ -12,6 +12,7 @@ export interface SkillFormData {
   category1?: string
   category2?: string
   category3?: string
+  categoryAlias?: string
   certificateType: string
 }
 
@@ -39,6 +40,29 @@ export default function SkillDrawer({
   const [selectOpen, setSelectOpen] = useState(false)
   const [previewImages, setPreviewImages] = useState<string[]>([])
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [skillNameOptions, setSkillNameOptions] = useState<{ label: string; value: string }[]>([])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch(`${API_ENDPOINTS.SKILLS}?pageNum=1&pageSize=1000`)
+        const json = await res.json()
+        if (cancelled) return
+        const list = (json.data?.records || json.data || []) as Array<{ skillName: string }>
+        const names = list
+          .map((item) => item.skillName)
+          .filter(Boolean)
+          .filter((v, i, arr) => arr.indexOf(v) === i)
+        setSkillNameOptions(names.map((n) => ({ label: n, value: n })))
+      } catch {
+        // ignore
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [open])
 
   const loadPreviewImages = async (certType: string) => {
     if (!certType) {
@@ -80,6 +104,7 @@ export default function SkillDrawer({
         category1: initialValues.category1,
         category2: initialValues.category2,
         category3: initialValues.category3,
+        categoryAlias: initialValues.categoryAlias,
         certificateType: initialValues.certificateType,
       })
     } else {
@@ -124,6 +149,7 @@ export default function SkillDrawer({
         category1: values.category1 || '',
         category2: values.category2 || '',
         category3: values.category3 || '',
+        categoryAlias: values.categoryAlias || '',
         certificateType: values.certificateType,
       }
 
@@ -194,11 +220,57 @@ export default function SkillDrawer({
         layout="vertical"
       >
         <CompanyForm.Item
-          name="skillName"
-          label="服务技能"
-          rules={[{ required: true, message: '请输入' }]}
+          name="category"
+          label="三级品类"
+          rules={[
+            {
+              required: true,
+              validator: (_rule, value: (string | undefined)[] | undefined) => {
+                if (!value || value.length < 3 || !value[0] || !value[1] || !value[2]) {
+                  return Promise.reject(new Error('请选择'))
+                }
+                return Promise.resolve()
+              },
+            },
+          ]}
+        >
+          <Cascader
+            placeholder="请选择"
+            options={categoryOptions}
+            changeOnSelect={false}
+            fieldNames={{ label: 'label', value: 'value', children: 'children' }}
+            displayRender={(labels) => labels.join(' / ')}
+            onChange={handleCategoryChange}
+          />
+        </CompanyForm.Item>
+
+        <CompanyForm.Item name="category1" hidden>
+          <Input />
+        </CompanyForm.Item>
+        <CompanyForm.Item name="category2" hidden>
+          <Input />
+        </CompanyForm.Item>
+        <CompanyForm.Item name="category3" hidden>
+          <Input />
+        </CompanyForm.Item>
+
+        <CompanyForm.Item
+          name="categoryAlias"
+          label="三级品类别名"
         >
           <Input placeholder="请输入" />
+        </CompanyForm.Item>
+
+        <CompanyForm.Item
+          name="skillName"
+          label="服务技能"
+          rules={[{ required: true, message: '请选择' }]}
+        >
+          <Select
+            placeholder="请选择"
+            showSearch
+            options={skillNameOptions}
+          />
         </CompanyForm.Item>
 
         <CompanyForm.Item
@@ -236,41 +308,6 @@ export default function SkillDrawer({
         {previewLoading && (
           <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', marginBottom: 16 }}>加载示例图...</div>
         )}
-
-        <CompanyForm.Item
-          name="category"
-          label="三级品类"
-          rules={[
-            {
-              required: true,
-              validator: (_rule, value: (string | undefined)[] | undefined) => {
-                if (!value || value.length < 3 || !value[0] || !value[1] || !value[2]) {
-                  return Promise.reject(new Error('请选择'))
-                }
-                return Promise.resolve()
-              },
-            },
-          ]}
-        >
-          <Cascader
-            placeholder="请选择"
-            options={categoryOptions}
-            changeOnSelect={false}
-            fieldNames={{ label: 'label', value: 'value', children: 'children' }}
-            displayRender={(labels) => labels.join(' / ')}
-            onChange={handleCategoryChange}
-          />
-        </CompanyForm.Item>
-
-        <CompanyForm.Item name="category1" hidden>
-          <Input />
-        </CompanyForm.Item>
-        <CompanyForm.Item name="category2" hidden>
-          <Input />
-        </CompanyForm.Item>
-        <CompanyForm.Item name="category3" hidden>
-          <Input />
-        </CompanyForm.Item>
       </CompanyForm>
     </CompanyDrawer>
   )
