@@ -269,7 +269,7 @@ export default function LoginView() {
 
         <div className="copyright-area">
           <p className="copyright-text">
-            Copyright © 粤ICP备18161542号 版权所有：星际造梦责任有限公司
+            Copyright © 粤ICP备18161542号 版权所有：壹品设计责任有限公司
           </p>
         </div>
       </div>

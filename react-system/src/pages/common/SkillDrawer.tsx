@@ -145,7 +145,9 @@ export default function SkillDrawer({
         CompanyMessage.success(isEdit ? '编辑成功' : '新增成功')
         onSuccess()
         if (keepOpen && !isEdit) {
+          const skillName = form.getFieldValue('skillName')
           form.resetFields()
+          form.setFieldValue('skillName', skillName)
         } else {
           onClose()
         }

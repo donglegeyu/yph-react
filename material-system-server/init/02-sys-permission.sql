@@ -69,9 +69,9 @@ CREATE TABLE IF NOT EXISTS sys_user_domain (
     KEY idx_domain_id (domain_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户-域关联表';
 
--- 初始化默认域「星际造梦」
+-- 初始化默认域「壹品设计」
 INSERT INTO sys_domain (domain_key, domain_name, description, is_default, status) VALUES
-('xingjiZM', '星际造梦', '系统默认域，使用系统默认菜单结构', 1, 1);
+('xingjiZM', '壹品设计', '系统默认域，使用系统默认菜单结构', 1, 1);
 
 -- 注：默认域与菜单的关联（sys_domain_menu）由 09-menu-seed.sql 末尾统一同步
 -- （原在此处同步会因菜单尚未全部插入而导致默认域菜单不全）

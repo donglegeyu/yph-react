@@ -71,9 +71,9 @@ CREATE TABLE IF NOT EXISTS sys_user_domain (
     KEY idx_domain_id (domain_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户-域关联表';
 
--- 初始化默认域「星际造梦」
+-- 初始化默认域「壹品设计」
 INSERT INTO sys_domain (domain_key, domain_name, description, is_default, status) VALUES
-('xingjiZM', '星际造梦', '系统默认域，使用系统默认菜单结构', 1, 1);
+('xingjiZM', '壹品设计', '系统默认域，使用系统默认菜单结构', 1, 1);
 
 -- 为默认域添加所有菜单（使用系统菜单）
 INSERT INTO sys_domain_menu (domain_id, menu_id, custom_label, sort)

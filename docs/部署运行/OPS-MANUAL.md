@@ -223,8 +223,8 @@ curl -s http://localhost:8081/api/nav-menus | head -c 200
 
 | 用户名 | 密码 | 昵称 | 角色 | 所属域 | 说明 |
 |--------|------|------|------|--------|------|
-| `admin` | `admin123` | 管理员 | 超级管理员 | 星际造梦 + 工匠平台 | **首次登录后务必修改密码** |
-| `craftsman` | `123123` | 工匠演示 | 研发人员 | 星际造梦 + 工匠平台 | 演示账号，生产环境可删除 |
+| `admin` | `admin123` | 管理员 | 超级管理员 | 壹品设计 + 工匠平台 | **首次登录后务必修改密码** |
+| `craftsman` | `123123` | 工匠演示 | 研发人员 | 壹品设计 + 工匠平台 | 演示账号，生产环境可删除 |
 
 > 定义见 [init/10-init-system-data.sql](../../material-system-server/init/10-init-system-data.sql)
 
@@ -232,7 +232,7 @@ curl -s http://localhost:8081/api/nav-menus | head -c 200
 
 | 域标识 | 域名称 | 说明 |
 |--------|--------|------|
-| `xingjiZM` | 星际造梦 | 默认域，拥有全部菜单 |
+| `xingjiZM` | 壹品设计 | 默认域，拥有全部菜单 |
 | `gongjiangPT` | 工匠平台 | 自定义域，仅工单/工匠相关菜单（26 条） |
 
 #### 部门（6 个）
@@ -761,7 +761,7 @@ sudo ufw enable
 | 顺序 | 文件 | 内容 |
 |------|------|------|
 | 01 | 01-schema-correct.sql | 核心表结构 |
-| 02 | 02-sys-permission.sql | 权限系统表 + 默认域（星际造梦） |
+| 02 | 02-sys-permission.sql | 权限系统表 + 默认域（壹品设计） |
 | 03 | 03-favorite.sql | 收藏表 |
 | 04 | 04-user-preference.sql | 用户偏好表 |
 | 05 | 05-icon-config.sql | 图标配置表 |

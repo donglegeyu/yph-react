@@ -357,7 +357,7 @@ export default function FirstSidebar() {
             </div>
           </CompanyPopover>
           <div className="domain-name">
-            <span>{currentDomain?.domainName || '星际造梦'}</span>
+            <span>{currentDomain?.domainName || '壹品设计'}</span>
           </div>
         </div>
 
