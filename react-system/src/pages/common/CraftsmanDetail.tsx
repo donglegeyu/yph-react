@@ -321,51 +321,6 @@ const certificateStatusMap: Record<CertificateRecord['status'], { text: string; 
   expired: { text: '已过期', color: 'default' },
 }
 
-const certificateDataSource: CertificateRecord[] = [
-  {
-    id: 1,
-    certificateType: '燃气具安装维修工证',
-    certificateNo: 'RQ202103150001',
-    certificateImage: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?fit=crop',
-    skillName: '燃气具安装',
-    status: 'valid',
-    effectiveDate: '2023-03-15',
-    expiryDate: '2026-03-14',
-  },
-  {
-    id: 2,
-    certificateType: '燃气安全操作证',
-    certificateNo: 'GA202205100001',
-    certificateImage: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?fit=crop',
-    skillName: '燃气安全检查',
-    status: 'expiring',
-    effectiveDate: '2022-05-10',
-    expiryDate: '2025-07-09',
-  },
-  {
-    id: 3,
-    certificateType: '',
-    certificateNo: '',
-    certificateImage: '',
-    skillName: '保洁服务',
-    status: '',
-    effectiveDate: '',
-    expiryDate: '',
-  },
-  {
-    id: 4,
-    certificateType: 'PE管焊接操作证',
-    certificateNo: 'PE202111050001',
-    certificateImage: 'https://images.unsplash.com/photo-1565728744382-61accd4aa148?fit=crop',
-    skillName: 'PE管焊接',
-    status: 'expired',
-    effectiveDate: '2021-11-05',
-    expiryDate: '2024-11-04',
-  },
-]
-
-const allSkillNames = Array.from(new Set(certificateDataSource.map((c) => c.skillName))).join('、')
-
 function CapabilityTable({
   craftsmanName,
   certificates,
