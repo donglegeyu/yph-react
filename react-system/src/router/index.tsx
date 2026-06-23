@@ -37,6 +37,8 @@ const ConstructionList = lazy(() => import('@/pages/common/ConstructionList'))
 const CraftsmanQuery = lazy(() => import('@/pages/common/CraftsmanQuery'))
 const CraftsmanDetail = lazy(() => import('@/pages/common/CraftsmanDetail'))
 const CraftsmanForm = lazy(() => import('@/pages/common/CraftsmanForm'))
+const CraftsmanApplication = lazy(() => import('@/pages/common/CraftsmanApplication'))
+const CraftsmanApplicationDetail = lazy(() => import('@/pages/common/CraftsmanApplicationDetail'))
 const ConstructionApplicationList = lazy(() => import('@/pages/common/ConstructionApplicationList'))
 const PurchaseDemandCreate = lazy(() => import('@/pages/purchase/PurchaseDemandCreate'))
 const PurchaseDemandDetail = lazy(() => import('@/pages/purchase/PurchaseDemandDetail'))
@@ -71,7 +73,6 @@ const SecurityCheckDetail = lazy(() => import('@/pages/common/SecurityCheckDetai
 const SkillManagement = lazy(() => import('@/pages/common/SkillManagement'))
 const CoursewareManage = lazy(() => import('@/pages/common/CoursewareManage'))
 const QuestionBankList = lazy(() => import('@/pages/common/QuestionBankList'))
-const ExamPaperList = lazy(() => import('@/pages/common/ExamPaperList'))
 const CourseManage = lazy(() => import('@/pages/common/CourseManage'))
 const TrainingTaskList = lazy(() => import('@/pages/common/TrainingTaskList'))
 const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
@@ -98,6 +99,10 @@ const routes: RouteObject[] = [
       { path: 'craftsman-search/create', element: <CraftsmanForm /> },
       { path: 'craftsman-search/:id/edit', element: <CraftsmanForm /> },
       { path: 'craftsman-search/:id', element: <CraftsmanDetail /> },
+      { path: 'craftsman-application', element: <CraftsmanApplication /> },
+      { path: 'craftsman-application/create', element: <CraftsmanForm /> },
+      { path: 'craftsman-application/:id/edit', element: <CraftsmanForm /> },
+      { path: 'craftsman-application/:id', element: <CraftsmanApplicationDetail /> },
       { path: 'construction-apply', element: <ConstructionApplicationList /> },
       { path: 'tag-list', element: <TagListView /> },
       { path: 'category-list', element: <CategoryListView /> },
@@ -146,7 +151,6 @@ const routes: RouteObject[] = [
       { path: 'craftsman-skill', element: <SkillManagement /> },
       { path: 'courseware-manage', element: <CoursewareManage /> },
       { path: 'question-bank-manage', element: <QuestionBankList /> },
-      { path: 'exam-paper-manage', element: <ExamPaperList /> },
       { path: 'course-manage', element: <CourseManage /> },
       { path: 'training-task-manage', element: <TrainingTaskList /> },
       { path: '*', element: <BuildingView /> },

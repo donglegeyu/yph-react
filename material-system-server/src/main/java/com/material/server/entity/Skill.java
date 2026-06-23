@@ -19,6 +19,8 @@ public class Skill {
 
     private String category3;
 
+    private String categoryAlias;
+
     private String certificateType;
 
     private String exampleImage;

@@ -1,15 +1,13 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Empty, Skeleton, Row, Col, Image, type TableColumnsType } from 'antd'
-const { PreviewGroup } = Image
-import { DetailPageTemplate, CompanyButton, CompanyMessage, CompanyTable, CompanyTag, SectionTitle, type DetailTagItem } from '@donglegeyu/company-ui'
+import { Empty, Skeleton, type TableColumnsType } from 'antd'
+import { DetailPageTemplate, CompanyButton, CompanyMessage, CompanyTable, CompanyTag, type DetailTagItem, type DetailFieldItem } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
-import { mockCertificateInfo } from '@/utils/craftsman'
 import { formatAreaCode } from '@/utils/address'
+import { formatSourceChannel } from '@/constants/sourceChannels'
 import { useStatusMap } from '@/hooks'
 import { useSmartBack } from '@/hooks/useSmartBack'
-import { formatBrandNames } from '@/constants/brands'
-// import { formatSourceChannel } from '@/constants/sourceChannels'
+import { DetailSection, DetailGrid, DetailImages, CapabilityTable, type CertificateItem } from './craftsman-detail-shared'
 import './CraftsmanDetail.scss'
 
 interface CraftsmanRecord {
@@ -57,10 +55,10 @@ const craftsmanTypeMap: Record<number, string> = {
   2: '意向工匠',
 }
 
-// function maskPhone(phone: string | undefined): string {
-//   if (!phone || phone.length < 11) return phone || '--'
-//   return `${phone.slice(0, 3)}****${phone.slice(-4)}`
-// }
+function maskPhone(phone: string | undefined): string {
+  if (!phone || phone.length < 11) return phone || '--'
+  return `${phone.slice(0, 3)}****${phone.slice(-4)}`
+}
 
 function formatIdCardValidDate(raw: string | undefined): string {
   if (!raw) return '--'
@@ -68,15 +66,6 @@ function formatIdCardValidDate(raw: string | undefined): string {
   if (parts.length === 0) return '--'
   if (parts.length === 1) return parts[0]
   return `${parts[0]} ~ ${parts[1]}`
-}
-
-function formatServiceArea(raw: string | undefined): string {
-  if (!raw) return '--'
-  return raw
-    .split(/[,，;；]/)
-    .map((s) => s.trim().replace(/\//g, ' / '))
-    .filter(Boolean)
-    .join('、')
 }
 
 
@@ -126,25 +115,17 @@ export default function CraftsmanDetail() {
     ]
   }, [detail, getStatusText])
 
-  // const infoFields: DetailFieldItem[] = useMemo(() => {
-  //   if (!detail) return []
-  //   const allNames = detail.serviceSkillNames ? detail.serviceSkillNames.split(',') : []
-  //   const certs = detail.certificates || []
-  //   const validNames = allNames.filter((_, idx) => {
-  //     const cert = certs[idx]
-  //     if (!cert) return true
-  //     return !isCertificateExpired(cert.certificateType, idx)
-  //   })
-  //   return [
-  //     { label: '工匠编号', value: detail.craftsmanCode || '--' },
-  //     { label: '所属服务商', value: detail.craftsmanCategory === 'external' ? '--' : (detail.serviceProviderName || '--') },
-  //     { label: '手机号', value: maskPhone(detail.phone) },
-  //     { label: '用户账号', value: detail.userAccount || '--' },
-  //     { label: '来源渠道', value: formatSourceChannel(detail.sourceChannel) },
-  //     { label: '邮箱', value: detail.email || '--' },
-  //     { label: '服务技能', value: validNames.length > 0 ? validNames.join('、') : '--' },
-  //   ]
-  // }, [detail])
+  const infoFields: DetailFieldItem[] = useMemo(() => {
+    if (!detail) return []
+    return [
+      { label: '工匠编号', value: detail.craftsmanCode || '--' },
+      { label: '所属服务商', value: detail.craftsmanCategory === 'external' ? '--' : (detail.serviceProviderName || '--') },
+      { label: '手机号', value: maskPhone(detail.phone) },
+      { label: '用户账号', value: detail.userAccount || '--' },
+      { label: '来源渠道', value: formatSourceChannel(detail.sourceChannel) },
+      { label: '邮箱', value: detail.email || '--' },
+    ]
+  }, [detail])
 
   if (loading) {
     return (
@@ -170,20 +151,20 @@ export default function CraftsmanDetail() {
       onBack={handleSmartBack}
       titleActions={
         <CompanyButton type="primary" onClick={() => navigate(`/craftsman-search/${detail.id}/edit`, { state: { from: location.pathname } })}>
-          编辑
+          变更
         </CompanyButton>
       }
       avatar={(detail.name || '?').charAt(0)}
       primaryName={detail.name}
       tags={tags}
-      // infoFields={infoFields}
+      infoFields={infoFields}
       tabs={[
         {
           key: 'detail',
           label: '详情',
           children: (
             <div style={{ padding: '0 0 16px' }}>
-              <DetailSection title="常驻地址">
+              <DetailSection title="常住地址">
                 <DetailGrid items={[
                   { label: '省市区', value: formatAreaCode(detail.residentialAreaCode) },
                   { label: '街道', value: detail.residentialStreet || '--' },
@@ -235,210 +216,6 @@ export default function CraftsmanDetail() {
       activeTab={activeTab}
       onTabChange={setActiveTab}
     />
-    </div>
-  )
-}
-
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <SectionTitle title={title} />
-      {children}
-    </div>
-  )
-}
-
-function DetailGrid({ items }: { items: { label: string; value: React.ReactNode }[] }) {
-  return (
-    <Row className="detail-info-grid" gutter={[24, 16]}>
-      {items.map((item) => (
-        <Col key={item.label} xs={24} sm={12} md={8} lg={6}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', lineHeight: '22px' }}>
-            <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)', whiteSpace: 'nowrap', lineHeight: '22px' }}>{item.label}：</span>
-            <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.88)', wordBreak: 'break-all', lineHeight: '22px' }}>{item.value}</span>
-          </div>
-        </Col>
-      ))}
-    </Row>
-  )
-}
-
-function DetailImages({ title, urls, background = false, width, height, objectFit = 'contain', topGap = 0 }: { title: string; urls?: string; background?: boolean; width?: number; height?: number; objectFit?: 'contain' | 'cover'; topGap?: number }) {
-  const list = (urls || '').split(',').map((u) => u.trim()).filter(Boolean)
-  const sizeStyle = width != null && height != null
-    ? { width, height }
-    : width != null
-      ? { width, height: 'auto' }
-      : height != null
-        ? { height, width: 'auto', maxWidth: '100%' }
-        : { height: 96, width: 'auto', maxWidth: '100%' }
-  return (
-    <div style={{ marginTop: 12 + topGap }}>
-      <div style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)', marginBottom: 8 }}>{title}：</div>
-      {list.length === 0 ? (
-        <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.88)' }}>--</span>
-      ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {list.map((url, index) => (
-            <img
-              key={index}
-              src={url}
-              alt={`${title}${index + 1}`}
-              style={{
-                ...sizeStyle,
-                objectFit,
-                borderRadius: 4,
-                padding: 4,
-                boxSizing: 'border-box',
-                background: background ? 'rgba(0,0,0,0.04)' : 'transparent',
-                cursor: 'pointer',
-              }}
-              onClick={() => window.open(url, '_blank')}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-interface CertificateItem {
-  skillName: string
-  certificateType: string
-  certificateImage: string
-}
-
-interface CertificateRecord {
-  id: number
-  certificateType: string
-  certificateNo: string
-  certificateImage: string
-  skillName: string
-  status: 'valid' | 'expiring' | 'expired' | ''
-  effectiveDate: string
-  expiryDate: string
-}
-
-const certificateStatusMap: Record<CertificateRecord['status'], { text: string; color: string }> = {
-  '': { text: '-', color: 'default' },
-  valid: { text: '有效', color: 'success' },
-  expiring: { text: '即将过期', color: 'warning' },
-  expired: { text: '已过期', color: 'default' },
-}
-
-function CapabilityTable({
-  craftsmanName,
-  certificates,
-  serviceArea,
-  brandNames,
-}: {
-  craftsmanName: string
-  certificates?: CertificateItem[]
-  serviceArea?: string
-  brandNames?: string
-}) {
-  const dataSource = useMemo<CertificateRecord[]>(() => {
-    if (!certificates || certificates.length === 0) return []
-    return certificates.map((c, i) => {
-      const info = mockCertificateInfo(c.certificateType, i)
-      return {
-        id: i + 1,
-        certificateType: c.certificateType || '',
-        certificateNo: info.certificateNo,
-        certificateImage: c.certificateImage || '',
-        skillName: c.skillName || '',
-        status: info.status,
-        effectiveDate: info.effectiveDate,
-        expiryDate: info.expiryDate,
-      }
-    })
-  }, [certificates])
-
-  const renderText = (v: string) => v || <span style={{ color: 'rgba(0,0,0,0.25)' }}>--</span>
-
-  const columns: TableColumnsType<CertificateRecord> = [
-    { title: '服务技能', dataIndex: 'skillName', key: 'skillName', width: 160, ellipsis: true, render: renderText },
-    { title: '证件类型', dataIndex: 'certificateType', key: 'certificateType', width: 180, ellipsis: true, render: renderText },
-    {
-      title: '证照图片',
-      dataIndex: 'certificateImage',
-      key: 'certificateImage',
-      width: 100,
-      render: (raw: string) => {
-        if (!raw) return <span style={{ color: 'rgba(0,0,0,0.25)' }}>--</span>
-        const urls = raw.split(',').filter(Boolean)
-        return (
-          <PreviewGroup>
-            {urls.map((url, idx) => (
-              <Image
-                key={idx}
-                src={url}
-                width={32}
-                height={32}
-                style={{ height: 32, width: 32, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', marginRight: 4, border: '1px solid rgba(0,0,0,0.08)' }}
-              />
-            ))}
-          </PreviewGroup>
-        )
-      },
-    },
-    { title: '证照编号', dataIndex: 'certificateNo', key: 'certificateNo', width: 160, render: renderText },
-    {
-      title: '证照状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (status: CertificateRecord['status']) => {
-        if (!status) return <span style={{ color: 'rgba(0,0,0,0.25)' }}>--</span>
-        const conf = certificateStatusMap[status]
-        return <CompanyTag color={conf.color}>{conf.text}</CompanyTag>
-      },
-    },
-    { title: '生效日期', dataIndex: 'effectiveDate', key: 'effectiveDate', width: 120, render: renderText },
-    { title: '失效日期', dataIndex: 'expiryDate', key: 'expiryDate', width: 120, render: renderText },
-    {
-      title: '操作',
-      key: 'action',
-      width: 100,
-      fixed: 'right',
-      render: (_: unknown, record: CertificateRecord) => (
-        <CompanyButton
-          type="link"
-          disabled={!record.certificateNo}
-          style={{ padding: 0 }}
-          onClick={() => CompanyMessage.info(`${craftsmanName} 的更换证照功能开发中`)}
-        >
-          更换证照
-        </CompanyButton>
-      ),
-    },
-  ]
-
-  return (
-    <div className="capability-tab-wrap">
-      <div className="capability-info-bar">
-        <div className="capability-info-item">
-          <span className="capability-info-label">接单区域</span>
-          <span className="capability-info-value">
-            {serviceArea ? formatServiceArea(serviceArea) : '--'}
-          </span>
-        </div>
-        <div className="capability-info-item">
-          <span className="capability-info-label">品牌</span>
-          <span className="capability-info-value">
-            {brandNames ? formatBrandNames(brandNames) : '--'}
-          </span>
-        </div>
-      </div>
-      <CompanyTable
-        dataSource={dataSource}
-        columns={columns}
-        rowKey="id"
-        size="small"
-        pagination={false}
-        scroll={{ x: 1200 }}
-        locale={{ emptyText: '暂无证照数据' }}
-      />
     </div>
   )
 }

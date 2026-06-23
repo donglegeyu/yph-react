@@ -59,5 +59,8 @@ public class CraftsmanListVO {
         private String skillName;
         private String certificateType;
         private String certificateImage;
+        private String category1;
+        private String category2;
+        private String category3;
     }
 }

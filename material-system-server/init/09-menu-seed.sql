@@ -100,9 +100,7 @@ INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_ty
     (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='craftsman-center') t), '业务菜单'),
 ('quality-center',   '品质反馈', NULL, 'check-square', 3, 1,
     (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='craftsman-center') t), '业务菜单'),
-('training-resource', '培训资源', NULL, 'book',          4, 1,
-    (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='craftsman-center') t), '业务菜单'),
-('training-operation','培训运营', NULL, 'rocket',         5, 1,
+('training-resource', '培训管理', NULL, 'book',          4, 1,
     (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='craftsman-center') t), '业务菜单');
 
 -- 5.2 工单管理三级菜单
@@ -155,7 +153,7 @@ INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_ty
 ('craftsman-search',      '工匠列表','/craftsman-search',     'search-user',      3, 1,
     (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='craftsman-manage') t), '业务菜单');
 
--- 5.6 培训资源三级菜单
+-- 5.6 培训管理三级菜单
 INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_type) VALUES
 ('courseware-manage',    '课件管理',   '/courseware-manage',    'file-text',       1, 1,
     (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='training-resource') t), '业务菜单'),
@@ -163,13 +161,8 @@ INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_ty
     (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='training-resource') t), '业务菜单'),
 ('question-bank-manage', '题库管理',   '/question-bank-manage', 'question-circle', 3, 1,
     (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='training-resource') t), '业务菜单'),
-('exam-paper-manage',    '试卷管理',   '/exam-paper-manage',    'form',            4, 1,
+('training-task-manage', '培训任务', '/training-task-manage', 'schedule',        4, 1,
     (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='training-resource') t), '业务菜单');
-
--- 5.7 培训运营三级菜单
-INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_type) VALUES
-('training-task-manage', '培训任务管理', '/training-task-manage', 'schedule', 1, 1,
-    (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='training-operation') t), '业务菜单');
 
 -- ============================================================
 -- 六、修复 level 值（仅补 NULL，不覆盖手动设置）
@@ -224,8 +217,7 @@ JOIN nav_menu m ON m.`key` IN (
     'quality-center',
     'quality-feedback-list', 'quality-batch-list',
     'training-resource',
-    'courseware-manage', 'course-manage', 'question-bank-manage', 'exam-paper-manage',
-    'training-operation',
+    'courseware-manage', 'course-manage', 'question-bank-manage',
     'training-task-manage'
 )
 WHERE d.domain_key = 'gongjiangPT'

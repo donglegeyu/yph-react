@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Tag, Space, Upload, ConfigProvider, App } from 'antd'
-import { InboxOutlined } from '@ant-design/icons'
+import { InboxOutlined, ExportOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import {
   CompanyButton,
@@ -180,8 +180,8 @@ export default function CraftsmanQuery() {
 
   const toolbarActions = (
     <Space size={12}>
-      <CompanyButton type="primary" onClick={() => navigate('/craftsman-search/create', { state: { from: '/craftsman-search' } })}>
-        新增工匠
+      <CompanyButton type="primary" onClick={() => navigate('/craftsman-application/create', { state: { from: '/craftsman-search', mode: 'application' } })}>
+        新增工匠 <ExportOutlined className="craftsman-add-icon" />
       </CompanyButton>
       <CompanyButton onClick={handleImportClick}>导入</CompanyButton>
     </Space>
@@ -270,7 +270,7 @@ export default function CraftsmanQuery() {
           },
           {
             key: 'edit',
-            label: '编辑',
+            label: '变更',
             onClick: () => navigate(`/craftsman-search/${craftsmanRecord.id}/edit`, { state: { from: '/craftsman-search' } }),
           },
           {

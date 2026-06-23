@@ -12,3 +12,4 @@
 | Git 冲突未告知 | merge/stash pop 遇冲突必须先告知用户，不可自行决定 | [git-conflict-notify.md](./git-conflict-notify.md) |
 | portal 样式丢失 | Drawer/Modal 内 antd 组件样式异常，ConfigProvider theme 链断裂 | [portal-configprovider-theme.md](./portal-configprovider-theme.md) |
 | Flyway 与 MySQL 5.7 不兼容 | 服务器 MySQL 5.7 跑不动 Flyway 9.x，必须降级到 7.15.0 | [flyway-mysql57-incompatible.md](./flyway-mysql57-incompatible.md) |
+| Flyway 版本号冲突 | db/migration 下出现重复版本号，后端启动失败 | [flyway-version-conflict.md](./flyway-version-conflict.md) |

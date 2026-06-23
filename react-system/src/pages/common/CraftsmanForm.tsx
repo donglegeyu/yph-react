@@ -25,6 +25,8 @@ import './CraftsmanForm.scss'
 interface SkillOption {
   id: number
   skillName: string
+  category1: string
+  category2: string
   secondaryCategory: string
   category3: string
   certificateType: string
@@ -152,6 +154,7 @@ export default function CraftsmanForm() {
   const params = useParams<{ id?: string }>()
   const editId = params.id ? Number(params.id) : null
   const fromPath = (location.state as { from?: string } | null)?.from || '/craftsman-search'
+  const isApplication = (location.state as { mode?: string } | null)?.mode === 'application'
   const isEdit = editId !== null
   const pendingEditCertificatesRef = useRef<Record<string, string[]> | null>(null)
   const [baseInfoForm] = CompanyForm.useForm()
@@ -165,6 +168,7 @@ export default function CraftsmanForm() {
   const [formData, setFormData] = useState<CraftsmanFormData>(initialFormData)
   const [uploadFileLists, setUploadFileLists] = useState<Record<string, UploadFile[]>>({})
   const [submitLoading, setSubmitLoading] = useState(false)
+  const [saveLoading, setSaveLoading] = useState(false)
   const [pageLoading, setPageLoading] = useState(isEdit)
   const [userAccountMode, setUserAccountMode] = useState<'new' | 'link'>('new')
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([])
@@ -205,6 +209,8 @@ export default function CraftsmanForm() {
         const loadedSkills: SkillOption[] = records.map((s: SkillOption) => ({
           id: s.id,
           skillName: s.skillName,
+          category1: s.category1,
+          category2: s.category2,
           secondaryCategory: s.secondaryCategory,
           category3: s.category3,
           certificateType: s.certificateType,
@@ -405,18 +411,35 @@ export default function CraftsmanForm() {
     let cancelled = false
     void (async () => {
       try {
-        const res = await fetch(`${API_ENDPOINTS.CRAFTSMEN}/${editId}/edit`)
-        const json = await res.json()
-        if (!cancelled && json.code === 200 && json.data) {
-          applyEditData(json.data as CraftsmanEditData)
-        } else if (!cancelled) {
-          CompanyMessage.error(json.message || '加载工匠信息失败')
-          navigate('/craftsman-search')
+        if (isApplication) {
+          const res = await fetch(`${API_ENDPOINTS.CRAFTSMAN_APPLICATIONS}/${editId}`)
+          const json = await res.json()
+          if (!cancelled && json.code === 200 && json.data) {
+            const formDataStr = json.data.formData
+            if (formDataStr) {
+              const parsed = JSON.parse(formDataStr)
+              applyEditData(parsed as CraftsmanEditData)
+            } else if (!cancelled) {
+              setPageLoading(false)
+            }
+          } else if (!cancelled) {
+            CompanyMessage.error(json.message || '加载申请单失败')
+            navigate('/craftsman-application')
+          }
+        } else {
+          const res = await fetch(`${API_ENDPOINTS.CRAFTSMEN}/${editId}/edit`)
+          const json = await res.json()
+          if (!cancelled && json.code === 200 && json.data) {
+            applyEditData(json.data as CraftsmanEditData)
+          } else if (!cancelled) {
+            CompanyMessage.error(json.message || '加载工匠信息失败')
+            navigate('/craftsman-search')
+          }
         }
       } catch {
         if (!cancelled) {
-          CompanyMessage.error('加载工匠信息失败')
-          navigate('/craftsman-search')
+          CompanyMessage.error('加载信息失败')
+          navigate(isApplication ? '/craftsman-application' : '/craftsman-search')
         }
       } finally {
         if (!cancelled) setPageLoading(false)
@@ -424,7 +447,7 @@ export default function CraftsmanForm() {
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editId, isEdit])
+  }, [editId, isEdit, isApplication])
 
   const certificateItems = useMemo<CertificateUploadItem[]>(() => {
     const selected = skills.filter((s) => formData.serviceSkillIds.includes(s.id))
@@ -577,13 +600,42 @@ export default function CraftsmanForm() {
     return m
   }, [skills])
 
-  const availableSkillCategories = useMemo(() => {
-    const set = new Set<string>()
+  const availableSkillCascadeOptions = useMemo(() => {
+    const selectedIds = new Set(formData.serviceSkillIds)
+    const cat1Map = new Map<string, Map<string, Set<string>>>()
     skills.forEach((s) => {
-      if (s.category3 && !formData.serviceSkillIds.includes(s.id)) set.add(s.category3)
+      if (selectedIds.has(s.id) || !s.category1 || !s.category2 || !s.category3) return
+      let cat2Map = cat1Map.get(s.category1)
+      if (!cat2Map) { cat2Map = new Map(); cat1Map.set(s.category1, cat2Map) }
+      let cat3Set = cat2Map.get(s.category2)
+      if (!cat3Set) { cat3Set = new Set(); cat2Map.set(s.category2, cat3Set) }
+      cat3Set.add(s.category3)
     })
-    return Array.from(set).map((c) => ({ value: c, label: c }))
+    return Array.from(cat1Map.entries()).map(([cat1, cat2Map]) => ({
+      value: cat1,
+      label: cat1,
+      children: Array.from(cat2Map.entries()).map(([cat2, cat3Set]) => ({
+        value: cat2,
+        label: cat2,
+        children: Array.from(cat3Set).map((cat3) => ({
+          value: cat3,
+          label: cat3,
+        })),
+      })),
+    }))
   }, [skills, formData.serviceSkillIds])
+
+  const pendingCategoryPath = useMemo(() => {
+    if (!pendingCategory) return undefined
+    for (const cat1 of availableSkillCascadeOptions) {
+      for (const cat2 of cat1.children || []) {
+        for (const cat3 of cat2.children || []) {
+          if (cat3.value === pendingCategory) return [cat1.value, cat2.value, cat3.value]
+        }
+      }
+    }
+    return undefined
+  }, [pendingCategory, availableSkillCascadeOptions])
 
   const availableSkillsInPendingCategory = useMemo(() => {
     if (!pendingCategory) return []
@@ -700,35 +752,134 @@ export default function CraftsmanForm() {
 
   const handleCancel = handleSmartBack
 
-  const handleSubmit = async () => {
+  const buildPayload = () => ({
+    ...formData,
+    name: idCardName,
+    idCardNo: idCardIdNo,
+    age: idCardAge,
+    serviceProviderName: getServiceProviderById(formData.serviceProviderId || 0)?.name,
+    idCardValidDate: formData.idCardValidDate.length === 2 ? formData.idCardValidDate.join(',') : null,
+    idCardImages: [formData.idCardFrontUrl, formData.idCardBackUrl].filter(Boolean).join(','),
+    residentialAreaLabels: formData.residentialAreaLabels,
+    serviceAreas: formData.serviceAreas.map((a) => a.codes.join(',')),
+    serviceAreaLabels: formData.serviceAreas.map((a) => a.labels.join('/')),
+    workCertificate: formData.workProofType === 1 ? formData.workCertificate : [],
+    serviceRecord: formData.workProofType === 2 ? formData.serviceRecord : [],
+    noCriminalCertificate: formData.noCriminalCertificate,
+    certificates: Object.fromEntries(
+      Object.entries(formData.certificates).map(([k, v]) => [k, v.join(',')]),
+    ),
+  })
+
+  const validateAll = async () => {
     const allForms = [...sectionForms, serviceAreaForm]
     const results = await Promise.allSettled(allForms.map((f) => f.validateFields()))
-    const hasError = results.some((r) => r.status === 'rejected')
-    if (hasError) {
+    return !results.some((r) => r.status === 'rejected')
+  }
+
+  const saveApplicationDraft = async (payload: ReturnType<typeof buildPayload>) => {
+    const res = await fetch(API_ENDPOINTS.CRAFTSMAN_APPLICATIONS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        applicationType: 'add',
+        applicant: idCardName,
+        formData: payload,
+      }),
+    })
+    return res.json()
+  }
+
+  const handleSaveDraft = async () => {
+    const ok = await validateAll()
+    if (!ok) {
+      CompanyMessage.warning('请完善必填项')
+      return
+    }
+    setSaveLoading(true)
+    try {
+      const payload = buildPayload()
+      if (isEdit && editId !== null) {
+        const res = await fetch(`${API_ENDPOINTS.CRAFTSMAN_APPLICATIONS}/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicationType: 'add', applicant: idCardName, formData: payload }),
+        })
+        const json = await res.json()
+        if (json.code === 200) {
+          CompanyMessage.success('已保存')
+          navigate('/craftsman-application', { replace: true, state: { from: fromPath } })
+        } else {
+          CompanyMessage.error(json.message || '保存失败，请稍后重试')
+        }
+      } else {
+        const json = await saveApplicationDraft(payload)
+        if (json.code === 200) {
+          CompanyMessage.success('已保存草稿')
+          navigate('/craftsman-application', { replace: true, state: { from: fromPath } })
+        } else {
+          CompanyMessage.error(json.message || '保存失败，请稍后重试')
+        }
+      }
+    } catch {
+      CompanyMessage.error('保存失败，请稍后重试')
+    } finally {
+      setSaveLoading(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    const ok = await validateAll()
+    if (!ok) {
       CompanyMessage.warning('请完善必填项')
       return
     }
 
     setSubmitLoading(true)
     try {
-      const payload = {
-        ...formData,
-        name: idCardName,
-        idCardNo: idCardIdNo,
-        age: idCardAge,
-        serviceProviderName: getServiceProviderById(formData.serviceProviderId || 0)?.name,
-        idCardValidDate: formData.idCardValidDate.length === 2 ? formData.idCardValidDate.join(',') : null,
-        idCardImages: [formData.idCardFrontUrl, formData.idCardBackUrl].filter(Boolean).join(','),
-        residentialAreaLabels: formData.residentialAreaLabels,
-        serviceAreas: formData.serviceAreas.map((a) => a.codes.join(',')),
-        serviceAreaLabels: formData.serviceAreas.map((a) => a.labels.join('/')),
-        workCertificate: formData.workProofType === 1 ? formData.workCertificate : [],
-        serviceRecord: formData.workProofType === 2 ? formData.serviceRecord : [],
-        noCriminalCertificate: formData.noCriminalCertificate,
-        certificates: Object.fromEntries(
-          Object.entries(formData.certificates).map(([k, v]) => [k, v.join(',')]),
-        ),
+      const payload = buildPayload()
+
+      if (isApplication && !isEdit) {
+        const json = await saveApplicationDraft(payload)
+        if (json.code !== 200) {
+          CompanyMessage.error(json.message || '提交失败，请稍后重试')
+          return
+        }
+        const applicationId = json.data as number
+        const submitRes = await fetch(`${API_ENDPOINTS.CRAFTSMAN_APPLICATIONS}/${applicationId}/submit`, { method: 'PUT' })
+        const submitJson = await submitRes.json()
+        if (submitJson.code === 200) {
+          CompanyMessage.success('已提交审批')
+          navigate('/craftsman-application', { replace: true, state: { from: fromPath } })
+        } else {
+          CompanyMessage.error(submitJson.message || '提交审批失败，申请单已保存为草稿')
+          navigate('/craftsman-application', { replace: true, state: { from: fromPath } })
+        }
+        return
       }
+
+      if (isApplication && isEdit && editId !== null) {
+        const updateRes = await fetch(`${API_ENDPOINTS.CRAFTSMAN_APPLICATIONS}/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicationType: 'add', applicant: idCardName, formData: payload }),
+        })
+        const updateJson = await updateRes.json()
+        if (updateJson.code !== 200) {
+          CompanyMessage.error(updateJson.message || '提交失败，请稍后重试')
+          return
+        }
+        const submitRes = await fetch(`${API_ENDPOINTS.CRAFTSMAN_APPLICATIONS}/${editId}/submit`, { method: 'PUT' })
+        const submitJson = await submitRes.json()
+        if (submitJson.code === 200) {
+          CompanyMessage.success('已提交审批')
+        } else {
+          CompanyMessage.error(submitJson.message || '提交审批失败，更改已保存')
+        }
+        navigate('/craftsman-application', { replace: true, state: { from: fromPath } })
+        return
+      }
+
       const url = isEdit && editId !== null ? `${API_ENDPOINTS.CRAFTSMEN}/${editId}` : API_ENDPOINTS.CRAFTSMEN
       const method = isEdit ? 'PUT' : 'POST'
       const res = await fetch(url, {
@@ -764,15 +915,41 @@ export default function CraftsmanForm() {
   return (
     <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
     <FormPageTemplate
-      title={isEdit ? '编辑工匠' : '新增工匠'}
+      title={isEdit ? '工匠信息变更' : '新增工匠'}
       showBack
       onBack={handleSmartBack}
       submitText="提交"
       submitLoading={submitLoading}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
+      showFooter={!isApplication}
     >
       <div ref={formContainerRef} className="craftsman-form" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+        <section>
+          <SectionTitle title="申请信息" />
+          <CompanyForm layout="horizontal" labelAlign="right" component="div" className="base-info-form" style={{ marginTop: 8 }}>
+            <CompanyRow gutter={24}>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="申请单编码">
+                  <Input value="系统自动生成" disabled />
+                </CompanyForm.Item>
+              </CompanyCol>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="申请单类型">
+                  <Input value={isEdit ? '工匠变更申请' : '工匠新增申请'} disabled />
+                </CompanyForm.Item>
+              </CompanyCol>
+            </CompanyRow>
+            <CompanyRow gutter={24}>
+              <CompanyCol span={24}>
+                <CompanyForm.Item label="备注">
+                  <Input.TextArea rows={2} placeholder="请输入" />
+                </CompanyForm.Item>
+              </CompanyCol>
+            </CompanyRow>
+          </CompanyForm>
+        </section>
 
         <section>
           <SectionTitle title="身份证信息" description="请上传身份证正反面照片，系统将自动识别身份信息，识别成功后将自动填充姓名和身份证号" />
@@ -815,21 +992,22 @@ export default function CraftsmanForm() {
               </CompanyCol>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="身份证号" name="idCardNo" rules={[{ required: true, message: '请输入' }, { pattern: /^\d{17}[\dXx]$/, message: '请输入正确的身份证号' }]}>
-                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardIdNo} onChange={(e) => { setIdCardIdNo(e.target.value); idCardForm.setFieldValue('idCardNo', e.target.value) }} />
+                  <Input placeholder="上传身份证后自动识别" disabled={frontRecognized || recognizingFront} value={idCardIdNo} onChange={(e) => { setIdCardIdNo(e.target.value); idCardForm.setFieldValue('idCardNo', e.target.value) }} />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="年龄" name="idCardAge" rules={[{ required: true, message: '请输入' }]}>
-                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardAge} onChange={(e) => { setIdCardAge(e.target.value); idCardForm.setFieldValue('idCardAge', e.target.value) }} />
+                  <Input placeholder="上传身份证后自动识别" disabled={frontRecognized || recognizingFront} value={idCardAge} onChange={(e) => { setIdCardAge(e.target.value); idCardForm.setFieldValue('idCardAge', e.target.value) }} />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="有效期" name="idCardValidDate" rules={[{ required: true, message: '请选择' }]}>
+                  <div>
                   {formData.idCardValidDate.length === 2 && formData.idCardValidDate[1] === LONG_TERM_LABEL ? (
                     <Input
                       value={`${formData.idCardValidDate[0].replace(/-/g, '.')} - ${LONG_TERM_LABEL}`}
                       readOnly
-                                      disabled={isEdit ? false : (!backRecognized || recognizingBack)}
+                                      disabled={backRecognized || recognizingBack}
                       suffix={
                         <CloseOutlined style={{ color: 'rgba(0,0,0,0.25)', cursor: 'pointer' }} onClick={() => { updateField('idCardValidDate', []); idCardForm.setFieldValue('idCardValidDate', []) }} />
                       }
@@ -839,7 +1017,7 @@ export default function CraftsmanForm() {
                       style={{ width: '100%' }}
                       placeholder={['开始日期', '结束日期']}
                       format="YYYY.MM.DD"
-                      disabled={isEdit ? false : (!backRecognized || recognizingBack)}
+                      disabled={backRecognized || recognizingBack}
                       value={formData.idCardValidDate.length === 2 ? [dayjs(formData.idCardValidDate[0]), dayjs(formData.idCardValidDate[1])] : null}
                       renderExtraFooter={() => (
                         <CompanyButton
@@ -869,6 +1047,7 @@ export default function CraftsmanForm() {
                       }}
                     />
                   )}
+                  </div>
                 </CompanyForm.Item>
               </CompanyCol>
             </CompanyRow>
@@ -906,6 +1085,9 @@ export default function CraftsmanForm() {
               </CompanyCol>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="用户账号" name="userAccount" rules={[{ required: true, message: '请输入' }]}>
+                  {isEdit ? (
+                    <Input value={formData.userAccount} disabled />
+                  ) : (
                   <Space.Compact style={{ width: '100%' }}>
                     <Select
                       value={userAccountMode}
@@ -935,6 +1117,7 @@ export default function CraftsmanForm() {
                       />
                     )}
                   </Space.Compact>
+                  )}
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
@@ -1060,15 +1243,18 @@ export default function CraftsmanForm() {
 
                     {skillAdding ? (
                       <div className="tag-adding">
-                        <Select
+                        <Cascader
                           placeholder="请选择品类"
-                          options={availableSkillCategories}
-                          value={pendingCategory}
-                          onChange={(value) => { setPendingCategory(value as string); setPendingSkillIdList([]) }}
-                          style={{ width: 140 }}
-                          popupMatchSelectWidth={false}
+                          options={availableSkillCascadeOptions}
+                          value={pendingCategoryPath}
+                          onChange={(value) => {
+                            const cat3 = value && value.length === 3 ? String(value[2]) : null
+                            setPendingCategory(cat3)
+                            setPendingSkillIdList([])
+                          }}
+                          style={{ width: 260 }}
+                          changeOnSelect={false}
                           showSearch
-                          optionFilterProp="label"
                         />
                         <Select
                           mode="multiple"
@@ -1085,7 +1271,7 @@ export default function CraftsmanForm() {
                         <CompanyButton type="text" size="middle" style={{ paddingInline: 6, marginLeft: -8, color: '#F95914' }} onClick={handleCancelSkill}>取消</CompanyButton>
                       </div>
                     ) : (
-                      availableSkillCategories.length > 0 && (
+                      availableSkillCascadeOptions.length > 0 && (
                         <CompanyButton className="tag-add-btn" type="dashed" size="middle" icon={<PlusOutlined />} onClick={() => setSkillAdding(true)}>
                           添加技能
                         </CompanyButton>
@@ -1324,6 +1510,15 @@ export default function CraftsmanForm() {
             </Space>
           </Image.PreviewGroup>
         </Modal>
+        {isApplication && (
+          <div className="craftsman-application-footer">
+            <Space size={12}>
+              <CompanyButton onClick={handleCancel}>取消</CompanyButton>
+              <CompanyButton loading={saveLoading} onClick={handleSaveDraft}>保存</CompanyButton>
+              <CompanyButton type="primary" loading={submitLoading} onClick={handleSubmit}>提交</CompanyButton>
+            </Space>
+          </div>
+        )}
     </FormPageTemplate>
     </div>
   )

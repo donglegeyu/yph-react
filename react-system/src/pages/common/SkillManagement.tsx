@@ -24,6 +24,7 @@ const baseFields: FieldDefinition[] = [
   ]},
   { key: 'category2', label: '二级品类', type: 'input', width: 140 },
   { key: 'category3', label: '三级品类', type: 'input', width: 160 },
+  { key: 'categoryAlias', label: '三级品类别名', type: 'input', width: 180, hideInFilter: true },
   { key: 'certificateType', label: '证件类型', type: 'select', width: 160, options: [
     { label: '全部', value: '' },
   ]},
@@ -39,6 +40,7 @@ const largeUrl = (base: string) =>
 const defaultColumnFields: ColumnField[] = [
   { key: 'skillName', label: '服务技能', visible: true, width: 160, fixed: 'left' },
   { key: 'category3', label: '三级品类', visible: true, width: 320 },
+  { key: 'categoryAlias', label: '三级品类别名', visible: true, width: 180 },
   { key: 'certificateType', label: '证件类型', visible: true, width: 160 },
   { key: 'exampleImage', label: '示例图', visible: true, width: 260 },
 ]
@@ -123,6 +125,7 @@ export default function SkillManagement() {
       category1: record.category1 as string,
       category2: record.category2 as string,
       category3: record.category3 as string,
+      categoryAlias: record.categoryAlias as string,
       certificateType: record.certificateType as string,
     })
     setDrawerOpen(true)

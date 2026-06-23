@@ -267,6 +267,9 @@ public class CraftsmanServiceImpl
                         item.setSkillName(skill.getSkillName());
                         item.setCertificateType(certType);
                         item.setCertificateImage(certImageByType.getOrDefault(certType, ""));
+                        item.setCategory1(skill.getCategory1());
+                        item.setCategory2(skill.getCategory2());
+                        item.setCategory3(skill.getCategory3());
                         certItems.add(item);
                     }
                 }

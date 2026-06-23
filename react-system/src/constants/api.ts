@@ -41,6 +41,10 @@ export const API_ENDPOINTS = {
   CRAFTSMEN: `${API_BASE}/craftsmen`,
   CRAFTSMAN_VIEWS: `${API_BASE}/craftsman-views`,
 
+  // 工匠申请
+  CRAFTSMAN_APPLICATIONS: `${API_BASE}/craftsman-applications`,
+  CRAFTSMAN_APPLICATION_VIEWS: `${API_BASE}/craftsman-application-views`,
+
   // 安检结果查询
   SECURITY_CHECKS: `${API_BASE}/security-checks`,
 
@@ -68,9 +72,6 @@ export const API_ENDPOINTS = {
 
   // 题库管理
   QUESTION_BANKS: `${API_BASE}/question-banks`,
-
-  // 试卷管理
-  EXAM_PAPERS: `${API_BASE}/exam-papers`,
 
   // 课程管理
   COURSES: `${API_BASE}/courses`,
