@@ -19,6 +19,7 @@ public class CraftsmanListVO {
     private String userAccount;
     private String email;
     private String serviceProviderName;
+    private String sourceChannel;
     private String craftsmanCategory;
     private Integer craftsmanType;
     private String region;

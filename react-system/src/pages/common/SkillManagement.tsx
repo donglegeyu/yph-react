@@ -302,6 +302,7 @@ export default function SkillManagement() {
       initialValues={drawerInitialValues}
       certOptions={certOptions}
       onOpenManageDrawer={openManageDrawer}
+      manageDrawerOpen={manageDrawerOpen}
       onClose={() => setDrawerOpen(false)}
       onSuccess={refresh}
     />

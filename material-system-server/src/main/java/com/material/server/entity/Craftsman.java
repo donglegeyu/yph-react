@@ -23,6 +23,8 @@ public class Craftsman {
 
     private String serviceProviderName;
 
+    private String sourceChannel;       // 来源渠道：craftsman_app工匠平台app / platform_import中台导入 / platform_create中台新增 / portal_create协同门户新增
+
     private String craftsmanCategory;  // 工匠类别: outsource外部员工, internal内部员工
 
     private Integer craftsmanType;     // 工匠类型: 1正式工匠, 2意向工匠

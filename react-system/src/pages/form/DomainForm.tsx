@@ -806,7 +806,7 @@ export default function DomainForm() {
   }, [])
 
   return (
-    <>
+    <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
     <FormPageTemplate
       title={pageTitle}
       showBack
@@ -984,6 +984,6 @@ export default function DomainForm() {
           </div>
         )}
       </CompanyDrawer>
-    </>
+    </div>
   )
 }

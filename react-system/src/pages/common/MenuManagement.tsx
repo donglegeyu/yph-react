@@ -150,6 +150,12 @@ const iconMap: Record<string, string> = {
   star: 'star',
   home: 'home',
   setting: 'setting',
+  book: 'doc-search',
+  rocket: 'plan',
+  'file-text': 'file-cabinet',
+  read: 'bookmark',
+  'question-circle': 'list',
+  form: 'table',
 }
 
 function getIconName(icon?: string): string {

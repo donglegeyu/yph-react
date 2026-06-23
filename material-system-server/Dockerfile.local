@@ -8,12 +8,9 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /build
 
-# 先复制 pom.xml 利用 Docker 缓存加速依赖下载
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-
-# 复制源码并编译打包
+# 复制源码并编译打包（跳过 dependency:go-offline 避免网络问题）
 COPY src ./src
+COPY pom.xml .
 RUN mvn clean package -DskipTests -B \
     && mv target/material-system-server-1.0.0.jar target/app.jar
 

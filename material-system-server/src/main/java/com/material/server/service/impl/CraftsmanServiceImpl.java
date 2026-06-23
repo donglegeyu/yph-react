@@ -288,6 +288,7 @@ public class CraftsmanServiceImpl
         vo.setUserAccount(c.getUserAccount());
         vo.setEmail(c.getEmail());
         vo.setServiceProviderName(c.getServiceProviderName());
+        vo.setSourceChannel(c.getSourceChannel());
         vo.setCraftsmanCategory(c.getCraftsmanCategory());
         vo.setCraftsmanType(c.getCraftsmanType());
         vo.setRegion(c.getRegion());

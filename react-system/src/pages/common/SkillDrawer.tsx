@@ -22,6 +22,7 @@ interface SkillDrawerProps {
   initialValues?: Partial<SkillFormData>
   certOptions: { label: string; value: string }[]
   onOpenManageDrawer: () => void
+  manageDrawerOpen?: boolean
   onClose: () => void
   onSuccess: () => void
 }
@@ -32,6 +33,7 @@ export default function SkillDrawer({
   initialValues,
   certOptions,
   onOpenManageDrawer,
+  manageDrawerOpen,
   onClose,
   onSuccess,
 }: SkillDrawerProps) {
@@ -118,6 +120,7 @@ export default function SkillDrawer({
       category1: c1 || '',
       category2: c2 || '',
       category3: c3 || '',
+      categoryAlias: c3 || '',
     })
   }
 
@@ -195,6 +198,7 @@ export default function SkillDrawer({
       width={375}
       destroyOnClose
       forceRender
+      rootClassName={manageDrawerOpen ? 'skill-drawer-offset' : undefined}
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <CompanyButton onClick={onClose}>取消</CompanyButton>
@@ -257,6 +261,7 @@ export default function SkillDrawer({
         <CompanyForm.Item
           name="categoryAlias"
           label="三级品类别名"
+          rules={[{ required: true, message: '请输入' }]}
         >
           <Input placeholder="请输入" />
         </CompanyForm.Item>
@@ -276,7 +281,6 @@ export default function SkillDrawer({
         <CompanyForm.Item
           name="certificateType"
           label="证件类型"
-          rules={[{ required: true, message: '请选择' }]}
         >
           <Select
             placeholder="请选择"

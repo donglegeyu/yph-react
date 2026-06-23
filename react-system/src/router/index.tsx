@@ -69,6 +69,11 @@ const CostDeductionAdjust = lazy(() => import('@/pages/purchase/CostDeductionAdj
 const SecurityCheckQuery = lazy(() => import('@/pages/common/SecurityCheckQuery'))
 const SecurityCheckDetail = lazy(() => import('@/pages/common/SecurityCheckDetail'))
 const SkillManagement = lazy(() => import('@/pages/common/SkillManagement'))
+const CoursewareManage = lazy(() => import('@/pages/common/CoursewareManage'))
+const QuestionBankList = lazy(() => import('@/pages/common/QuestionBankList'))
+const ExamPaperList = lazy(() => import('@/pages/common/ExamPaperList'))
+const CourseManage = lazy(() => import('@/pages/common/CourseManage'))
+const TrainingTaskList = lazy(() => import('@/pages/common/TrainingTaskList'))
 const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
 
 const routes: RouteObject[] = [
@@ -139,6 +144,11 @@ const routes: RouteObject[] = [
       { path: 'security-check-query', element: <SecurityCheckQuery /> },
       { path: 'security-check-query/:id', element: <SecurityCheckDetail /> },
       { path: 'craftsman-skill', element: <SkillManagement /> },
+      { path: 'courseware-manage', element: <CoursewareManage /> },
+      { path: 'question-bank-manage', element: <QuestionBankList /> },
+      { path: 'exam-paper-manage', element: <ExamPaperList /> },
+      { path: 'course-manage', element: <CourseManage /> },
+      { path: 'training-task-manage', element: <TrainingTaskList /> },
       { path: '*', element: <BuildingView /> },
     ],
   },

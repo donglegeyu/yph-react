@@ -2,13 +2,14 @@ import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Empty, Skeleton, Row, Col, Image, type TableColumnsType } from 'antd'
 const { PreviewGroup } = Image
-import { DetailPageTemplate, CompanyButton, CompanyMessage, CompanyTable, CompanyTag, SectionTitle, type DetailFieldItem, type DetailTagItem } from '@donglegeyu/company-ui'
+import { DetailPageTemplate, CompanyButton, CompanyMessage, CompanyTable, CompanyTag, SectionTitle, type DetailTagItem } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
-import { mockCertificateInfo, isCertificateExpired } from '@/utils/craftsman'
+import { mockCertificateInfo } from '@/utils/craftsman'
 import { formatAreaCode } from '@/utils/address'
 import { useStatusMap } from '@/hooks'
 import { useSmartBack } from '@/hooks/useSmartBack'
 import { formatBrandNames } from '@/constants/brands'
+// import { formatSourceChannel } from '@/constants/sourceChannels'
 import './CraftsmanDetail.scss'
 
 interface CraftsmanRecord {
@@ -20,6 +21,7 @@ interface CraftsmanRecord {
   userAccount: string
   email: string
   serviceProviderName: string
+  sourceChannel?: string
   craftsmanCategory: string
   craftsmanType: number
   region: string
@@ -55,10 +57,10 @@ const craftsmanTypeMap: Record<number, string> = {
   2: '意向工匠',
 }
 
-function maskPhone(phone: string | undefined): string {
-  if (!phone || phone.length < 11) return phone || '--'
-  return `${phone.slice(0, 3)}****${phone.slice(-4)}`
-}
+// function maskPhone(phone: string | undefined): string {
+//   if (!phone || phone.length < 11) return phone || '--'
+//   return `${phone.slice(0, 3)}****${phone.slice(-4)}`
+// }
 
 function formatIdCardValidDate(raw: string | undefined): string {
   if (!raw) return '--'
@@ -124,24 +126,25 @@ export default function CraftsmanDetail() {
     ]
   }, [detail, getStatusText])
 
-  const infoFields: DetailFieldItem[] = useMemo(() => {
-    if (!detail) return []
-    const allNames = detail.serviceSkillNames ? detail.serviceSkillNames.split(',') : []
-    const certs = detail.certificates || []
-    const validNames = allNames.filter((_, idx) => {
-      const cert = certs[idx]
-      if (!cert) return true
-      return !isCertificateExpired(cert.certificateType, idx)
-    })
-    return [
-      { label: '工匠编号', value: detail.craftsmanCode || '--' },
-      { label: '所属服务商', value: detail.craftsmanCategory === 'external' ? '--' : (detail.serviceProviderName || '--') },
-      { label: '手机号', value: maskPhone(detail.phone) },
-      { label: '用户账号', value: detail.userAccount || '--' },
-      { label: '邮箱', value: detail.email || '--' },
-      { label: '服务技能', value: validNames.length > 0 ? validNames.join('、') : '--' },
-    ]
-  }, [detail])
+  // const infoFields: DetailFieldItem[] = useMemo(() => {
+  //   if (!detail) return []
+  //   const allNames = detail.serviceSkillNames ? detail.serviceSkillNames.split(',') : []
+  //   const certs = detail.certificates || []
+  //   const validNames = allNames.filter((_, idx) => {
+  //     const cert = certs[idx]
+  //     if (!cert) return true
+  //     return !isCertificateExpired(cert.certificateType, idx)
+  //   })
+  //   return [
+  //     { label: '工匠编号', value: detail.craftsmanCode || '--' },
+  //     { label: '所属服务商', value: detail.craftsmanCategory === 'external' ? '--' : (detail.serviceProviderName || '--') },
+  //     { label: '手机号', value: maskPhone(detail.phone) },
+  //     { label: '用户账号', value: detail.userAccount || '--' },
+  //     { label: '来源渠道', value: formatSourceChannel(detail.sourceChannel) },
+  //     { label: '邮箱', value: detail.email || '--' },
+  //     { label: '服务技能', value: validNames.length > 0 ? validNames.join('、') : '--' },
+  //   ]
+  // }, [detail])
 
   if (loading) {
     return (
@@ -173,7 +176,7 @@ export default function CraftsmanDetail() {
       avatar={(detail.name || '?').charAt(0)}
       primaryName={detail.name}
       tags={tags}
-      infoFields={infoFields}
+      // infoFields={infoFields}
       tabs={[
         {
           key: 'detail',

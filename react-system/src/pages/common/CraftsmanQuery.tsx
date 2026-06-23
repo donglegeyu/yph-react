@@ -15,8 +15,8 @@ import {
 } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
 import { SERVICE_PROVIDER_LIST } from '@/constants/serviceProviders'
+import { SOURCE_CHANNEL_LIST, formatSourceChannel } from '@/constants/sourceChannels'
 import { useListData, useStatusMap, useMenuTitle } from '@/hooks'
-import { isCertificateExpired } from '@/utils/craftsman'
 import './CraftsmanQuery.scss'
 
 interface CraftsmanRecord {
@@ -27,10 +27,10 @@ interface CraftsmanRecord {
   phone: string
   userAccount: string
   serviceProviderName: string
+  sourceChannel: string
   craftsmanCategory: string
   craftsmanType: number
   region: string
-  serviceSkillNames: string
   serviceSkillImages: string
   certificates?: { skillName: string; certificateType: string; certificateImage: string }[]
   registerTime: string
@@ -62,7 +62,10 @@ const fields: FieldDefinition[] = [
     { label: '停用', value: 0 },
   ]},
   { key: 'userAccount', label: '用户账号', type: 'input', width: 150 },
-  { key: 'serviceSkillNames', label: '服务技能', type: 'input', width: 150 },
+  { key: 'sourceChannel', label: '来源渠道', type: 'select', width: 130, options: [
+    { label: '全部', value: '' },
+    ...SOURCE_CHANNEL_LIST.map((o) => ({ label: o.label, value: o.value })),
+  ]},
   { key: 'registerTime', label: '注册时间', type: 'input', width: 160 },
   { key: 'action', label: '操作', width: 180, fixed: 'right' },
 ]
@@ -76,7 +79,7 @@ const defaultColumnFields: ColumnField[] = [
   { key: 'craftsmanType', label: '工匠类型', visible: true, width: 100 },
   { key: 'status', label: '状态', visible: true, width: 100 },
   { key: 'userAccount', label: '用户账号', visible: true, width: 150 },
-  { key: 'serviceSkillNames', label: '服务技能', visible: true, width: 150 },
+  { key: 'sourceChannel', label: '来源渠道', visible: true, width: 130 },
   { key: 'registerTime', label: '注册时间', visible: true, width: 160 },
 ]
 
@@ -240,16 +243,9 @@ export default function CraftsmanQuery() {
         return <span>{categoryMap[craftsmanRecord.craftsmanCategory] || craftsmanRecord.craftsmanCategory}</span>
       }
 
-      if (column.key === 'serviceSkillNames') {
-        const raw = craftsmanRecord.serviceSkillNames as string
-        if (!raw) return <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
-        const certs = craftsmanRecord.certificates || []
-        const validNames = raw.split(',').filter((_, idx) => {
-          const cert = certs[idx]
-          if (!cert) return true
-          return !isCertificateExpired(cert.certificateType, idx)
-        })
-        return <span>{validNames.length > 0 ? validNames.join('、') : '--'}</span>
+      if (column.key === 'sourceChannel') {
+        const raw = craftsmanRecord.sourceChannel as string | undefined
+        return <span>{formatSourceChannel(raw)}</span>
       }
 
       if (column.key === 'craftsmanType') {

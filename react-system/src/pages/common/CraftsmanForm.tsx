@@ -5,6 +5,7 @@ const { RangePicker } = DatePicker
 import { UploadOutlined, PlusOutlined, CloseOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import pcaCodeData from 'china-division/dist/pca-code.json'
+import pcasCodeData from 'china-division/dist/pcas-code.json'
 import {
   CompanyMessage,
   CompanyButton,
@@ -379,7 +380,6 @@ export default function CraftsmanForm() {
     setIdCardAge(data.age != null ? String(data.age) : '')
 
     baseInfoForm.setFieldsValue({
-      name: data.name || '',
       phone: data.phone || '',
       userAccount: data.userAccount || '',
       email: data.email || '',
@@ -394,6 +394,9 @@ export default function CraftsmanForm() {
       idCardNo: data.idCardNo || '',
       idCardFrontUrl: data.idCardFrontUrl || '',
       idCardBackUrl: data.idCardBackUrl || '',
+      idCardName: data.name || '',
+      idCardAge: data.age != null ? String(data.age) : '',
+      idCardValidDate: idCardValidDate,
     })
   }
 
@@ -440,6 +443,18 @@ export default function CraftsmanForm() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
+  const streetOptions = useMemo(() => {
+    if (formData.residentialArea.length !== 3) return []
+    const [provCode, cityCode, areaCode] = formData.residentialArea.map(String)
+    const prov = (pcasCodeData as DivisionRegion[]).find((p) => String(p.code) === provCode)
+    if (!prov?.children) return []
+    const city = prov.children.find((c) => String(c.code) === cityCode)
+    if (!city?.children) return []
+    const area = city.children.find((a) => String(a.code) === areaCode)
+    if (!area?.children) return []
+    return area.children.map((s) => ({ value: s.name, label: s.name }))
+  }, [formData.residentialArea])
+
   const recognizeIdCard = (side: 'front' | 'back', url: string) => {
     if (!url) return
     if (side === 'front') {
@@ -458,9 +473,15 @@ export default function CraftsmanForm() {
             if (m0 < 0 || (m0 === 0 && now.getDate() < birth.getDate())) calculated--
             if (!isNaN(calculated) && calculated >= 0) age = String(calculated)
         }
-        setIdCardName(idCardName || '张三')
+        const randomNames = ['张建国', '李明华', '王秀英', '赵志强', '刘德才', '陈玉芬', '杨永福', '周桂兰', '吴国栋', '孙丽萍']
+        const randomName = randomNames[Math.floor(Math.random() * randomNames.length)]
+        const resolvedName = idCardName || randomName
+        setIdCardName(resolvedName)
         setIdCardIdNo(idCardNo)
         setIdCardAge(age || '')
+        idCardForm.setFieldValue('idCardName', resolvedName)
+        idCardForm.setFieldValue('idCardNo', idCardNo)
+        idCardForm.setFieldValue('idCardAge', age || '')
         setFrontRecognized(true)
         setRecognizingFront(false)
         CompanyMessage.success('身份证人像面识别成功')
@@ -468,7 +489,9 @@ export default function CraftsmanForm() {
     } else {
       setRecognizingBack(true)
       setTimeout(() => {
-        updateField('idCardValidDate', ['2010-01-01', '2030-01-01'])
+        const validDates = ['2010-01-01', '2030-01-01']
+        updateField('idCardValidDate', validDates)
+        idCardForm.setFieldValue('idCardValidDate', validDates)
         setBackRecognized(true)
         setRecognizingBack(false)
         CompanyMessage.success('身份证国徽面识别成功')
@@ -482,10 +505,12 @@ export default function CraftsmanForm() {
       setIdCardName('')
       setIdCardIdNo('')
       setIdCardAge('')
+      idCardForm.setFieldsValue({ idCardFrontUrl: '', idCardName: '', idCardNo: '', idCardAge: '' })
       setFrontRecognized(false)
     } else {
       updateField('idCardBackUrl', '')
       updateField('idCardValidDate', [])
+      idCardForm.setFieldsValue({ idCardBackUrl: '', idCardValidDate: [] })
       setBackRecognized(false)
     }
   }
@@ -688,6 +713,7 @@ export default function CraftsmanForm() {
     try {
       const payload = {
         ...formData,
+        name: idCardName,
         idCardNo: idCardIdNo,
         age: idCardAge,
         serviceProviderName: getServiceProviderById(formData.serviceProviderId || 0)?.name,
@@ -749,19 +775,110 @@ export default function CraftsmanForm() {
       <div ref={formContainerRef} className="craftsman-form" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
         <section>
+          <SectionTitle title="身份证信息" description="请上传身份证正反面照片，系统将自动识别身份信息，识别成功后将自动填充姓名和身份证号" />
+          <CompanyForm form={idCardForm} layout="horizontal" labelAlign="right" requiredMark validateTrigger="onBlur" component="div" className="base-info-form" style={{ marginTop: 8 }}>
+            <CompanyRow gutter={24}>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="身份证人像面" name="idCardFrontUrl" rules={[{ required: true, message: '请上传' }]}>
+                  <ConfigProvider theme={uploadTheme}>
+                    <Upload {...buildUploadProps('idCardFront', (urls) => { const u = urls[0] || ''; updateField('idCardFrontUrl', u); recognizeIdCard('front', u); idCardForm.setFieldValue('idCardFrontUrl', u) }, 1, () => handleIdCardRemove('front'))}>
+                      {!formData.idCardFrontUrl && (
+                        <div style={{ color: 'rgba(0,0,0,0.45)' }}>
+                          <UploadOutlined style={{ fontSize: 16 }} />
+                          <div style={{ marginTop: 2, fontSize: 12 }}>上传人像面</div>
+                        </div>
+                      )}
+                    </Upload>
+                  </ConfigProvider>
+                </CompanyForm.Item>
+              </CompanyCol>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="身份证国徽面" name="idCardBackUrl" rules={[{ required: true, message: '请上传' }]}>
+                  <ConfigProvider theme={uploadTheme}>
+                    <Upload {...buildUploadProps('idCardBack', (urls) => { const u = urls[0] || ''; updateField('idCardBackUrl', u); recognizeIdCard('back', u); idCardForm.setFieldValue('idCardBackUrl', u) }, 1, () => handleIdCardRemove('back'))}>
+                      {!formData.idCardBackUrl && (
+                        <div style={{ color: 'rgba(0,0,0,0.45)' }}>
+                          <UploadOutlined style={{ fontSize: 16 }} />
+                          <div style={{ marginTop: 2, fontSize: 12 }}>上传国徽面</div>
+                        </div>
+                      )}
+                    </Upload>
+                  </ConfigProvider>
+                </CompanyForm.Item>
+              </CompanyCol>
+            </CompanyRow>
+            <CompanyRow gutter={24}>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="姓名" name="idCardName" rules={[{ required: true, message: '请输入' }]}>
+                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardName} onChange={(e) => { setIdCardName(e.target.value); idCardForm.setFieldValue('idCardName', e.target.value) }} />
+                </CompanyForm.Item>
+              </CompanyCol>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="身份证号" name="idCardNo" rules={[{ required: true, message: '请输入' }, { pattern: /^\d{17}[\dXx]$/, message: '请输入正确的身份证号' }]}>
+                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardIdNo} onChange={(e) => { setIdCardIdNo(e.target.value); idCardForm.setFieldValue('idCardNo', e.target.value) }} />
+                </CompanyForm.Item>
+              </CompanyCol>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="年龄" name="idCardAge" rules={[{ required: true, message: '请输入' }]}>
+                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardAge} onChange={(e) => { setIdCardAge(e.target.value); idCardForm.setFieldValue('idCardAge', e.target.value) }} />
+                </CompanyForm.Item>
+              </CompanyCol>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="有效期" name="idCardValidDate" rules={[{ required: true, message: '请选择' }]}>
+                  {formData.idCardValidDate.length === 2 && formData.idCardValidDate[1] === LONG_TERM_LABEL ? (
+                    <Input
+                      value={`${formData.idCardValidDate[0].replace(/-/g, '.')} - ${LONG_TERM_LABEL}`}
+                      readOnly
+                                      disabled={isEdit ? false : (!backRecognized || recognizingBack)}
+                      suffix={
+                        <CloseOutlined style={{ color: 'rgba(0,0,0,0.25)', cursor: 'pointer' }} onClick={() => { updateField('idCardValidDate', []); idCardForm.setFieldValue('idCardValidDate', []) }} />
+                      }
+                    />
+                  ) : (
+                    <RangePicker
+                      style={{ width: '100%' }}
+                      placeholder={['开始日期', '结束日期']}
+                      format="YYYY.MM.DD"
+                      disabled={isEdit ? false : (!backRecognized || recognizingBack)}
+                      value={formData.idCardValidDate.length === 2 ? [dayjs(formData.idCardValidDate[0]), dayjs(formData.idCardValidDate[1])] : null}
+                      renderExtraFooter={() => (
+                        <CompanyButton
+                          type="link"
+                          size="small"
+                          style={{ padding: 0, height: 'auto' }}
+                          onClick={() => {
+                            const start = formData.idCardValidDate[0] || dayjs().format('YYYY-MM-DD')
+                            const longTermDates = [start, LONG_TERM_LABEL]
+                            updateField('idCardValidDate', longTermDates)
+                            idCardForm.setFieldValue('idCardValidDate', longTermDates)
+                          }}
+                        >
+                          长期
+                        </CompanyButton>
+                      )}
+                      onChange={(values, dateStrings) => {
+                        const strs = (dateStrings as string[]) || []
+                        if (values && values[0] && values[1]) {
+                          const dates = [values[0].format('YYYY-MM-DD'), values[1].format('YYYY-MM-DD')]
+                          updateField('idCardValidDate', dates)
+                          idCardForm.setFieldValue('idCardValidDate', dates)
+                        } else {
+                          updateField('idCardValidDate', strs)
+                          idCardForm.setFieldValue('idCardValidDate', strs)
+                        }
+                      }}
+                    />
+                  )}
+                </CompanyForm.Item>
+              </CompanyCol>
+            </CompanyRow>
+          </CompanyForm>
+        </section>
+
+        <section>
           <SectionTitle title="基础信息" />
           <CompanyForm form={baseInfoForm} layout="horizontal" labelAlign="right" requiredMark validateTrigger="onBlur" component="div" className="base-info-form" style={{ marginTop: 8 }}>
             <CompanyRow gutter={24}>
-              <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="姓名" name="name" rules={[{ required: true, message: '请输入' }]}>
-                  <Input placeholder="请输入" value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
-                </CompanyForm.Item>
-              </CompanyCol>
-              <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="手机号" name="phone" rules={[{ required: true, message: '请输入' }, { pattern: /^1\d{10}$/, message: '请输入正确的手机号' }]}>
-                  <Input placeholder="请输入" value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} />
-                </CompanyForm.Item>
-              </CompanyCol>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="所属服务商" name="serviceProviderId" rules={[{ required: true, message: '请选择' }]}>
                   <Select
@@ -780,6 +897,11 @@ export default function CraftsmanForm() {
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="工匠类别">
                   <Input placeholder="选择所属服务商后反显" disabled value={getServiceProviderById(formData.serviceProviderId || 0)?.categoryName} />
+                </CompanyForm.Item>
+              </CompanyCol>
+              <CompanyCol span={colSpan}>
+                <CompanyForm.Item label="手机号" name="phone" rules={[{ required: true, message: '请输入' }, { pattern: /^1\d{10}$/, message: '请输入正确的手机号' }]}>
+                  <Input placeholder="请输入" value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
@@ -837,116 +959,31 @@ export default function CraftsmanForm() {
                     placeholder="请选择"
                     value={formData.residentialArea as string[]}
                     onChange={(value, selectedOptions) => {
-                      updateField('residentialArea', value as string[])
-                      updateField('residentialAreaLabels', selectedOptions.map((o: DivisionRegion) => o.name))
+                      updateField('residentialArea', (value as string[]) || [])
+                      updateField('residentialAreaLabels', selectedOptions ? selectedOptions.map((o: DivisionRegion) => o.name) : [])
+                      updateField('residentialStreet', '')
+                      residentialForm.setFieldValue('residentialStreet', '')
                     }}
                   />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="街道" name="residentialStreet" rules={[{ required: true, message: '请输入街道/乡镇' }]}>
-                  <Input placeholder="请输入街道/乡镇" value={formData.residentialStreet} onChange={(e) => updateField('residentialStreet', e.target.value)} />
+                <CompanyForm.Item label="街道" name="residentialStreet" rules={[{ required: true, message: '请选择街道/乡镇' }]}>
+                  <Select
+                    placeholder="请选择街道/乡镇"
+                    showSearch
+                    optionFilterProp="label"
+                    disabled={formData.residentialArea.length !== 3}
+                    value={formData.residentialStreet || undefined}
+                    onChange={(val) => updateField('residentialStreet', val)}
+                    options={streetOptions}
+                    notFoundContent={formData.residentialArea.length !== 3 ? '请先选择省/市/区' : '无街道数据'}
+                  />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan} className="label-top">
                 <CompanyForm.Item label="详细地址" name="residentialDetail" rules={[{ required: true, message: '请输入' }]}>
                   <Input.TextArea rows={2} placeholder="请输入" value={formData.residentialDetail} onChange={(e) => updateField('residentialDetail', e.target.value)} />
-                </CompanyForm.Item>
-              </CompanyCol>
-            </CompanyRow>
-          </CompanyForm>
-        </section>
-
-        <section>
-          <SectionTitle title="身份证信息" description="请上传身份证正反面照片，系统将自动识别身份信息，识别成功后将自动填充姓名和身份证号" />
-          <CompanyForm form={idCardForm} layout="horizontal" labelAlign="right" requiredMark validateTrigger="onBlur" component="div" className="base-info-form" style={{ marginTop: 8 }}>
-            <CompanyRow gutter={24}>
-              <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="身份证人像面" name="idCardFrontUrl" rules={[{ required: true, message: '请上传' }]}>
-                  <ConfigProvider theme={uploadTheme}>
-                    <Upload {...buildUploadProps('idCardFront', (urls) => { const u = urls[0] || ''; updateField('idCardFrontUrl', u); recognizeIdCard('front', u); idCardForm.setFieldValue('idCardFrontUrl', u) }, 1, () => handleIdCardRemove('front'))}>
-                      {!formData.idCardFrontUrl && (
-                        <div style={{ color: 'rgba(0,0,0,0.45)' }}>
-                          <UploadOutlined style={{ fontSize: 16 }} />
-                          <div style={{ marginTop: 2, fontSize: 12 }}>上传人像面</div>
-                        </div>
-                      )}
-                    </Upload>
-                  </ConfigProvider>
-                </CompanyForm.Item>
-              </CompanyCol>
-              <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="身份证国徽面" name="idCardBackUrl" rules={[{ required: true, message: '请上传' }]}>
-                  <ConfigProvider theme={uploadTheme}>
-                    <Upload {...buildUploadProps('idCardBack', (urls) => { const u = urls[0] || ''; updateField('idCardBackUrl', u); recognizeIdCard('back', u); idCardForm.setFieldValue('idCardBackUrl', u) }, 1, () => handleIdCardRemove('back'))}>
-                      {!formData.idCardBackUrl && (
-                        <div style={{ color: 'rgba(0,0,0,0.45)' }}>
-                          <UploadOutlined style={{ fontSize: 16 }} />
-                          <div style={{ marginTop: 2, fontSize: 12 }}>上传国徽面</div>
-                        </div>
-                      )}
-                    </Upload>
-                  </ConfigProvider>
-                </CompanyForm.Item>
-              </CompanyCol>
-            </CompanyRow>
-            <CompanyRow gutter={24}>
-              <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="姓名">
-                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardName} onChange={(e) => setIdCardName(e.target.value)} />
-                </CompanyForm.Item>
-              </CompanyCol>
-              <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="身份证号" rules={[{ pattern: /^\d{17}[\dXx]$/, message: '请输入正确的身份证号' }]}>
-                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardIdNo} onChange={(e) => setIdCardIdNo(e.target.value)} />
-                </CompanyForm.Item>
-              </CompanyCol>
-              <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="年龄">
-                  <Input placeholder="上传身份证后自动识别" disabled={isEdit ? false : (!frontRecognized || recognizingFront)} value={idCardAge} onChange={(e) => setIdCardAge(e.target.value)} />
-                </CompanyForm.Item>
-              </CompanyCol>
-              <CompanyCol span={colSpan}>
-                <CompanyForm.Item label="有效期">
-                  {formData.idCardValidDate.length === 2 && formData.idCardValidDate[1] === LONG_TERM_LABEL ? (
-                    <Input
-                      value={`${formData.idCardValidDate[0].replace(/-/g, '.')} - ${LONG_TERM_LABEL}`}
-                      readOnly
-                                      disabled={isEdit ? false : (!backRecognized || recognizingBack)}
-                      suffix={
-                        <CloseOutlined style={{ color: 'rgba(0,0,0,0.25)', cursor: 'pointer' }} onClick={() => updateField('idCardValidDate', [])} />
-                      }
-                    />
-                  ) : (
-                    <RangePicker
-                      style={{ width: '100%' }}
-                      placeholder={['开始日期', '结束日期']}
-                      format="YYYY.MM.DD"
-                      disabled={isEdit ? false : (!backRecognized || recognizingBack)}
-                      value={formData.idCardValidDate.length === 2 ? [dayjs(formData.idCardValidDate[0]), dayjs(formData.idCardValidDate[1])] : null}
-                      renderExtraFooter={() => (
-                        <CompanyButton
-                          type="link"
-                          size="small"
-                          style={{ padding: 0, height: 'auto' }}
-                          onClick={() => {
-                            const start = formData.idCardValidDate[0] || dayjs().format('YYYY-MM-DD')
-                            updateField('idCardValidDate', [start, LONG_TERM_LABEL])
-                          }}
-                        >
-                          长期
-                        </CompanyButton>
-                      )}
-                      onChange={(values, dateStrings) => {
-                        const strs = (dateStrings as string[]) || []
-                        if (values && values[0] && values[1]) {
-                          updateField('idCardValidDate', [values[0].format('YYYY-MM-DD'), values[1].format('YYYY-MM-DD')])
-                        } else {
-                          updateField('idCardValidDate', strs)
-                        }
-                      }}
-                    />
-                  )}
                 </CompanyForm.Item>
               </CompanyCol>
             </CompanyRow>

@@ -63,6 +63,21 @@ export const API_ENDPOINTS = {
   // 技能管理
   SKILLS: `${API_BASE}/skills`,
 
+  // 课件管理
+  COURSEWARES: `${API_BASE}/coursewares`,
+
+  // 题库管理
+  QUESTION_BANKS: `${API_BASE}/question-banks`,
+
+  // 试卷管理
+  EXAM_PAPERS: `${API_BASE}/exam-papers`,
+
+  // 课程管理
+  COURSES: `${API_BASE}/courses`,
+
+  // 培训任务管理
+  TRAINING_TASKS: `${API_BASE}/training-tasks`,
+
   // 证件类型图片库
   CERTIFICATE_IMAGES: `${API_BASE}/certificate-images`,
 
