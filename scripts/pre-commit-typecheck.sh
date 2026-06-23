@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# pre-commit 钩子：提交前自动检查 TypeScript 类型
+# 只在本次提交涉及 react-system 源码时才跑 tsc，避免提交文档/SQL 时也等待
+set -e
+
+# 判断本次暂存区是否有 react-system 源码改动
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep '^react-system/src/.*\.\(ts\|tsx\)$' || true)
+if [ -z "$STAGED_TS" ]; then
+  exit 0
+fi
+
+echo "🔍 检测到 react-system TypeScript 改动，执行类型检查..."
+echo "   涉及文件："
+echo "$STAGED_TS" | sed 's/^/     - /'
+
+cd react-system
+
+# tsc -b 增量编译，速度快；noUnusedLocals/noUnusedParameters 严格检查
+if npx tsc -b 2>&1; then
+  echo "✅ TypeScript 类型检查通过"
+  exit 0
+else
+  echo ""
+  echo "❌ TypeScript 类型检查失败，请修复后再提交"
+  echo "   提示：本地可手动运行 cd react-system && npx tsc -b 复现"
+  exit 1
+fi

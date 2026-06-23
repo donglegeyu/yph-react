@@ -9,7 +9,7 @@ import {
   type ColumnField,
 } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
-import { useListData, useStatusMap } from '@/hooks'
+import { useListData } from '@/hooks'
 
 interface CoursewareRecord {
   [key: string]: unknown

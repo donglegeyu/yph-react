@@ -67,8 +67,8 @@ const fields: FieldDefinition[] = [
   { key: 'taskCategory', label: '任务分类', type: 'select', width: 110, options: taskCategoryOptions },
   { key: 'taskTarget', label: '任务对象', type: 'input', width: 200 },
   { key: 'taskCount', label: '任务数量', type: 'input', width: 90 },
-  { key: 'startTime', label: '开始时间', type: 'dateRange', width: 120 },
-  { key: 'endTime', label: '结束时间', type: 'dateRange', width: 120 },
+  { key: 'startTime', label: '开始时间', type: 'daterange', width: 120 },
+  { key: 'endTime', label: '结束时间', type: 'daterange', width: 120 },
   { key: 'certRule', label: '发证规则', type: 'select', width: 100, options: certRuleOptions },
   { key: 'traineeCount', label: '参训人数', type: 'input', width: 90, hideInFilter: true },
   { key: 'completedCount', label: '已完成', type: 'input', width: 80, hideInFilter: true },
@@ -86,7 +86,7 @@ const fields: FieldDefinition[] = [
     { label: '未提交', value: 'pending' },
   ]},
   { key: 'createdBy', label: '创建人', type: 'input', width: 90 },
-  { key: 'createdTime', label: '创建时间', type: 'dateRange', width: 155 },
+  { key: 'createdTime', label: '创建时间', type: 'daterange', width: 155 },
   { key: 'action', label: '操作', width: 200, fixed: 'right' },
 ]
 
