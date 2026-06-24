@@ -175,9 +175,9 @@ export default function CraftsmanForm() {
   const [skills, setSkills] = useState<SkillOption[]>([])
   const [examplePreview, setExamplePreview] = useState<{ visible: boolean; title: string; images: string[] }>({ visible: false, title: '', images: [] })
   const [frontRecognized, setFrontRecognized] = useState(false)
-  const [backRecognized, setBackRecognized] = useState(false)
+  const [, setBackRecognized] = useState(false)
   const [recognizingFront, setRecognizingFront] = useState(false)
-  const [recognizingBack, setRecognizingBack] = useState(false)
+  const [, setRecognizingBack] = useState(false)
   const [idCardName, setIdCardName] = useState('')
   const [idCardIdNo, setIdCardIdNo] = useState('')
   const [idCardAge, setIdCardAge] = useState('')
@@ -992,12 +992,12 @@ export default function CraftsmanForm() {
               </CompanyCol>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="身份证号" name="idCardNo" rules={[{ required: true, message: '请输入' }, { pattern: /^\d{17}[\dXx]$/, message: '请输入正确的身份证号' }]}>
-                  <Input placeholder="上传身份证后自动识别" disabled={frontRecognized || recognizingFront} value={idCardIdNo} onChange={(e) => { setIdCardIdNo(e.target.value); idCardForm.setFieldValue('idCardNo', e.target.value) }} />
+                  <Input placeholder="上传身份证后自动识别" disabled value={idCardIdNo} onChange={(e) => { setIdCardIdNo(e.target.value); idCardForm.setFieldValue('idCardNo', e.target.value) }} />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
                 <CompanyForm.Item label="年龄" name="idCardAge" rules={[{ required: true, message: '请输入' }]}>
-                  <Input placeholder="上传身份证后自动识别" disabled={frontRecognized || recognizingFront} value={idCardAge} onChange={(e) => { setIdCardAge(e.target.value); idCardForm.setFieldValue('idCardAge', e.target.value) }} />
+                  <Input placeholder="上传身份证后自动识别" disabled value={idCardAge} onChange={(e) => { setIdCardAge(e.target.value); idCardForm.setFieldValue('idCardAge', e.target.value) }} />
                 </CompanyForm.Item>
               </CompanyCol>
               <CompanyCol span={colSpan}>
@@ -1007,7 +1007,7 @@ export default function CraftsmanForm() {
                     <Input
                       value={`${formData.idCardValidDate[0].replace(/-/g, '.')} - ${LONG_TERM_LABEL}`}
                       readOnly
-                                      disabled={backRecognized || recognizingBack}
+                                      disabled
                       suffix={
                         <CloseOutlined style={{ color: 'rgba(0,0,0,0.25)', cursor: 'pointer' }} onClick={() => { updateField('idCardValidDate', []); idCardForm.setFieldValue('idCardValidDate', []) }} />
                       }
@@ -1017,7 +1017,7 @@ export default function CraftsmanForm() {
                       style={{ width: '100%' }}
                       placeholder={['开始日期', '结束日期']}
                       format="YYYY.MM.DD"
-                      disabled={backRecognized || recognizingBack}
+                      disabled
                       value={formData.idCardValidDate.length === 2 ? [dayjs(formData.idCardValidDate[0]), dayjs(formData.idCardValidDate[1])] : null}
                       renderExtraFooter={() => (
                         <CompanyButton

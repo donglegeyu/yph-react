@@ -3,6 +3,9 @@
 # 只在本次提交涉及 react-system 源码时才跑 tsc，避免提交文档/SQL 时也等待
 set -e
 
+# 确保 node/npx 可用（git hook 的 PATH 可能不含 node）
+export PATH="$HOME/.local/node/bin:$HOME/.nvm/versions/node/*/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
+
 # 判断本次暂存区是否有 react-system 源码改动
 STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep '^react-system/src/.*\.\(ts\|tsx\)$' || true)
 if [ -z "$STAGED_TS" ]; then
