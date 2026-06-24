@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Row, Col, Image, type TableColumnsType } from 'antd'
 const { PreviewGroup } = Image
-import { CompanyTable, CompanyTag, CompanyButton, CompanyMessage, SectionTitle } from '@donglegeyu/company-ui'
+import { CompanyTable, CompanyTag, SectionTitle } from '@donglegeyu/company-ui'
 import { mockCertificateInfo } from '@/utils/craftsman'
 import { buildCategoryPath } from '@/pages/common/categoryOptions'
 import { formatBrandNames } from '@/constants/brands'
@@ -110,12 +110,11 @@ const certificateStatusMap: Record<CertificateRecord['status'], { text: string; 
 }
 
 export function CapabilityTable({
-  craftsmanName,
   certificates,
   serviceArea,
   brandNames,
 }: {
-  craftsmanName: string
+  craftsmanName?: string
   certificates?: CertificateItem[]
   serviceArea?: string
   brandNames?: string
@@ -186,22 +185,6 @@ export function CapabilityTable({
     },
     { title: '生效日期', dataIndex: 'effectiveDate', key: 'effectiveDate', width: 120, render: renderText },
     { title: '失效日期', dataIndex: 'expiryDate', key: 'expiryDate', width: 120, render: renderText },
-    {
-      title: '操作',
-      key: 'action',
-      width: 100,
-      fixed: 'right',
-      render: (_: unknown, record: CertificateRecord) => (
-        <CompanyButton
-          type="link"
-          disabled={!record.certificateNo}
-          style={{ padding: 0 }}
-          onClick={() => CompanyMessage.info(`${craftsmanName} 的更换证照功能开发中`)}
-        >
-          更换证照
-        </CompanyButton>
-      ),
-    },
   ]
 
   return (

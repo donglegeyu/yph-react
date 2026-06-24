@@ -207,11 +207,6 @@ export default function CraftsmanDetail() {
           label: '工单列表',
           children: <WorkorderTable craftsmanName={detail.name} />,
         },
-        {
-          key: 'changelog',
-          label: '变更记录',
-          children: <ChangelogTable />,
-        },
       ]}
       activeTab={activeTab}
       onTabChange={setActiveTab}
@@ -324,48 +319,3 @@ function WorkorderTable({ craftsmanName }: { craftsmanName: string }) {
   )
 }
 
-interface ChangelogRecord {
-  id: number
-  updateTime: string
-  before: string
-  after: string
-  operator: string
-}
-
-const changelogDataSource: ChangelogRecord[] = [
-  { id: 1, updateTime: '2026-01-15 10:30:00', before: '-', after: '创建工匠账号（张建国）', operator: 'system' },
-  { id: 2, updateTime: '2026-01-15 10:35:00', before: '-', after: '工匠类型：意向工匠', operator: 'system' },
-  { id: 3, updateTime: '2026-02-03 14:20:00', before: '工匠类型：意向工匠', after: '工匠类型：正式工匠', operator: 'admin001' },
-  { id: 4, updateTime: '2026-02-03 14:22:00', before: '状态：启用', after: '状态：禁用', operator: 'admin001' },
-  { id: 5, updateTime: '2026-02-10 09:15:00', before: '状态：禁用', after: '状态：启用', operator: 'admin002' },
-  { id: 6, updateTime: '2026-03-01 16:40:00', before: '手机号：138****1234', after: '手机号：139****5678', operator: 'zhangjianguo' },
-  { id: 7, updateTime: '2026-03-05 11:00:00', before: '常住地址：北京市朝阳区建国路1号', after: '常住地址：北京市朝阳区建国路88号', operator: 'zhangjianguo' },
-  { id: 8, updateTime: '2026-03-12 15:30:00', before: '服务技能：燃气具安装', after: '服务技能：燃气具安装、燃气具维修、管道安装', operator: 'admin001' },
-  { id: 9, updateTime: '2026-04-08 10:10:00', before: '-', after: '新增证照：燃气安全操作证（GA202205100001）', operator: 'admin002' },
-  { id: 10, updateTime: '2026-05-20 13:45:00', before: '身份证号：110*****0001', after: '身份证号：110*****0002', operator: 'admin001' },
-]
-
-function ChangelogTable() {
-  const dataSource = useMemo(() => changelogDataSource, [])
-
-  const columns: TableColumnsType<ChangelogRecord> = [
-    { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
-    { title: '变更前', dataIndex: 'before', key: 'before', width: 320, ellipsis: true, render: (v: string) => v || <span style={{ color: 'rgba(0,0,0,0.25)' }}>--</span> },
-    { title: '变更后', dataIndex: 'after', key: 'after', width: 360, ellipsis: true, render: (v: string) => v || <span style={{ color: 'rgba(0,0,0,0.25)' }}>--</span> },
-    { title: '变更人', dataIndex: 'operator', key: 'operator', width: 150, ellipsis: true },
-  ]
-
-  return (
-    <div style={{ padding: '0 0 16px' }}>
-      <CompanyTable
-        dataSource={dataSource}
-        columns={columns}
-        rowKey="id"
-        size="small"
-        pagination={false}
-        scroll={{ x: 1100 }}
-        locale={{ emptyText: '暂无变更记录' }}
-      />
-    </div>
-  )
-}

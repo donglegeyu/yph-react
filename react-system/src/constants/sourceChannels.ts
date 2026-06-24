@@ -4,10 +4,11 @@ export interface SourceChannelOption {
 }
 
 export const SOURCE_CHANNEL_LIST: SourceChannelOption[] = [
-  { value: 'craftsman_app', label: '工匠平台app' },
+  { value: 'craftsman_app', label: '慧帮手app' },
   { value: 'platform_import', label: '中台导入' },
   { value: 'platform_create', label: '中台新增' },
   { value: 'portal_create', label: '协同门户新增' },
+  { value: 'initial_data', label: '初始化数据' },
 ]
 
 export const SOURCE_CHANNEL_MAP: Record<string, string> = SOURCE_CHANNEL_LIST.reduce(

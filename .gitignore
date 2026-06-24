@@ -35,3 +35,4 @@ opencode.json
 # 但其中的临时文件可以忽略
 docs/generated/changelog.txt
 
+*.zip
