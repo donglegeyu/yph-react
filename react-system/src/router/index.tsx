@@ -75,6 +75,7 @@ const CoursewareManage = lazy(() => import('@/pages/common/CoursewareManage'))
 const QuestionBankList = lazy(() => import('@/pages/common/QuestionBankList'))
 const CourseManage = lazy(() => import('@/pages/common/CourseManage'))
 const TrainingTaskList = lazy(() => import('@/pages/common/TrainingTaskList'))
+const QualityFeedbackList = lazy(() => import('@/pages/common/QualityFeedbackList'))
 const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
 
 const routes: RouteObject[] = [
@@ -153,6 +154,7 @@ const routes: RouteObject[] = [
       { path: 'question-bank-manage', element: <QuestionBankList /> },
       { path: 'course-manage', element: <CourseManage /> },
       { path: 'training-task-manage', element: <TrainingTaskList /> },
+      { path: 'quality-feedback-list', element: <QualityFeedbackList /> },
       { path: '*', element: <BuildingView /> },
     ],
   },

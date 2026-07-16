@@ -79,6 +79,9 @@ export const API_ENDPOINTS = {
   // 培训任务管理
   TRAINING_TASKS: `${API_BASE}/training-tasks`,
 
+  // 品质反馈
+  QUALITY_FEEDBACKS: `${API_BASE}/quality-feedbacks`,
+
   // 证件类型图片库
   CERTIFICATE_IMAGES: `${API_BASE}/certificate-images`,
 

@@ -260,8 +260,7 @@ export default function LoginView() {
               <span className="divider-line" />
             </div>
             <div className="demo-info">
-              <span>账号：craftsman</span>
-              <span>密码：123123</span>
+              <span>联系管理员获取 - craftsman</span>
             </div>
           </div>
         </div>
