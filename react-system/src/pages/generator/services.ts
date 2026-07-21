@@ -165,9 +165,12 @@ export async function savePageDefinition(
   return success(saved)
 }
 
-export async function publishPageDefinition(id: string): Promise<ApiResult<null>> {
+export async function publishPageDefinition(id: string, domainId: number | null): Promise<ApiResult<null>> {
+  const url = domainId != null
+    ? `${API_ENDPOINTS.PAGE_DEFINITIONS}/${id}/publish?domainId=${domainId}`
+    : `${API_ENDPOINTS.PAGE_DEFINITIONS}/${id}/publish`
   const res = await apiJson<null>(
-    `${API_ENDPOINTS.PAGE_DEFINITIONS}/${id}/publish`,
+    url,
     'POST',
   )
   if (res.code !== 200) return error(res.message)

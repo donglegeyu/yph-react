@@ -12,10 +12,14 @@ import com.material.server.mapper.PageDefinitionMapper;
 import com.material.server.mapper.SysDomainMenuMapper;
 import com.material.server.mapper.SysRoleMapper;
 import com.material.server.mapper.SysRoleMenuMapper;
+import com.material.server.mapper.SysUserMapper;
+import com.material.server.mapper.SysUserRoleMapper;
 import com.material.server.entity.SysDomain;
 import com.material.server.entity.SysDomainMenu;
 import com.material.server.entity.SysRole;
 import com.material.server.entity.SysRoleMenu;
+import com.material.server.entity.SysUser;
+import com.material.server.entity.SysUserRole;
 import com.material.server.mapper.SysDomainMapper;
 import com.material.server.service.PageDefinitionService;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +28,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -39,6 +46,8 @@ public class PageDefinitionServiceImpl
     private final SysDomainMenuMapper sysDomainMenuMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysRoleMenuMapper sysRoleMenuMapper;
+    private final SysUserMapper sysUserMapper;
+    private final SysUserRoleMapper sysUserRoleMapper;
 
     @Override
     @Transactional
@@ -93,7 +102,7 @@ public class PageDefinitionServiceImpl
 
     @Override
     @Transactional
-    public void publish(Long id) {
+    public void publish(Long id, Long domainId) {
         PageDefinition entity = this.getById(id);
         if (entity == null) {
             throw new BusinessException("页面定义不存在：" + id);
@@ -109,9 +118,9 @@ public class PageDefinitionServiceImpl
         entity.setUpdatedTime(LocalDateTime.now());
         this.updateById(entity);
 
-        // 2. 联动 nav_menu
+        // 2. 联动 nav_menu（菜单仅同步到当前域）
         try {
-            syncMenu(entity, dto);
+            syncMenu(entity, dto, domainId);
         } catch (Exception e) {
             log.error("发布时菜单联动失败 pageKey={}", dto.getPageKey(), e);
             throw new BusinessException("菜单联动失败：" + e.getMessage());
@@ -141,7 +150,7 @@ public class PageDefinitionServiceImpl
 
     // ============= 内部：菜单联动 =============
 
-    private void syncMenu(PageDefinition entity, PageDefinitionDTO dto) {
+    private void syncMenu(PageDefinition entity, PageDefinitionDTO dto, Long domainId) {
         String path = "/dynamic/" + dto.getPageKey();
         String mode = entity.getMenuLinkMode() != null ? entity.getMenuLinkMode() : "new_child";
 
@@ -170,68 +179,104 @@ public class PageDefinitionServiceImpl
         query.eq(NavMenu::getKey, childKey);
         NavMenu existing = navMenuMapper.selectOne(query);
 
+        Long menuId;
         if (existing != null) {
             // 已存在，更新 label/path
             existing.setLabel(dto.getPageName());
             existing.setPath(path);
             navMenuMapper.updateById(existing);
+            menuId = existing.getId();
             log.info("菜单联动 - 子菜单已存在，更新: key={}", childKey);
-            return;
+        } else {
+            NavMenu child = new NavMenu();
+            child.setKey(childKey);
+            child.setLabel(dto.getPageName());
+            child.setPath(path);
+            child.setParentId(entity.getParentMenuId());
+            child.setLevel(2);
+            child.setMenuType("业务菜单");
+            child.setIcon("app");
+            child.setSort(99);
+            child.setStatus(1);
+            child.setVisible(1);
+            navMenuMapper.insert(child);
+            menuId = child.getId();
+            log.info("菜单联动 - 新建子菜单: key={}, id={}", childKey, menuId);
         }
 
-        NavMenu child = new NavMenu();
-        child.setKey(childKey);
-        child.setLabel(dto.getPageName());
-        child.setPath(path);
-        child.setParentId(entity.getParentMenuId());
-        child.setLevel(2);
-        child.setMenuType("业务菜单");
-        child.setIcon("app");
-        child.setSort(99);
-        child.setStatus(1);
-        child.setVisible(1);
-        navMenuMapper.insert(child);
-        log.info("菜单联动 - 新建子菜单: key={}, id={}", childKey, child.getId());
-
-        // 同步默认域
-        syncDefaultDomainMenu(child.getId());
-        // 同步超管角色权限
-        syncAdminRoleMenu(child.getId());
+        // 仅同步到当前域（不跨域开放；其他域需管理员在「域管理」手动开放）
+        if (domainId != null) {
+            syncDomainMenu(menuId, entity.getParentMenuId(), domainId);
+        } else {
+            log.warn("菜单联动 - 未传入 domainId，跳过域同步: menuId={}", menuId);
+        }
+        // 同步给 admin + 创建者角色（保证创建者本人可见）
+        syncRoleMenuForPublisher(menuId, entity.getCreatedBy());
     }
 
-    private void syncDefaultDomainMenu(Long menuId) {
-        LambdaQueryWrapper<SysDomain> domainQuery = new LambdaQueryWrapper<>();
-        domainQuery.eq(SysDomain::getIsDefault, 1)
-                .eq(SysDomain::getStatus, 1);
-        List<SysDomain> defaultDomains = sysDomainMapper.selectList(domainQuery);
-        for (SysDomain domain : defaultDomains) {
-            LambdaQueryWrapper<SysDomainMenu> q = new LambdaQueryWrapper<>();
-            q.eq(SysDomainMenu::getDomainId, domain.getId())
-                    .eq(SysDomainMenu::getMenuId, menuId);
-            if (sysDomainMenuMapper.selectCount(q) == 0) {
-                SysDomainMenu sdm = new SysDomainMenu();
-                sdm.setDomainId(domain.getId());
-                sdm.setMenuId(menuId);
-                sysDomainMenuMapper.insert(sdm);
-            }
+    /**
+     * 仅把菜单挂到当前域（幂等）。不再遍历所有启用域。
+     */
+    private void syncDomainMenu(Long menuId, Long parentMenuId, Long domainId) {
+        LambdaQueryWrapper<SysDomainMenu> q = new LambdaQueryWrapper<>();
+        q.eq(SysDomainMenu::getDomainId, domainId)
+                .eq(SysDomainMenu::getMenuId, menuId);
+        if (sysDomainMenuMapper.selectCount(q) == 0) {
+            SysDomainMenu sdm = new SysDomainMenu();
+            sdm.setDomainId(domainId);
+            sdm.setMenuId(menuId);
+            sdm.setCustomParentId(parentMenuId);
+            sdm.setCustomLevel(2);
+            sysDomainMenuMapper.insert(sdm);
         }
     }
 
-    private void syncAdminRoleMenu(Long menuId) {
+    /**
+     * 把菜单同步给「admin 角色 + 创建者所属的所有角色」，确保创建者本人发布后立即可见。
+     * 其他角色不自动同步，需管理员在「角色管理」手动分配。
+     */
+    private void syncRoleMenuForPublisher(Long menuId, String createdBy) {
+        Set<Long> targetRoleIds = new HashSet<>();
+
+        // admin 角色
         LambdaQueryWrapper<SysRole> roleQuery = new LambdaQueryWrapper<>();
         roleQuery.eq(SysRole::getRoleCode, "ROLE_ADMIN");
         List<SysRole> admins = sysRoleMapper.selectList(roleQuery);
-        for (SysRole role : admins) {
+        admins.forEach(r -> targetRoleIds.add(r.getId()));
+
+        // 创建者所属的所有角色
+        if (createdBy != null && !createdBy.isEmpty()) {
+            LambdaQueryWrapper<SysUser> userQuery = new LambdaQueryWrapper<>();
+            userQuery.eq(SysUser::getUsername, createdBy);
+            SysUser user = sysUserMapper.selectOne(userQuery);
+            if (user == null) {
+                log.warn("菜单联动 - 创建者用户不存在: createdBy={}, 仅同步 admin 角色", createdBy);
+            } else {
+                List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
+                        new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, user.getId()));
+                if (userRoles.isEmpty()) {
+                    log.warn("菜单联动 - 创建者无任何角色: createdBy={}, 仅同步 admin 角色", createdBy);
+                } else {
+                    userRoles.forEach(ur -> targetRoleIds.add(ur.getRoleId()));
+                }
+            }
+        } else {
+            log.warn("菜单联动 - createdBy 为空，仅同步 admin 角色: menuId={}", menuId);
+        }
+
+        // 幂等插入 sys_role_menu
+        for (Long roleId : targetRoleIds) {
             LambdaQueryWrapper<SysRoleMenu> q = new LambdaQueryWrapper<>();
-            q.eq(SysRoleMenu::getRoleId, role.getId())
+            q.eq(SysRoleMenu::getRoleId, roleId)
                     .eq(SysRoleMenu::getMenuId, menuId);
             if (sysRoleMenuMapper.selectCount(q) == 0) {
                 SysRoleMenu srm = new SysRoleMenu();
-                srm.setRoleId(role.getId());
+                srm.setRoleId(roleId);
                 srm.setMenuId(menuId);
                 sysRoleMenuMapper.insert(srm);
             }
         }
+        log.info("菜单联动 - 角色权限已同步: menuId={}, roleIds={}", menuId, targetRoleIds);
     }
 
     // ============= 工具方法 =============

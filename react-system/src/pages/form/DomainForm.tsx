@@ -349,37 +349,67 @@ export default function DomainForm() {
     }
   }
 
+  function collectAncestorMenuIds(menus: SystemMenu[], targetId: number): number[] {
+    const ancestors: number[] = []
+    function find(menus: SystemMenu[], targetId: number): boolean {
+      for (const menu of menus) {
+        if (menu.id === targetId) return true
+        if (menu.children?.length) {
+          if (find(menu.children, targetId)) {
+            ancestors.push(menu.id)
+            return true
+          }
+        }
+      }
+      return false
+    }
+    find(menus, targetId)
+    return ancestors
+  }
+
   function confirmSelection() {
     const sysMenuMap = collectAllMenus(systemMenus)
     const existingMenuIds = new Set(domainMenus.map(m => m.menuId))
 
+    // 收集所有选中菜单的祖先菜单ID
+    const ancestorIds = new Set<number>()
+    checkedKeys.forEach(id => {
+      const menuId = Number(id)
+      for (const aid of collectAncestorMenuIds(systemMenus, menuId)) {
+        if (!existingMenuIds.has(aid)) {
+          ancestorIds.add(aid)
+        }
+      }
+    })
+
+    // 合并：先祖先，再选中的
+    const allMenuIdsToAdd = [...ancestorIds, ...checkedKeys.map(id => Number(id))]
+    const uniqueMenuIdsToAdd = [...new Set(allMenuIdsToAdd)].filter(id => !existingMenuIds.has(id))
+
     setDomainMenus(prev => {
       const newMenus = [...prev]
       let nextId = Math.max(0, ...prev.map(m => m.id ?? 0)) + 1
-      checkedKeys.forEach(id => {
-        const menuId = Number(id)
-        if (!existingMenuIds.has(menuId)) {
-          const sysMenu = sysMenuMap.get(menuId)
-          const parentResult = findParentAndLevel(systemMenus, menuId)
-          const sysParentMenuId = parentResult?.parentId || 0
-          let customParentId: number | null = null
-          if (sysParentMenuId !== 0) {
-            const parentDomainMenu = prev.find(d => d.menuId === sysParentMenuId)
-            if (parentDomainMenu?.id) customParentId = parentDomainMenu.id
-          }
-          newMenus.push({
-            id: nextId++,
-            domainId: 0,
-            menuId,
-            customLabel: '',
-            sort: newMenus.length,
-            originalLabel: sysMenu?.label || '',
-            status: 1,
-            customParentId,
-            customLevel: parentResult?.level || null,
-            icon: sysMenu?.icon || '',
-          })
+      uniqueMenuIdsToAdd.forEach(menuId => {
+        const sysMenu = sysMenuMap.get(menuId)
+        const parentResult = findParentAndLevel(systemMenus, menuId)
+        const sysParentMenuId = parentResult?.parentId || 0
+        let customParentId: number | null = null
+        if (sysParentMenuId !== 0) {
+          const parentDomainMenu = newMenus.find(d => d.menuId === sysParentMenuId)
+          if (parentDomainMenu?.id) customParentId = parentDomainMenu.id
         }
+        newMenus.push({
+          id: nextId++,
+          domainId: 0,
+          menuId,
+          customLabel: '',
+          sort: newMenus.length,
+          originalLabel: sysMenu?.label || '',
+          status: 1,
+          customParentId,
+          customLevel: parentResult?.level || null,
+          icon: sysMenu?.icon || '',
+        })
       })
       setMenuStatusMap(prevMap => {
         const next = new Map(prevMap)

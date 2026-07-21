@@ -311,9 +311,10 @@ export default function PageGeneratorWizard({ initial }: Props) {
         return
       }
 
-      // 需要发布：调 publish 接口触发后端菜单联动
+      // 需要发布：调 publish 接口触发后端菜单联动（菜单仅同步到当前域）
       if (publish) {
-        const pubRes = await publishPageDefinition(String(res.data.id))
+        const currentDomainId = Number(localStorage.getItem('currentDomainId') || '0') || null
+        const pubRes = await publishPageDefinition(String(res.data.id), currentDomainId)
         if (pubRes.code !== 200) {
           CompanyMessage.error('发布失败：' + pubRes.message)
           return

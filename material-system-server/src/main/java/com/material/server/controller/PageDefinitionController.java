@@ -82,10 +82,14 @@ public class PageDefinitionController {
 
     /**
      * 发布
+     *
+     * @param id       页面定义 ID
+     * @param domainId 当前域 ID（菜单仅同步到该域，不跨域开放）
      */
     @PostMapping("/{id}/publish")
-    public Result<Void> publish(@PathVariable Long id) {
-        pageDefinitionService.publish(id);
+    public Result<Void> publish(@PathVariable Long id,
+                                @RequestParam(required = false) Long domainId) {
+        pageDefinitionService.publish(id, domainId);
         return Result.success();
     }
 
