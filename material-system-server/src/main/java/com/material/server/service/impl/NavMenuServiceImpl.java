@@ -239,9 +239,17 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
 
     @Override
     public void batchDelete(List<Long> ids) {
+        // 收集所有子孙菜单ID
+        List<Long> allIds = new ArrayList<>(ids);
+        for (Long id : ids) {
+            collectDescendantIds(id, allIds);
+        }
+
         sysDomainMenuMapper.delete(new LambdaQueryWrapper<SysDomainMenu>()
-                .in(SysDomainMenu::getMenuId, ids));
-        removeBatchByIds(ids);
+                .in(SysDomainMenu::getMenuId, allIds));
+        sysRoleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>()
+                .in(SysRoleMenu::getMenuId, allIds));
+        removeBatchByIds(allIds);
     }
 
     @Override
@@ -292,12 +300,36 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
 
     @Override
     public boolean removeById(java.io.Serializable id) {
+        // 收集所有子孙菜单ID
+        List<Long> allIds = new ArrayList<>();
+        collectDescendantIds((Long) id, allIds);
+        allIds.add((Long) id);
+
+        // 批量逻辑删除
         boolean result = super.removeById(id);
         if (result) {
+            // 级联逻辑删除子孙菜单
+            for (int i = 1; i < allIds.size(); i++) {
+                super.removeById(allIds.get(i));
+            }
+            // 清理域菜单关联
             sysDomainMenuMapper.delete(new LambdaQueryWrapper<SysDomainMenu>()
-                    .eq(SysDomainMenu::getMenuId, id));
+                    .in(SysDomainMenu::getMenuId, allIds));
+            // 清理角色权限关联
+            sysRoleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>()
+                    .in(SysRoleMenu::getMenuId, allIds));
         }
         return result;
+    }
+
+    private void collectDescendantIds(Long parentId, List<Long> ids) {
+        List<NavMenu> children = list(new LambdaQueryWrapper<NavMenu>()
+                .eq(NavMenu::getParentId, parentId)
+                .eq(NavMenu::getDeleted, 0));
+        for (NavMenu child : children) {
+            ids.add(child.getId());
+            collectDescendantIds(child.getId(), ids);
+        }
     }
 
     private void syncMenuToDefaultDomain(NavMenu menu) {

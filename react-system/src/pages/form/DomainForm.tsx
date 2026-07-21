@@ -821,14 +821,15 @@ export default function DomainForm() {
         <div className="basic-info-form">
           <BaseInfoForm
             ref={baseInfoFormRef}
-            value={formData}
+            value={formData as unknown as Record<string, string | number | boolean | null | undefined>}
             fields={baseInfoFields}
             layout="horizontal"
             onFieldChange={(field, value) => {
-              if (field === 'domainName' && !isEdit && value) {
-                setFormData(prev => ({ ...prev, domainName: value, domainKey: generateDomainKey(value) }))
+              const strValue = String(value)
+              if (field === 'domainName' && !isEdit && strValue) {
+                setFormData(prev => ({ ...prev, domainName: strValue, domainKey: generateDomainKey(strValue) }))
               } else {
-                setFormData(prev => ({ ...prev, [field]: value }))
+                setFormData(prev => ({ ...prev, [field]: field === 'status' ? Number(value) : strValue }))
               }
             }}
           />

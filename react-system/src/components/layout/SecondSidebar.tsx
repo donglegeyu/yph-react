@@ -50,7 +50,7 @@ function getIconName(icon?: string): string {
   return icon ? iconMap[icon] || icon : 'id-card-v-klbe0a04'
 }
 
-const hideKeys = ['system-settings', 'component-preview']
+const hideKeys: string[] = []
 
 type RenderMenuItem = MenuItem & { menuKey?: string }
 
@@ -163,7 +163,15 @@ export default function SecondSidebar() {
   const handleClick = useCallback(
     (menu: RenderMenuItem) => {
       if (menu.path) {
-        navigateToPath(menu.path)
+        // 通过 path 同步 activeFirstMenu + activeKey（zustand set 会触发 FirstSidebar 订阅）
+        const result = navigateToPath(menu.path)
+        // 兜底：navigateToPath 没找到时（菜单可能刚发布未同步到 secondMenusMap），
+        // 用当前 activeFirstMenu（用户正在悬停的一级菜单）保底，避免被清空
+        if (!result) {
+          if (activeFirstMenu) {
+            useAppStore.getState().setActiveKey(menu.key)
+          }
+        }
         openTab(menu.key, menu.label, menu.path)
         setLocalActiveKey(menu.key)
         if (menu.children?.length) {
@@ -182,7 +190,7 @@ export default function SecondSidebar() {
         delayHideSidebar()
       }
     },
-    [navigateToPath, openTab, addExpandedKey, currentSecondMenus, secondSidebarFixed, delayHideSidebar, navigate]
+    [navigateToPath, openTab, addExpandedKey, currentSecondMenus, secondSidebarFixed, delayHideSidebar, navigate, activeFirstMenu]
   )
 
   const handleToggleFavorite = useCallback(

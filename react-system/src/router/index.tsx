@@ -24,7 +24,6 @@ const TagListView = lazy(() => import('@/pages/common/TagListView'))
 const CategoryListView = lazy(() => import('@/pages/common/CategoryListView'))
 const BrandListView = lazy(() => import('@/pages/common/BrandListView'))
 const MenuManagement = lazy(() => import('@/pages/common/MenuManagement'))
-const ComponentPreview = lazy(() => import('@/pages/common/ComponentPreview'))
 const DomainForm = lazy(() => import('@/pages/form/DomainForm'))
 const DomainManagement = lazy(() => import('@/pages/common/DomainManagement'))
 const UserManagement = lazy(() => import('@/pages/common/UserManagement'))
@@ -76,6 +75,9 @@ const QuestionBankList = lazy(() => import('@/pages/common/QuestionBankList'))
 const CourseManage = lazy(() => import('@/pages/common/CourseManage'))
 const TrainingTaskList = lazy(() => import('@/pages/common/TrainingTaskList'))
 const QualityFeedbackList = lazy(() => import('@/pages/common/QualityFeedbackList'))
+const PageGenerator = lazy(() => import('@/pages/generator/PageGenerator'))
+const PageGeneratorEdit = lazy(() => import('@/pages/generator/PageGeneratorEdit'))
+const DynamicListPage = lazy(() => import('@/pages/common/DynamicListPage'))
 const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
 
 const routes: RouteObject[] = [
@@ -109,7 +111,6 @@ const routes: RouteObject[] = [
       { path: 'category-list', element: <CategoryListView /> },
       { path: 'brand-list', element: <BrandListView /> },
       { path: 'menu-management', element: <MenuManagement /> },
-      { path: 'component-preview', element: <ComponentPreview /> },
       { path: 'domain-manage/create', element: <DomainForm /> },
       { path: 'domain-manage/:id', element: <DomainForm /> },
       { path: 'domain-manage', element: <DomainManagement /> },
@@ -155,6 +156,10 @@ const routes: RouteObject[] = [
       { path: 'course-manage', element: <CourseManage /> },
       { path: 'training-task-manage', element: <TrainingTaskList /> },
       { path: 'quality-feedback-list', element: <QualityFeedbackList /> },
+      { path: 'page-generator', element: <PageGenerator /> },
+      { path: 'page-generator/create', element: <PageGeneratorEdit /> },
+      { path: 'page-generator/edit/:id', element: <PageGeneratorEdit /> },
+      { path: 'dynamic/:pageKey', element: <DynamicListPage /> },
       { path: '*', element: <BuildingView /> },
     ],
   },

@@ -287,14 +287,8 @@ export default function FirstSidebar() {
 
   const handleThemeSettings = useCallback(() => {
     setAdminPopoverOpen(false)
-    useAppStore.getState().openTab('theme-settings', '主题设置', '/component-preview')
-    useAppStore.getState().setActiveFirstMenu('')
-    useAppStore.getState().setActiveKey('')
-    useAppStore.getState().setExpandedKeys([])
-    useAppStore.setState({ secondSidebarHovered: false })
-    setActiveKey('')
-    navigate('/component-preview')
-  }, [navigate])
+    setThemeDrawerVisible(true)
+  }, [])
 
   const handleThemeColorChange = useCallback((color: string) => {
     setSelectedThemeColor(color)

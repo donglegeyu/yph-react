@@ -83,9 +83,7 @@ INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_ty
 -- 4.3 「系统设置」目录
 INSERT INTO nav_menu (`key`, label, path, icon, sort, status, parent_id, menu_type) VALUES
 ('system-settings',    '系统设置', NULL,               'tool', 4, 1,
-    (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='settings-center') t), '业务菜单'),
-('component-preview',  '组件预览', '/component-preview','app',  1, 1,
-    (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='system-settings') t), '业务菜单');
+    (SELECT id FROM (SELECT id FROM nav_menu WHERE `key`='settings-center') t), '业务菜单');
 
 -- ============================================================
 -- 五、工匠中心下的二级/三级菜单
