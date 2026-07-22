@@ -232,36 +232,19 @@ public class PageDefinitionServiceImpl
     }
 
     /**
-     * 把菜单同步给「admin 角色 + 创建者所属的所有角色」，确保创建者本人发布后立即可见。
-     * 其他角色不自动同步，需管理员在「角色管理」手动分配。
+     * 把菜单同步给「所有启用角色」，确保发布后所有用户可见。
+     * 动态生成的业务菜单默认开放，如需细粒度控制可在「角色管理」调整。
      */
     private void syncRoleMenuForPublisher(Long menuId, String createdBy) {
-        Set<Long> targetRoleIds = new HashSet<>();
-
-        // admin 角色
+        // 取所有启用角色
         LambdaQueryWrapper<SysRole> roleQuery = new LambdaQueryWrapper<>();
-        roleQuery.eq(SysRole::getRoleCode, "ROLE_ADMIN");
-        List<SysRole> admins = sysRoleMapper.selectList(roleQuery);
-        admins.forEach(r -> targetRoleIds.add(r.getId()));
+        roleQuery.eq(SysRole::getStatus, 1);
+        List<SysRole> activeRoles = sysRoleMapper.selectList(roleQuery);
+        Set<Long> targetRoleIds = new HashSet<>();
+        activeRoles.forEach(r -> targetRoleIds.add(r.getId()));
 
-        // 创建者所属的所有角色
         if (createdBy != null && !createdBy.isEmpty()) {
-            LambdaQueryWrapper<SysUser> userQuery = new LambdaQueryWrapper<>();
-            userQuery.eq(SysUser::getUsername, createdBy);
-            SysUser user = sysUserMapper.selectOne(userQuery);
-            if (user == null) {
-                log.warn("菜单联动 - 创建者用户不存在: createdBy={}, 仅同步 admin 角色", createdBy);
-            } else {
-                List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
-                        new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, user.getId()));
-                if (userRoles.isEmpty()) {
-                    log.warn("菜单联动 - 创建者无任何角色: createdBy={}, 仅同步 admin 角色", createdBy);
-                } else {
-                    userRoles.forEach(ur -> targetRoleIds.add(ur.getRoleId()));
-                }
-            }
-        } else {
-            log.warn("菜单联动 - createdBy 为空，仅同步 admin 角色: menuId={}", menuId);
+            log.info("菜单联动 - 发布者: {}, 同步给所有启用角色: {}", createdBy, targetRoleIds);
         }
 
         // 幂等插入 sys_role_menu

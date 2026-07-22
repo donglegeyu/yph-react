@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   ActionCell,
   CompanyButton,
@@ -52,6 +52,7 @@ const STORAGE_KEY = 'domain-management-column-settings'
 
 export default function DomainManagement() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { loading, dataSource, pagination, filterParams, setFilterParams, fetchData, refresh } = useListData<DomainRecord>({
     apiEndpoint: API_ENDPOINTS.DOMAINS,
     defaultPageSize: 20,
@@ -194,7 +195,7 @@ export default function DomainManagement() {
   useEffect(() => {
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [location.pathname, location.key])
 
   return (
     <SmartListTemplate

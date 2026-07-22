@@ -17,9 +17,27 @@ function error<T = null>(message: string): ApiResult<T> {
   return { code: 500, message, data: null as unknown as T }
 }
 
+// 从 localStorage 读取当前登录用户名，附带到 X-User-Name header
+function getCurrentUsername(): string {
+  try {
+    const raw = localStorage.getItem('app:userInfo')
+    if (raw) {
+      const info = JSON.parse(raw)
+      if (info && typeof info.username === 'string' && info.username) {
+        return info.username
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return 'system'
+}
+
 async function apiGet<T>(url: string): Promise<ApiResult<T>> {
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, {
+      headers: { 'X-User-Name': getCurrentUsername() },
+    })
     const json = await res.json()
     return json as ApiResult<T>
   } catch (e) {
@@ -35,7 +53,10 @@ async function apiJson<T>(
   try {
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Name': getCurrentUsername(),
+      },
       body: body ? JSON.stringify(body) : undefined,
     })
     const json = await res.json()

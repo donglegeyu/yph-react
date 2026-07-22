@@ -250,25 +250,80 @@ export default function DomainForm() {
     const keyword = menuSearchKeyword
 
     function filter(menus: SystemMenu[]): any[] {
-      return menus.filter(menu => {
-        if (addedMenuIds.has(menu.id)) return false
+      const result: any[] = []
+      for (const menu of menus) {
         const match = keyword
           ? menu.label.toLowerCase().includes(keyword.toLowerCase())
           : true
         const children = menu.children ? filter(menu.children) : []
-        if (match || children.length > 0) {
-          return true
+        const isAdded = addedMenuIds.has(menu.id)
+        const hasChildren = menu.children && menu.children.length > 0
+
+        if (isAdded && hasChildren) {
+          if (children.length === 0 && !match) continue
+          result.push({
+            label: menu.label,
+            id: menu.id,
+            disableCheckbox: true,
+            disabled: true,
+            children,
+          })
+          continue
         }
-        return false
-      }).map(menu => ({
-        label: menu.label,
-        id: menu.id,
-        children: menu.children ? filter(menu.children) : [],
-      }))
+        if (isAdded && !hasChildren) {
+          if (!match) continue
+          result.push({
+            label: `${menu.label}（已添加）`,
+            id: menu.id,
+            disableCheckbox: true,
+            disabled: true,
+            children,
+          })
+          continue
+        }
+        if (match || children.length > 0) {
+          result.push({
+            label: menu.label,
+            id: menu.id,
+            children,
+          })
+        }
+      }
+      return result
     }
 
     return filter(systemMenus)
   })()
+
+  // 搜索时自动展开包含匹配节点的所有父级
+  useEffect(() => {
+    if (!menuSearchKeyword) return
+    const keyword = menuSearchKeyword.toLowerCase()
+    const keysToExpand = new Set<number>()
+    function walk(menus: SystemMenu[], ancestors: number[]) {
+      for (const menu of menus) {
+        const currentAncestors = [...ancestors, menu.id]
+        const match = menu.label.toLowerCase().includes(keyword)
+        if (menu.children?.length) {
+          const childMatched = walk(menu.children, currentAncestors)
+          if (match || childMatched) {
+            currentAncestors.forEach(id => keysToExpand.add(id))
+            return true
+          }
+        } else if (match) {
+          currentAncestors.forEach(id => keysToExpand.add(id))
+          return true
+        }
+      }
+      return false
+    }
+    walk(systemMenus, [])
+    setExpandedKeys(prev => {
+      const next = new Set(prev)
+      keysToExpand.forEach(id => next.add(id))
+      return Array.from(next)
+    })
+  }, [menuSearchKeyword, systemMenus])
 
   // -------- menuTreeData --------
   const menuTreeData = (() => {
@@ -297,7 +352,7 @@ export default function DomainForm() {
       const sysParentId = getSystemParentId(dm.menuId)
       if (sysParentId === 0) return null
       const parentDomainMenu = domainMenus.find(d => d.menuId === sysParentId)
-      if (parentDomainMenu?.id) return parentDomainMenu.id
+      if (parentDomainMenu) return sysParentId
       return null
     }
 
@@ -316,7 +371,7 @@ export default function DomainForm() {
             })
           }
 
-          const children = buildTree(dm.id ?? dm.menuId, depth + 1)
+          const children = buildTree(dm.menuId, depth + 1)
 
           return {
             key: dm.menuId,
@@ -396,7 +451,7 @@ export default function DomainForm() {
         let customParentId: number | null = null
         if (sysParentMenuId !== 0) {
           const parentDomainMenu = newMenus.find(d => d.menuId === sysParentMenuId)
-          if (parentDomainMenu?.id) customParentId = parentDomainMenu.id
+          if (parentDomainMenu) customParentId = sysParentMenuId
         }
         newMenus.push({
           id: nextId++,
@@ -461,12 +516,37 @@ export default function DomainForm() {
   }
 
   function handleRemoveMenu(record: any) {
-    const removedId = domainMenus.find(m => m.menuId === record.menuId)?.id
-    setDomainMenus(prev =>
-      prev
-        .filter(m => m.menuId !== record.menuId)
-        .map(m => m.customParentId != null && m.customParentId === removedId ? { ...m, customParentId: null } : m)
-    )
+    const removedMenuId = record.menuId
+    setDomainMenus(prev => {
+      const toRemove = new Set<number>([removedMenuId])
+      let changed = true
+      while (changed) {
+        changed = false
+        for (const m of prev) {
+          if (toRemove.has(m.menuId)) continue
+          const parentMenuId = m.customParentId != null
+            ? (m.customParentId === 0 ? null : m.customParentId)
+            : (() => {
+                function findSysParentId(menus: SystemMenu[]): number {
+                  for (const menu of menus) {
+                    if (menu.id === m.menuId) return menu.parentId ?? 0
+                    if (menu.children?.length) {
+                      const r = findSysParentId(menu.children)
+                      if (r) return r
+                    }
+                  }
+                  return 0
+                }
+                return findSysParentId(systemMenus) || null
+              })()
+          if (parentMenuId != null && toRemove.has(parentMenuId)) {
+            toRemove.add(m.menuId)
+            changed = true
+          }
+        }
+      }
+      return prev.filter(m => !toRemove.has(m.menuId))
+    })
   }
 
   function handleResetMenus() {
@@ -531,7 +611,7 @@ export default function DomainForm() {
       const sysParentId = findSysParentId(systemMenus)
       if (sysParentId === 0) return null
       const parentDomainMenu = domainMenus.find(d => d.menuId === sysParentId)
-      if (parentDomainMenu?.id) return parentDomainMenu.id
+      if (parentDomainMenu) return sysParentId
       return null
     }
 
@@ -544,7 +624,7 @@ export default function DomainForm() {
         .sort((a, b) => (a.sort || 0) - (b.sort || 0))
         .map(dm => {
           const wouldExceed = depth + 1 > 3
-          const childNodes = build(dm.id ?? dm.menuId, depth + 1)
+          const childNodes = build(dm.menuId, depth + 1)
           return {
             key: String(dm.menuId),
             label: dm.customLabel || dm.originalLabel || getSysMenuLabel(dm.menuId),
@@ -614,7 +694,7 @@ export default function DomainForm() {
       } else {
         const parentDomainMenu = prev.find(m => m.menuId === selectedMoveTargetId)
         if (parentDomainMenu) {
-          newCustomParentId = parentDomainMenu.id ?? null
+          newCustomParentId = parentDomainMenu.menuId
           const parentLevel = parentDomainMenu.customLevel ?? (() => {
             const sysMenu = (() => {
               function find(menus: SystemMenu[], id: number): SystemMenu | undefined {
@@ -643,10 +723,8 @@ export default function DomainForm() {
       })
 
       function walkChildren(parentMenuId: number, parentLevel: number) {
-        const parentDomainMenu = updated.find(m => m.menuId === parentMenuId)
-        const parentId = parentDomainMenu?.id
         for (let i = 0; i < updated.length; i++) {
-          if (updated[i].customParentId === parentId && updated[i].menuId !== parentMenuId) {
+          if (updated[i].customParentId === parentMenuId && updated[i].menuId !== parentMenuId) {
             updated[i] = { ...updated[i], customLevel: parentLevel + 1 }
             walkChildren(updated[i].menuId, parentLevel + 1)
           }
@@ -674,11 +752,16 @@ export default function DomainForm() {
       let domainId: number | undefined
 
       if (isEdit && params.id) {
-        await fetch(`${API_ENDPOINTS.DOMAINS}/${params.id}`, {
+        const res = await fetch(`${API_ENDPOINTS.DOMAINS}/${params.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         })
+        const json = await res.json()
+        if (json.code !== 200) {
+          CompanyMessage.error(json.message || '更新失败')
+          return
+        }
         domainId = Number(params.id)
       } else {
         const res = await fetch(API_ENDPOINTS.DOMAINS, {
@@ -689,10 +772,18 @@ export default function DomainForm() {
         const json = await res.json()
         if (json.code === 200) {
           domainId = typeof json.data === 'number' ? json.data : json.data?.id
+        } else {
+          CompanyMessage.error(json.message || '创建失败')
+          return
         }
       }
 
-      if (domainId && formData.isDefault !== 1) {
+      if (!domainId) {
+        CompanyMessage.error('操作失败：未获取到域ID')
+        return
+      }
+
+      if (formData.isDefault !== 1) {
         await fetch(API_ENDPOINTS.DOMAIN_MENUS_BATCH, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

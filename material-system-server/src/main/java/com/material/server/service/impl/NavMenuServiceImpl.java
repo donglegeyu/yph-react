@@ -88,13 +88,54 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
 
         Map<Long, List<Long>> childrenMap = new LinkedHashMap<>();
         List<Long> rootMenuIds = new ArrayList<>();
+        Set<Long> missingParentMenuIds = new java.util.LinkedHashSet<>();
 
+        // 第一轮：收集缺失的父级菜单
+        for (SysDomainMenu dm : domainMenus) {
+            if (dm.getCustomParentId() != null) {
+                continue;
+            }
+            NavMenu navMenu = menuMap.get(dm.getMenuId());
+            if (navMenu == null || navMenu.getParentId() == null || navMenu.getParentId() == 0) {
+                continue;
+            }
+            Long sysParentId = navMenu.getParentId();
+            if (!domainMenuByMenuId.containsKey(sysParentId)) {
+                missingParentMenuIds.add(sysParentId);
+            }
+        }
+
+        // 补全缺失的父级菜单到 menuMap
+        if (!missingParentMenuIds.isEmpty()) {
+            List<NavMenu> missingParents = list(new LambdaQueryWrapper<NavMenu>()
+                    .in(NavMenu::getId, missingParentMenuIds)
+                    .eq(NavMenu::getDeleted, 0)
+                    .orderByAsc(NavMenu::getSort)
+                    .orderByAsc(NavMenu::getId));
+            for (NavMenu parent : missingParents) {
+                menuMap.put(parent.getId(), parent);
+            }
+        }
+
+        // 第二轮：构建树结构（此时 menuMap 已包含补全的父级）
         for (SysDomainMenu dm : domainMenus) {
             Long effectiveParentMenuId = getEffectiveParentMenuId(dm, domainMenuByMenuId, domainMenuById, menuMap);
             if (effectiveParentMenuId == null) {
                 rootMenuIds.add(dm.getMenuId());
             } else {
                 childrenMap.computeIfAbsent(effectiveParentMenuId, k -> new ArrayList<>()).add(dm.getMenuId());
+            }
+        }
+
+        // 补全的父级菜单也需要挂到树中
+        for (Long missingParentId : missingParentMenuIds) {
+            NavMenu missingParent = menuMap.get(missingParentId);
+            if (missingParent == null) continue;
+            Long grandParentId = missingParent.getParentId();
+            if (grandParentId != null && grandParentId != 0 && menuMap.containsKey(grandParentId)) {
+                childrenMap.computeIfAbsent(grandParentId, k -> new ArrayList<>()).add(missingParentId);
+            } else {
+                rootMenuIds.add(missingParentId);
             }
         }
 
@@ -161,7 +202,10 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
                                           Map<Long, SysDomainMenu> domainMenuById,
                                           Map<Long, NavMenu> menuMap) {
         if (dm.getCustomParentId() != null) {
-            SysDomainMenu parentDm = domainMenuById.get(dm.getCustomParentId());
+            if (dm.getCustomParentId() == 0) {
+                return null;
+            }
+            SysDomainMenu parentDm = domainMenuByMenuId.get(dm.getCustomParentId());
             return parentDm != null ? parentDm.getMenuId() : null;
         }
 
@@ -170,7 +214,7 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
             return null;
         }
 
-        if (domainMenuByMenuId.containsKey(navMenu.getParentId())) {
+        if (domainMenuByMenuId.containsKey(navMenu.getParentId()) || menuMap.containsKey(navMenu.getParentId())) {
             return navMenu.getParentId();
         }
 

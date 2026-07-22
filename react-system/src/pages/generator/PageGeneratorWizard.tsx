@@ -24,6 +24,7 @@ interface NavMenuWithId {
   key: string
   label: string
   parentId: number | null
+  menuType?: string
   status?: number
   deleted?: number
   children?: NavMenuWithId[] | null
@@ -105,15 +106,65 @@ export default function PageGeneratorWizard({ initial }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    fetch(API_ENDPOINTS.NAV_MENUS)
-      .then((r) => r.json())
-      .then((json) => {
-        if (cancelled) return
-        if (json.code === 200 && Array.isArray(json.data)) {
-          setNavMenus(json.data as NavMenuWithId[])
-        }
-      })
-      .catch(() => {})
+    // 跟 store.fetchMenus 保持一致：默认域直接拉全量；非默认域合并「当前域菜单 + 系统菜单」
+    const currentDomainId = localStorage.getItem('currentDomainId')
+    const isDefaultDomain = !currentDomainId || currentDomainId === '1'
+
+    const handleJson = (json: { code: number; data?: NavMenuWithId[] }) => {
+      if (cancelled) return
+      if (json.code === 200 && Array.isArray(json.data)) {
+        setNavMenus((prev) => {
+          // 合并去重（按 id），保留 children 更完整的版本
+          const map = new Map<number, NavMenuWithId>()
+          prev.forEach((m) => map.set(m.id, m))
+          json.data!.forEach((m) => {
+            const exist = map.get(m.id)
+            const existChildrenLen = exist?.children?.length ?? 0
+            const newChildrenLen = m.children?.length ?? 0
+            // 没有则加入；有则取 children 更多的
+            if (!exist || newChildrenLen > existChildrenLen) {
+              map.set(m.id, m)
+            }
+          })
+          return Array.from(map.values())
+        })
+      }
+    }
+
+    if (isDefaultDomain) {
+      // 默认域：拿全量，但只保留业务菜单
+      fetch(API_ENDPOINTS.NAV_MENUS)
+        .then((r) => r.json())
+        .then((json) => {
+          if (
+            json.code === 200 &&
+            Array.isArray(json.data)
+          ) {
+            const businessOnly: NavMenuWithId[] = (
+              json.data as NavMenuWithId[]
+            ).filter((m) => m.menuType === '业务菜单')
+            handleJson({ code: 200, data: businessOnly })
+          }
+        })
+        .catch(() => {})
+    } else {
+      // 非默认域：只拿当前域的业务菜单
+      fetch(`${API_ENDPOINTS.NAV_MENUS}?domainId=${currentDomainId}`)
+        .then((r) => r.json())
+        .then((json) => {
+          if (
+            json.code === 200 &&
+            Array.isArray(json.data)
+          ) {
+            const businessOnly: NavMenuWithId[] = (
+              json.data as NavMenuWithId[]
+            ).filter((m) => m.menuType === '业务菜单')
+            handleJson({ code: 200, data: businessOnly })
+          }
+        })
+        .catch(() => {})
+    }
+
     return () => {
       cancelled = true
     }
