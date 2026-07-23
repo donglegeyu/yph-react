@@ -19,4 +19,6 @@ public interface NavMenuService extends IService<NavMenu> {
     void batchDelete(List<Long> ids);
 
     int calculateLevel(Long parentId);
+
+    void updateMenuLevelCascade(Long menuId);
 }

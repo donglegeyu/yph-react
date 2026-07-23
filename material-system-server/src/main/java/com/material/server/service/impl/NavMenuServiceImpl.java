@@ -272,6 +272,28 @@ public class NavMenuServiceImpl extends ServiceImpl<NavMenuMapper, NavMenu> impl
     }
 
     @Override
+    public void updateMenuLevelCascade(Long menuId) {
+        NavMenu menu = getById(menuId);
+        if (menu == null) return;
+        int parentLevel = menu.getLevel() != null ? menu.getLevel() : 0;
+        updateChildrenLevel(menuId, parentLevel);
+    }
+
+    private void updateChildrenLevel(Long parentId, int parentLevel) {
+        List<NavMenu> children = list(new LambdaQueryWrapper<NavMenu>()
+                .eq(NavMenu::getParentId, parentId)
+                .eq(NavMenu::getDeleted, 0));
+        for (NavMenu child : children) {
+            int childLevel = parentLevel + 1;
+            NavMenu update = new NavMenu();
+            update.setId(child.getId());
+            update.setLevel(childLevel);
+            super.updateById(update);
+            updateChildrenLevel(child.getId(), childLevel);
+        }
+    }
+
+    @Override
     public void batchUpdateStatus(List<Long> ids, Integer status) {
         for (Long id : ids) {
             NavMenu menu = new NavMenu();

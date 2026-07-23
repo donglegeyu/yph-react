@@ -36,6 +36,23 @@ public class SysDomainServiceImpl extends ServiceImpl<SysDomainMapper, SysDomain
 
     @Override
     public SysDomain create(SysDomain domain) {
+        // 检查是否存在同名 domain_key 的已删除记录，有则复用（避免唯一索引冲突）
+        // 注意：@TableLogic 会自动加 deleted=0 过滤，这里用原生 SQL 绕过
+        SysDomain existing = baseMapper.selectByDomainKeyIgnoreDeleted(domain.getDomainKey());
+
+        if (existing != null) {
+            if (existing.getDeleted() == null || existing.getDeleted() == 0) {
+                throw new RuntimeException("域标识已存在：" + domain.getDomainKey());
+            }
+            existing.setDomainName(domain.getDomainName());
+            existing.setDomainKey(domain.getDomainKey());
+            existing.setIsDefault(domain.getIsDefault());
+            existing.setStatus(domain.getStatus() != null ? domain.getStatus() : 1);
+            existing.setDeleted(0);
+            this.updateById(existing);
+            return existing;
+        }
+
         save(domain);
         return domain;
     }

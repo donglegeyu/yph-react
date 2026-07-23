@@ -825,15 +825,27 @@ export default function DomainForm() {
   // -------- Column definitions --------
   const menuColumns = [
     {
-      title: '菜单名称', key: 'menuName', width: 360, ellipsis: true,
+      title: '菜单名称', key: 'menuName', width: 360,
+      onCell: () => ({
+        style: {
+          display: 'flex',
+          flexDirection: 'row' as const,
+          alignItems: 'center' as const,
+          flexWrap: 'nowrap' as const,
+          padding: '4px 8px',
+        }
+      }),
       render: (_: any, record: any) => (
-        <div className="menu-name-cell">
+        <div
+          className="menu-name-cell"
+          style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}
+        >
           <Input
             value={record.menuName}
             placeholder="自定义名称"
             size="middle"
             className="menu-name-input"
-            style={{ width: '100%' }}
+            style={{ flex: 1, minWidth: 0 }}
             onChange={e => {
               record.menuName = e.target.value
             }}
@@ -843,7 +855,7 @@ export default function DomainForm() {
       ),
     },
     {
-      title: '菜单层级', key: 'menuLevel',
+      title: '菜单层级', key: 'menuLevel', width: 180,
       render: (_: any, record: any) => (
         <Input
           value={['一级', '二级', '三级'][record.menuLevel - 1] || '三级'}
@@ -854,7 +866,7 @@ export default function DomainForm() {
       ),
     },
     {
-      title: '状态', key: 'status',
+      title: '状态', key: 'status', width: 160,
       render: (_: any, record: any) => (
         <Select
           value={record.status}
@@ -866,13 +878,14 @@ export default function DomainForm() {
       ),
     },
     {
-      title: '图标', key: 'icon',
+      title: '图标', key: 'icon', width: 220,
       render: (_: any, record: any) => (
         <IconSelect
           value={record.icon || ''}
           placeholder="选择图标"
           size="middle"
-          style={{ width: 120 }}
+          style={{ width: '100%' }}
+          getPopupContainer={() => document.body}
           onChange={(icon: string) => handleMenuIconChange(record, icon)}
         />
       ),
@@ -902,8 +915,8 @@ export default function DomainForm() {
           </CompanyButton>
           <CompanyButton
             type="link"
-            danger
             size="small"
+            style={{ color: 'var(--ant-color-primary)' }}
             onClick={() => handleRemoveMenu(record)}
           >
             移除

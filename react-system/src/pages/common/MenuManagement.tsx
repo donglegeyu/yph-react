@@ -18,6 +18,7 @@ import {
   ActionCell,
   SvgIcon,
   IconSelect,
+  EllipsisText,
 } from '@donglegeyu/company-ui'
 import { useAppStore } from '@/store/app'
 import { API_ENDPOINTS } from '@/constants/api'
@@ -934,7 +935,9 @@ export default function MenuManagement() {
             </div>
           ) : <>-</>
         ) : f.key === 'path' ? (_: unknown, record: FlatMenuItem) => (
-          <>{record.path || '-'}</>
+          record.path ? <EllipsisText maxWidth={130}>{record.path}</EllipsisText> : '-'
+        ) : f.key === 'key' ? (_: unknown, record: FlatMenuItem) => (
+          record.key ? <EllipsisText maxWidth={130}>{record.key}</EllipsisText> : '-'
         ) : f.key === 'action' ? (_: unknown, record: FlatMenuItem) => (
           <ActionCell buttons={getActionButtons(record)} />
         ) : undefined,
@@ -1258,12 +1261,14 @@ function buildMoveTreeData(record: FlatMenuItem, rawMenuData: MenuTreeItem[]): D
       if (!isBizMenu) continue
       const targetMenuLevel = levelMap.get(itemIdStr) ?? 0
       const wouldExceed = targetMenuLevel + 1 + maxSubLevel > 2
+      const childNodes = item.children ? traverse(item.children) : []
       result.push({
         key: itemIdStr,
         title: wouldExceed ? (
           <span><span style={{ color: 'rgba(0,0,0,0.25)' }}>{item.label}</span><span style={{ color: '#999', fontSize: 12, marginLeft: 4 }}>（超出层级）</span></span>
         ) : item.label,
         selectable: !wouldExceed,
+        ...(childNodes.length > 0 ? { children: childNodes } : {}),
       })
     }
     return result

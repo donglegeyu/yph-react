@@ -49,6 +49,7 @@ public class NavMenuController {
         int level = navMenuService.calculateLevel(menu.getParentId());
         menu.setLevel(level);
         navMenuService.updateById(menu);
+        navMenuService.updateMenuLevelCascade(id);
         return Result.success();
     }
 

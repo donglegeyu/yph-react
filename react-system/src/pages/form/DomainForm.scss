@@ -63,13 +63,19 @@
 
     .menu-name-cell {
       display: flex;
+      flex-direction: row;
       align-items: center;
-      flex: 1;
+      flex: 1 1 0%;
       min-width: 0;
-      overflow: hidden;
-    }
+      width: 100%;
+      gap: 4px;
 
-    .menu-name-input { box-sizing: border-box; }
+      .menu-name-input {
+        flex: 1 1 0%;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+    }
   }
 
   .menu-icon {
@@ -193,10 +199,25 @@
   }
 
   :global(.ant-table-cell-with-append) {
-    display: flex;
-    align-items: center;
+    > :global(span.ant-table-row-indent) {
+      flex-shrink: 0;
+    }
 
-    .menu-name-cell { width: 100%; }
+    :global(.ant-table-row-expand-icon) {
+      flex-shrink: 0;
+      margin-right: 4px;
+    }
+
+    :global(.menu-name-cell) {
+      flex: 1 1 0%;
+      min-width: 0;
+      overflow: visible;
+
+      :global(.menu-name-input) {
+        flex: 1 1 0%;
+        min-width: 0;
+      }
+    }
   }
 }
 
