@@ -23,9 +23,18 @@ public class PageDefinitionDTO {
     private String parentMenuId;
     private String bindMenuId;
 
+    /**
+     * 详情页关联的列表页 pageKey（仅 templateType='detail' 时使用）
+     * 列表页与详情页共用同一个 schema_json 存储模型，此字段用于运行时从列表页取数据
+     */
+    private String sourceListPageKey;
+
     private TreeConfig treeConfig;
     private List<FieldConfig> fields;
     private List<ActionConfig> actions;
+    private List<ToolbarButtonConfig> toolbarButtons;
+
+    private DetailHeaderConfig detailHeader;
 
     private String status;
     private String createdBy;
@@ -87,6 +96,59 @@ public class PageDefinitionDTO {
         private String actionType;
         private Boolean needConfirm;
         private String conditionExpr;
+        private Integer sortOrder;
+    }
+
+    @Data
+    public static class ToolbarButtonConfig {
+        private String btnKey;
+        private String btnLabel;
+        private String btnType;
+        private String tooltip;
+        private Integer sortOrder;
+    }
+
+    @Data
+    public static class DetailHeaderConfig {
+        private String primaryNameFieldKey;
+        private Boolean showAvatar;
+        private List<DetailTagConfig> tags;
+        private List<DetailTabConfig> tabs;
+        private List<ToolbarButtonConfig> titleActions;
+    }
+
+    @Data
+    public static class DetailTagConfig {
+        private String tagKey;
+        private String tagText;
+        private String variant;
+        private Integer sortOrder;
+    }
+
+    @Data
+    public static class DetailTabConfig {
+        private String tabKey;
+        private String tabLabel;
+        private Integer sortOrder;
+        private String contentType;
+        private List<String> fieldKeys;
+        private Integer fieldColumns;
+        private List<SubTableColumnConfig> subTableColumns;
+        private String subTableTitle;
+        private List<TimelineItemConfig> timelineItems;
+    }
+
+    @Data
+    public static class SubTableColumnConfig {
+        private String colKey;
+        private String colLabel;
+        private Integer sortOrder;
+    }
+
+    @Data
+    public static class TimelineItemConfig {
+        private String time;
+        private String content;
         private Integer sortOrder;
     }
 }

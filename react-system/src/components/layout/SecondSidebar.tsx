@@ -149,6 +149,21 @@ export default function SecondSidebar() {
       }
     }
 
+    // 动态详情页特例：/dynamic/detail/{pageKey}-detail/{id} → 选中对应的列表页菜单
+    if (!result && path.startsWith('/dynamic/detail/')) {
+      const segments = path.split('/').filter(Boolean)
+      // ['dynamic', 'detail', 'xxx-detail', 'id']
+      if (segments.length >= 4) {
+        const detailKey = segments[2]
+        const listKey = detailKey.replace(/-detail$/, '')
+        const listPath = `/dynamic/${listKey}`
+        const detailResult = navigateToPath(listPath)
+        if (detailResult) {
+          result = detailResult
+        }
+      }
+    }
+
     if (result) {
       const menu = result.thirdMenu || result.secondMenu
       if (menu) {

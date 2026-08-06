@@ -78,6 +78,7 @@ const QualityFeedbackList = lazy(() => import('@/pages/common/QualityFeedbackLis
 const PageGenerator = lazy(() => import('@/pages/generator/PageGenerator'))
 const PageGeneratorEdit = lazy(() => import('@/pages/generator/PageGeneratorEdit'))
 const DynamicListPage = lazy(() => import('@/pages/common/DynamicListPage'))
+const DynamicDetailPage = lazy(() => import('@/pages/common/DynamicDetailPage'))
 const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
 
 const routes: RouteObject[] = [
@@ -160,6 +161,7 @@ const routes: RouteObject[] = [
       { path: 'page-generator/create', element: <PageGeneratorEdit /> },
       { path: 'page-generator/edit/:id', element: <PageGeneratorEdit /> },
       { path: 'dynamic/:pageKey', element: <DynamicListPage /> },
+      { path: 'dynamic/detail/:pageKey/:id', element: <DynamicDetailPage /> },
       { path: '*', element: <BuildingView /> },
     ],
   },

@@ -79,6 +79,7 @@ interface BackendPageDef {
   schemaJson: string | null
   status: string
   createdBy: string | null
+  updatedBy: string | null
   createdTime: string
   updatedTime: string
 }
@@ -108,6 +109,7 @@ function fromBackend(b: BackendPageDef): PageDefinitionDTO {
     apiPrefix: b.apiPrefix ?? '',
     status: b.status as PageDefinitionDTO['status'],
     createdBy: b.createdBy ?? '',
+    updatedBy: b.updatedBy ?? '',
     createdTime: b.createdTime,
     updatedTime: b.updatedTime,
     isNewTable: schema.isNewTable ?? true,
@@ -115,6 +117,13 @@ function fromBackend(b: BackendPageDef): PageDefinitionDTO {
     menuLinkMode: (b.menuLinkMode as PageDefinitionDTO['menuLinkMode']) ?? 'new_child',
     parentMenuId: b.parentMenuId != null ? String(b.parentMenuId) : null,
     bindMenuId: b.bindMenuId != null ? String(b.bindMenuId) : null,
+    detailHeader: schema.detailHeader ?? {
+      primaryNameFieldKey: '',
+      showAvatar: false,
+      tags: [],
+      tabs: [],
+      titleActions: [],
+    },
     treeConfig: schema.treeConfig ?? {
       enabled: false,
       expandColumnKey: 'name',
@@ -123,7 +132,9 @@ function fromBackend(b: BackendPageDef): PageDefinitionDTO {
     },
     fields: schema.fields ?? [],
     actions: schema.actions ?? [],
-  } as PageDefinitionDTO
+    toolbarButtons: schema.toolbarButtons ?? [],
+    sourceListPageKey: schema.sourceListPageKey ?? '',
+  }
 }
 
 export async function listPageDefinitions(): Promise<ApiResult<PageDefinitionDTO[]>> {
@@ -134,6 +145,28 @@ export async function listPageDefinitions(): Promise<ApiResult<PageDefinitionDTO
   return success(res.data.records.map(fromBackend))
 }
 
+/**
+ * 拉取已发布的列表页（list_basic / list_tree），供详情页「关联列表页」下拉选择
+ */
+export async function fetchPublishedListPages(): Promise<
+  ApiResult<{ pageKey: string; pageName: string; templateType: string }[]>
+> {
+  const res = await listPageDefinitions()
+  if (res.code !== 200) return error(res.message)
+  const list = res.data
+    .filter(
+      (d) =>
+        d.status === 'published' &&
+        (d.templateType === 'list_basic' || d.templateType === 'list_tree'),
+    )
+    .map((d) => ({
+      pageKey: d.pageKey,
+      pageName: d.pageName,
+      templateType: d.templateType,
+    }))
+  return success(list)
+}
+
 export async function getPageDefinition(
   id: string,
 ): Promise<ApiResult<PageDefinitionDTO | null>> {
@@ -142,6 +175,85 @@ export async function getPageDefinition(
   )
   if (res.code !== 200) return error(res.message)
   return success(res.data)
+}
+
+/**
+ * 动态查询业务数据（按 tableName 分页查询）
+ * 由后端 DynamicQueryController 提供，前端用于动态列表页 / 详情页拉真实数据
+ */
+export interface DynamicQueryResult {
+  records: Record<string, unknown>[]
+  total: number
+  current: number
+  size: number
+}
+
+export interface DynamicQueryParams {
+  table: string
+  current?: number
+  size?: number
+  select?: string
+  filter?: string
+  orderBy?: string
+}
+
+export async function fetchDynamicQuery(
+  params: DynamicQueryParams,
+): Promise<ApiResult<DynamicQueryResult>> {
+  const qs = new URLSearchParams()
+  qs.set('table', params.table)
+  qs.set('current', String(params.current ?? 1))
+  qs.set('size', String(params.size ?? 20))
+  if (params.select) qs.set('select', params.select)
+  if (params.filter) qs.set('filter', params.filter)
+  if (params.orderBy) qs.set('orderBy', params.orderBy)
+  const res = await apiGet<DynamicQueryResult>(
+    `${API_ENDPOINTS.DYNAMIC_QUERY}?${qs.toString()}`,
+  )
+  if (res.code !== 200) return error(res.message)
+  return success(res.data)
+}
+
+/**
+ * 把前端筛选表单的值对象转成后端 filter 字符串
+ * 规则：
+ * - 空值/空字符串/空数组 → 跳过
+ * - 字符串 → field:like:value（模糊匹配，最常用场景）
+ * - 数字/布尔 → field:eq:value
+ * - 数组 → field:in:v1|v2|v3
+ *
+ * 特殊：以 __eq__ 开头的 key 用等值匹配（约定用法）
+ */
+export function buildFilterString(
+  values: Record<string, unknown>,
+  validFieldKeys: string[] = [],
+): string {
+  const parts: string[] = []
+  for (const [key, val] of Object.entries(values)) {
+    if (val === null || val === undefined) continue
+    // 字段白名单：只接受已知 fieldKey（防注入绕过）
+    if (validFieldKeys.length > 0 && !validFieldKeys.includes(key)) continue
+
+    if (typeof val === 'string') {
+      if (val.trim() === '') continue
+      // 约定：key 以 __eq__ 前缀标记等值匹配
+      if (key.startsWith('__eq__')) {
+        const realKey = key.slice(5)
+        if (validFieldKeys.length === 0 || validFieldKeys.includes(realKey)) {
+          parts.push(`${realKey}:eq:${val.trim()}`)
+        }
+      } else {
+        parts.push(`${key}:like:${val.trim()}`)
+      }
+    } else if (typeof val === 'number' || typeof val === 'boolean') {
+      parts.push(`${key}:eq:${String(val)}`)
+    } else if (Array.isArray(val)) {
+      const filtered = val.filter((v) => v !== null && v !== undefined && v !== '')
+      if (filtered.length === 0) continue
+      parts.push(`${key}:in:${filtered.map(String).join('|')}`)
+    }
+  }
+  return parts.join(',')
 }
 
 export async function getPageSchemaByPageKey(
@@ -160,6 +272,8 @@ export async function getPageSchemaByPageKey(
     treeConfig: found.treeConfig,
     fields: found.fields,
     actions: found.actions,
+    toolbarButtons: found.toolbarButtons || [],
+    detailHeader: found.detailHeader,
   })
 }
 
@@ -245,7 +359,7 @@ export function buildMockRecords(fields: FieldConfig[], count = 5): Record<strin
 }
 
 function mockValue(field: FieldConfig, index: number): unknown {
-  if (field.isStatusTag && field.statusMap.length > 0) {
+  if ((field.fieldType === 'status' || field.isStatusTag) && field.statusMap.length > 0) {
     const pick = field.statusMap[index % field.statusMap.length]
     return pick?.value ?? ''
   }
@@ -333,6 +447,18 @@ export function suggestFieldKey(fieldLabel: string): string {
   const arr = pinyin(trimmed, { toneType: 'none', type: 'array' }) as string[]
   const filtered = arr.filter(Boolean)
   if (filtered.length === 0) return ''
+  return filtered
+    .map((s, i) => (i === 0 ? s.toLowerCase() : s.charAt(0).toUpperCase() + s.slice(1)))
+    .join('')
+}
+
+// 通用：从中文 label 派生 ASCII key（用于 actionKey/btnKey），label 为空时用 prefix+index 兜底
+export function deriveKeyFromLabel(label: string, index: number, prefix: string): string {
+  const trimmed = (label || '').trim()
+  if (!trimmed) return `${prefix}${index + 1}`
+  const arr = pinyin(trimmed, { toneType: 'none', type: 'array' }) as string[]
+  const filtered = arr.filter(Boolean)
+  if (filtered.length === 0) return `${prefix}${index + 1}`
   return filtered
     .map((s, i) => (i === 0 ? s.toLowerCase() : s.charAt(0).toUpperCase() + s.slice(1)))
     .join('')

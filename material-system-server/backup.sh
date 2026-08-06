@@ -1,4 +1,5 @@
 #!/bin/bash
+DOCKER="/usr/local/bin/docker"
 BACKUP_DIR="$(cd "$(dirname "$0")" && pwd)/backups"
 mkdir -p "$BACKUP_DIR"
 
@@ -7,7 +8,7 @@ BACKUP_FILE="$BACKUP_DIR/material_system_react_${TIMESTAMP}.sql"
 
 echo "Backing up material_system_react to $BACKUP_FILE ..."
 
-docker exec material-mysql-react mysqldump -uroot -proot123456 \
+$DOCKER exec material-mysql-react mysqldump -uroot -proot123456 \
   --default-character-set=utf8mb4 \
   --single-transaction \
   --routines \

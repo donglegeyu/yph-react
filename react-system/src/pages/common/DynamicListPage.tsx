@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Tag, Space, App, Spin, Empty } from 'antd'
 import {
   CompanyButton,
@@ -10,21 +10,36 @@ import {
   type ColumnField,
 } from '@donglegeyu/company-ui'
 import type { PageSchemaVO, FieldConfig } from '@/pages/generator/types'
-import { getPageSchemaByPageKey, buildMockRecords, buildTreeMockRecords } from '@/pages/generator/services'
+import {
+  getPageSchemaByPageKey,
+  buildMockRecords,
+  buildTreeMockRecords,
+  fetchDynamicQuery,
+  buildFilterString,
+} from '@/pages/generator/services'
 import PageErrorBoundary from '@/components/PageErrorBoundary'
 
 export default function DynamicListPage() {
   const { pageKey = '' } = useParams()
+  const navigate = useNavigate()
   const { modal } = App.useApp()
   const [schema, setSchema] = useState<PageSchemaVO | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({})
+  // 真实业务数据
+  const [records, setRecords] = useState<Record<string, unknown>[]>([])
+  const [total, setTotal] = useState(0)
+  const [current, setCurrent] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  // 是否回退到 mock（当 tableName 为空或接口报错时）
+  const [useMockFallback, setUseMockFallback] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
+    setUseMockFallback(false)
     getPageSchemaByPageKey(pageKey)
       .then((res) => {
         if (cancelled) return
@@ -32,6 +47,10 @@ export default function DynamicListPage() {
           setSchema(res.data)
           if (res.data.pageName) {
             document.title = `${res.data.pageName} - 逸品汇`
+          }
+          // 没有 tableName 或树形模式 → 直接走 mock 兜底
+          if (!res.data.tableName || res.data.treeConfig.enabled) {
+            setUseMockFallback(true)
           }
         } else {
           setError('未找到该页面配置')
@@ -70,6 +89,7 @@ export default function DynamicListPage() {
     [sortedFields],
   )
 
+  // mock 数据兜底（仅 tableName 为空 或 树形模式 或 接口失败时）
   const mockData = useMemo(() => {
     if (!schema) return []
     const validFields = sortedFields.filter((f) => f.fieldKey && !f.isAction)
@@ -78,6 +98,50 @@ export default function DynamicListPage() {
     }
     return buildMockRecords(validFields, 20)
   }, [schema, sortedFields])
+
+  // 真实数据拉取：当 schema 加载完 + 非 mock 模式时，按分页/筛选拉数据
+  useEffect(() => {
+    if (!schema || useMockFallback || !schema.tableName) return
+    let cancelled = false
+
+    const validFieldKeys = sortedFields
+      .filter((f) => f.fieldKey && !f.isAction)
+      .map((f) => f.fieldKey)
+    const filter = buildFilterString(filterParams, validFieldKeys)
+
+    setLoading(true)
+    fetchDynamicQuery({
+      table: schema.tableName,
+      current,
+      size: pageSize,
+      filter: filter || undefined,
+    })
+      .then((res) => {
+        if (cancelled) return
+        if (res.code === 200 && res.data) {
+          setRecords(res.data.records || [])
+          setTotal(res.data.total || 0)
+        } else {
+          // 接口报错 → 回退 mock
+          CompanyMessage.warning('业务数据接口暂不可用，已切换为演示数据')
+          setUseMockFallback(true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUseMockFallback(true)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [schema, useMockFallback, current, pageSize, filterParams, sortedFields])
+
+  const dataSource = useMockFallback ? mockData : records
 
   const bodyCell = useCallback(
     (column: Record<string, unknown>, record: Record<string, unknown>) => {
@@ -97,6 +161,13 @@ export default function DynamicListPage() {
             label: act.actionLabel,
             danger: act.actionType === 'delete',
             onClick: () => {
+              if (act.actionType === 'detail') {
+                const detailKey = schema.sourceListPageKey
+                  ? `${schema.sourceListPageKey}-detail`
+                  : `${pageKey}-detail`
+                navigate(`/dynamic/detail/${detailKey}/${record.id}`)
+                return
+              }
               if (act.needConfirm) {
                 modal.confirm({
                   title: `确认${act.actionLabel}`,
@@ -111,7 +182,7 @@ export default function DynamicListPage() {
         return <ActionCell buttons={buttons} />
       }
 
-      if (field.isStatusTag) {
+      if (field.fieldType === 'status' || field.isStatusTag) {
         const matched = field.statusMap.find((s) => s.value === String(raw ?? ''))
         if (matched) {
           return <Tag color={matched.color}>{matched.text}</Tag>
@@ -128,7 +199,7 @@ export default function DynamicListPage() {
     [schema, sortedFields, modal],
   )
 
-  if (loading) {
+  if (loading && !schema) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
         <Spin size="large" />
@@ -148,26 +219,43 @@ export default function DynamicListPage() {
     )
   }
 
-  const toolbarActions = (
-    <Space size={12}>
-      <CompanyButton type="primary" onClick={() => CompanyMessage.info('新增功能待接入后端')}>
-        新增
-      </CompanyButton>
-    </Space>
-  )
+  const toolbarButtons = (schema?.toolbarButtons || [])
+    .filter((b) => b.btnKey.trim() || b.btnLabel.trim() || b.btnType === 'primary')
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+  const toolbarActions =
+    toolbarButtons.length > 0 ? (
+      <Space size={12}>
+        {toolbarButtons.map((b, i) => (
+          <CompanyButton
+            key={`${b.btnKey}-${i}`}
+            type={b.btnType === 'primary' ? 'primary' : 'default'}
+            onClick={() =>
+              CompanyMessage.info(b.tooltip || `${b.btnLabel}功能待接入后端`)
+            }
+          >
+            {b.btnLabel}
+          </CompanyButton>
+        ))}
+      </Space>
+    ) : undefined
 
   return (
     <PageErrorBoundary>
       <SmartListTemplate
         title={schema.pageName}
         fields={fieldDefs}
-        dataSource={mockData as unknown as Record<string, unknown>[]}
-        loading={false}
+        dataSource={dataSource as unknown as Record<string, unknown>[]}
+        loading={loading}
         pagination={
-          schema.treeConfig.enabled
-            ? false
-            : { current: 1, pageSize: 20, total: mockData.length }
+          schema.treeConfig.enabled || useMockFallback
+            ? { current: 1, pageSize: 20, total: dataSource.length }
+            : { current, pageSize, total }
         }
+        onPaginationChange={({ current: page, pageSize: size }) => {
+          setCurrent(page)
+          if (size) setPageSize(size)
+        }}
         rowKey="id"
         defaultExpandAll={schema.treeConfig.enabled}
         treeConfig={
@@ -182,8 +270,14 @@ export default function DynamicListPage() {
         }
         filterParams={filterParams}
         onFilterParamsChange={setFilterParams}
-        onSearch={(data) => setFilterParams(data)}
-        onReset={() => setFilterParams({})}
+        onSearch={(data) => {
+          setFilterParams(data)
+          setCurrent(1)
+        }}
+        onReset={() => {
+          setFilterParams({})
+          setCurrent(1)
+        }}
         columnFields={columnFields}
         defaultColumnFields={columnFields}
         onColumnSettingsChange={() => undefined}
@@ -217,3 +311,4 @@ function mapFieldType(t: string): FieldDefinition['type'] {
   if (t === 'select') return 'select'
   return 'input'
 }
+

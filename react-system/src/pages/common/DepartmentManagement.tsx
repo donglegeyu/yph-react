@@ -274,7 +274,7 @@ export default function DepartmentManagement() {
         dataSource={treeData as unknown as Record<string, unknown>[]}
         loading={loading}
         pagination={false}
-        rowKey="id"
+        rowKey={(record) => String(record.id)}
         treeConfig={{ enabled: true, levelIndent: 24 }}
         defaultExpandAll
         columnFields={columnFields}

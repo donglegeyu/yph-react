@@ -16,8 +16,9 @@ public interface PageDefinitionService extends IService<PageDefinition> {
      *
      * @param id       页面定义 ID
      * @param domainId 发布到的目标域 ID（菜单仅同步到该域）
+     * @param operator 操作人（用于记录 updated_by）
      */
-    void publish(Long id, Long domainId);
+    void publish(Long id, Long domainId, String operator);
 
     /**
      * 获取完整 schema（反序列化 JSON）

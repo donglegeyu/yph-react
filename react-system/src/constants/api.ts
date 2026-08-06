@@ -99,6 +99,8 @@ export const API_ENDPOINTS = {
   PAGE_DEFINITION_SAVE: `${API_BASE}/page-definitions/save`,
   META_OPTIONS: `${API_BASE}/meta/options`,
   DYNAMIC_PAGES: `${API_BASE}/dynamic/pages`,
+  // 动态数据查询（按 tableName 分页查询业务数据）
+  DYNAMIC_QUERY: `${API_BASE}/dynamic/query`,
 } as const
 
 // 图标服务 API

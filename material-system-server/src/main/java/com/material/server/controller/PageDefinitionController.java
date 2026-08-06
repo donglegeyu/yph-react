@@ -88,8 +88,9 @@ public class PageDefinitionController {
      */
     @PostMapping("/{id}/publish")
     public Result<Void> publish(@PathVariable Long id,
-                                @RequestParam(required = false) Long domainId) {
-        pageDefinitionService.publish(id, domainId);
+                                @RequestParam(required = false) Long domainId,
+                                @RequestHeader(value = "X-User-Name", required = false) String operator) {
+        pageDefinitionService.publish(id, domainId, operator != null ? operator : "system");
         return Result.success();
     }
 

@@ -2,7 +2,7 @@ import { Input, InputNumber, Select, Switch, Space } from 'antd'
 import { SectionTitle } from '@donglegeyu/company-ui'
 import type { FieldConfig, FieldType, FixedSide, FieldDataSource } from '../types'
 import { FIELD_TYPE_OPTIONS, DB_TYPE_OPTIONS } from '../types'
-import { suggestDbColumn } from '../services'
+import { suggestDbColumn, suggestFieldKey } from '../services'
 import StatusMapEditor from './StatusMapEditor'
 import DataSourceEditor from './DataSourceEditor'
 
@@ -18,11 +18,28 @@ export default function FieldEditor({ value, onChange }: Props) {
   const patch = (p: Partial<FieldConfig>) => onChange({ ...value, ...p })
 
   const handleTypeChange = (t: FieldType) => {
+    if (t === 'status') {
+      // 切到状态标签：初始化 statusMap，清空 dataSource
+      patch({
+        fieldType: t,
+        dataSource: null,
+        isStatusTag: true,
+        statusMap: value.statusMap && value.statusMap.length > 0
+          ? value.statusMap
+          : [
+              { value: 'pending', text: '待处理', color: 'default' },
+              { value: 'processing', text: '进行中', color: 'processing' },
+              { value: 'done', text: '已完成', color: 'success' },
+            ],
+      })
+      return
+    }
     if (DS_FIELD_TYPES.includes(t)) {
       // 切换到可选类型时，如果没有 dataSource，自动初始化为 static（并复用旧 options）
       if (!value.dataSource) {
         patch({
           fieldType: t,
+          isStatusTag: false,
           dataSource: { kind: 'static', options: value.options ?? [] },
         })
         return
@@ -30,11 +47,11 @@ export default function FieldEditor({ value, onChange }: Props) {
     } else {
       // 切换到非可选类型时，清空 dataSource
       if (value.dataSource) {
-        patch({ fieldType: t, dataSource: null })
+        patch({ fieldType: t, isStatusTag: false, dataSource: null })
         return
       }
     }
-    patch({ fieldType: t })
+    patch({ fieldType: t, isStatusTag: false })
   }
 
   const handleDataSourceChange = (ds: FieldDataSource | null) => {
@@ -51,6 +68,24 @@ export default function FieldEditor({ value, onChange }: Props) {
     <div className="pgw-field-editor">
       <div className="pgw-field-grid">
         <div className="pgw-field-cell">
+          <div style={labelStyle}>中文列名</div>
+          <Input
+            value={value.fieldLabel}
+            onChange={(e) => {
+              const fieldLabel = e.target.value
+              // fieldKey 为空（未手动改过）时，联动按拼音建议生成
+              if (!value.fieldKey.trim()) {
+                const suggested = suggestFieldKey(fieldLabel)
+                patch({ fieldLabel, fieldKey: suggested, dbColumn: suggestDbColumn(suggested) })
+              } else {
+                patch({ fieldLabel })
+              }
+            }}
+            placeholder="如 任务名称"
+            size="small"
+          />
+        </div>
+        <div className="pgw-field-cell">
           <div style={labelStyle}>字段 key (camelCase)</div>
           <Input
             value={value.fieldKey}
@@ -59,15 +94,6 @@ export default function FieldEditor({ value, onChange }: Props) {
               patch({ fieldKey, dbColumn: suggestDbColumn(fieldKey) })
             }}
             placeholder="如 taskName"
-            size="small"
-          />
-        </div>
-        <div className="pgw-field-cell">
-          <div style={labelStyle}>中文列名</div>
-          <Input
-            value={value.fieldLabel}
-            onChange={(e) => patch({ fieldLabel: e.target.value })}
-            placeholder="如 任务名称"
             size="small"
           />
         </div>
@@ -154,35 +180,13 @@ export default function FieldEditor({ value, onChange }: Props) {
           />
           <span style={labelStyle}>支持排序</span>
         </Space>
-        <Space size={4}>
-          <Switch
-            size="small"
-            checked={value.isStatusTag}
-            onChange={(v) => patch({ isStatusTag: v })}
-          />
-          <span style={labelStyle}>状态标签</span>
-        </Space>
-        <Space size={4}>
-          <Switch
-            size="small"
-            checked={value.isAction}
-            onChange={(v) => {
-              if (v) {
-                patch({ isAction: true, isFilter: false, fieldKey: 'action', fieldLabel: '操作', fixed: 'right' })
-              } else {
-                patch({ isAction: false })
-              }
-            }}
-          />
-          <span style={labelStyle}>操作列</span>
-        </Space>
       </div>
 
       {showDataSource && (
         <DataSourceEditor value={value.dataSource ?? null} onChange={handleDataSourceChange} />
       )}
 
-      {value.isStatusTag && (
+      {value.fieldType === 'status' && (
         <>
           <div style={{ margin: '12px 0' }}>
             <SectionTitle title="状态映射" />

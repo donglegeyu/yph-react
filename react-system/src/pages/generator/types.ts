@@ -1,4 +1,4 @@
-export type FieldType = 'input' | 'select' | 'select-multi' | 'radio' | 'cascader' | 'date' | 'daterange' | 'number'
+export type FieldType = 'input' | 'select' | 'select-multi' | 'radio' | 'cascader' | 'date' | 'daterange' | 'number' | 'status'
 
 export type ActionType = 'detail' | 'edit' | 'delete' | 'custom'
 
@@ -93,11 +93,83 @@ export interface ActionConfig {
   sortOrder: number
 }
 
+// toolbar 按钮类型：主按钮（primary）/ 次按钮（default）
+// 密度、列设置由 SmartListTemplate 自带，不需配置
+export type ToolbarButtonType = 'primary' | 'default'
+
+export interface ToolbarButtonConfig {
+  btnKey: string
+  btnLabel: string
+  btnType: ToolbarButtonType
+  // custom 类型可填 onClick 触发的提示文案，便于演示
+  tooltip?: string
+  sortOrder: number
+}
+
 export interface TreeConfig {
   enabled: boolean
   expandColumnKey: string
   childrenColumnName: string
   levelIndent: number
+}
+
+// 详情页头部标签项（对应 DetailPageTemplate 的 tags）
+export type DetailTagVariant = 'default' | 'volcano' | 'success' | 'warning'
+
+export interface DetailTagConfig {
+  tagKey: string
+  tagText: string
+  variant: DetailTagVariant
+  sortOrder: number
+}
+
+// 详情页 Tab 内容类型
+export type DetailTabContentType = 'fields' | 'subtable' | 'timeline'
+
+// 关联子表的列配置
+export interface SubTableColumnConfig {
+  colKey: string
+  colLabel: string
+  sortOrder: number
+}
+
+// 时间轴/日志的条目配置
+export interface TimelineItemConfig {
+  time: string
+  content: string
+  sortOrder: number
+}
+
+// 详情页 Tab 项（对应 DetailPageTemplate 的 tabs）
+export interface DetailTabConfig {
+  tabKey: string
+  tabLabel: string
+  sortOrder: number
+  // Tab 内容类型：字段网格 / 关联子表 / 时间轴日志
+  contentType: DetailTabContentType
+  // contentType='fields' 时：选择展示的字段 key 列表（空则展示全部字段）
+  fieldKeys: string[]
+  // contentType='fields' 时：列数
+  fieldColumns: number
+  // contentType='subtable' 时：子表列配置
+  subTableColumns: SubTableColumnConfig[]
+  // contentType='subtable' 时：子表标题
+  subTableTitle: string
+  // contentType='timeline' 时：日志条目配置（运行时从接口取，配置时给示例）
+  timelineItems: TimelineItemConfig[]
+}
+
+// 详情页头部配置（对应 DetailPageTemplate 的 dpt-info-top 区域 + tabs + titleActions）
+export interface DetailHeaderConfig {
+  // 主名称：从已有字段中选一个作为大标题展示，空则不显示 primaryName
+  primaryNameFieldKey: string
+  // 是否显示头像（用 primaryName 首字母作为头像内容）
+  showAvatar: boolean
+  tags: DetailTagConfig[]
+  // 正文 Tab 列表（详情/权限/记录 等多区域切换），空则用 children 单区域
+  tabs: DetailTabConfig[]
+  // 标题栏右侧操作按钮（如"编辑"），复用 toolbarButtons 配置
+  titleActions: ToolbarButtonConfig[]
 }
 
 export interface PageDefinitionDTO {
@@ -112,11 +184,17 @@ export interface PageDefinitionDTO {
   menuLinkMode: MenuLinkMode
   parentMenuId: string | null
   bindMenuId: string | null
+  // 详情页关联的列表页 pageKey（仅 templateType='detail' 时使用）
+  sourceListPageKey: string
+  // 详情页头部配置（仅 templateType='detail' 时使用）
+  detailHeader: DetailHeaderConfig
   treeConfig: TreeConfig
   fields: FieldConfig[]
   actions: ActionConfig[]
+  toolbarButtons: ToolbarButtonConfig[]
   status: 'draft' | 'published'
   createdBy: string
+  updatedBy: string
   createdTime: string
   updatedTime: string
 }
@@ -126,9 +204,14 @@ export interface PageSchemaVO {
   pageName: string
   tableName: string
   apiPrefix: string
+  templateType?: string
   treeConfig: TreeConfig
   fields: FieldConfig[]
   actions: ActionConfig[]
+  toolbarButtons: ToolbarButtonConfig[]
+  sourceListPageKey?: string
+  generateMenu?: boolean
+  detailHeader?: DetailHeaderConfig
 }
 
 const FIELD_TYPE_OPTIONS: SelectOption[] = [
@@ -140,6 +223,7 @@ const FIELD_TYPE_OPTIONS: SelectOption[] = [
   { label: '日期', value: 'date' },
   { label: '日期范围', value: 'daterange' },
   { label: '数字', value: 'number' },
+  { label: '状态标签', value: 'status' },
 ]
 
 const ACTION_TYPE_OPTIONS: SelectOption[] = [
@@ -182,7 +266,7 @@ export function createEmptyField(sortOrder: number): FieldConfig {
     width: 120,
     fixed: null,
     isFilter: true,
-    sortable: false,
+    sortable: true,
     options: [],
     isStatusTag: false,
     statusMap: [],
@@ -208,6 +292,49 @@ export function createEmptyAction(sortOrder: number): ActionConfig {
   }
 }
 
+export function createEmptyToolbarButton(sortOrder: number): ToolbarButtonConfig {
+  return {
+    btnKey: '',
+    btnLabel: '',
+    btnType: 'default',
+    tooltip: '',
+    sortOrder,
+  }
+}
+
+export function createEmptyDetailTag(sortOrder: number): DetailTagConfig {
+  return {
+    tagKey: '',
+    tagText: '',
+    variant: 'default',
+    sortOrder,
+  }
+}
+
+export function createEmptyDetailTab(sortOrder: number): DetailTabConfig {
+  return {
+    tabKey: '',
+    tabLabel: '',
+    sortOrder,
+    contentType: 'fields',
+    fieldKeys: [],
+    fieldColumns: 2,
+    subTableColumns: [],
+    subTableTitle: '',
+    timelineItems: [],
+  }
+}
+
+export function createEmptyDetailHeader(): DetailHeaderConfig {
+  return {
+    primaryNameFieldKey: '',
+    showAvatar: false,
+    tags: [],
+    tabs: [],
+    titleActions: [],
+  }
+}
+
 export function createEmptyPage(): PageDefinitionDTO {
   const now = new Date().toISOString()
   return {
@@ -222,6 +349,8 @@ export function createEmptyPage(): PageDefinitionDTO {
     menuLinkMode: 'new_child',
     parentMenuId: null,
     bindMenuId: null,
+    sourceListPageKey: '',
+    detailHeader: createEmptyDetailHeader(),
     treeConfig: {
       enabled: false,
       expandColumnKey: 'name',
@@ -230,8 +359,17 @@ export function createEmptyPage(): PageDefinitionDTO {
     },
     fields: [],
     actions: [],
+    toolbarButtons: [
+      {
+        btnKey: '',
+        btnLabel: '新增',
+        btnType: 'primary',
+        sortOrder: 0,
+      },
+    ],
     status: 'draft',
     createdBy: '',
+    updatedBy: '',
     createdTime: now,
     updatedTime: now,
   }

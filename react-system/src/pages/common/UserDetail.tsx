@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Skeleton } from 'antd'
-import { CompanyTabs, CompanyTag, PageTitle } from '@donglegeyu/company-ui'
+import {
+  CompanyTag,
+  DetailPageTemplate,
+  type DetailFieldItem,
+  type DetailTagItem,
+  type DetailTabItem,
+} from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
-import './UserDetail.scss'
 
 interface DomainBrief {
   id: number
@@ -37,7 +42,8 @@ interface UserRecord {
 
 interface PermissionMenu {
   id: number
-  name: string
+  name?: string
+  label?: string
   key?: string
   children?: PermissionMenu[]
 }
@@ -53,33 +59,6 @@ interface PermissionData {
   domains?: Array<{ id: number; domainName: string }>
   menuTree?: PermissionMenu[]
   rbac?: RbacPermission
-}
-
-const baseFields = [
-  { label: '用户名', key: 'username' },
-  { label: '真实姓名', key: 'realName' },
-  { label: '所属公司', key: 'companyName' },
-  { label: '所属部门', key: 'deptName' },
-  { label: '手机号', key: 'phone' },
-  { label: '邮箱', key: 'email' },
-  { label: '用户ID', key: 'id' },
-  { label: '创建时间', key: 'createTime' },
-  { label: '更新时间', key: 'updateTime' },
-] as const
-
-function renderMenuTree(menus: PermissionMenu[] | undefined): React.ReactNode {
-  if (!menus || menus.length === 0) {
-    return <span style={{ color: 'var(--color-text-tertiary)' }}>--</span>
-  }
-  return (
-    <div className="ud-perm-tags">
-      {menus.map((menu) => (
-        <CompanyTag key={menu.id} color="processing">
-          {menu.name}
-        </CompanyTag>
-      ))}
-    </div>
-  )
 }
 
 export default function UserDetail() {
@@ -140,155 +119,153 @@ export default function UserDetail() {
 
   if (!detail) {
     return (
-      <div className="user-detail">
-        <PageTitle title="用户详情" showBack onBack={() => navigate('/user-management')} />
-        <div className="ud-content">
-          <div className="ud-empty">用户不存在</div>
-        </div>
-      </div>
+      <DetailPageTemplate
+        title="用户详情"
+        showBack
+        onBack={() => navigate('/user-management')}
+        primaryName="用户不存在"
+      />
     )
   }
 
-  const detailRecord = detail as unknown as Record<string, string | number>
   const roles = detail.roles || []
   const domains = detail.domains || []
+
+  const infoFields: DetailFieldItem[] = [
+    { label: '用户名', value: detail.username },
+    { label: '真实姓名', value: detail.realName || '--' },
+    { label: '所属部门', value: detail.deptName || '--' },
+    { label: '关联域', value: domains.length === 0 ? '--' : domains.map((d) => d.domainName).join('、') },
+    { label: '更新时间', value: detail.updateTime },
+  ]
+
+  const tags: DetailTagItem[] = [
+    {
+      text: detail.status === 1 ? '启用' : '禁用',
+      variant: detail.status === 1 ? 'success' : 'default',
+    },
+    ...roles.map((role) => ({
+      text: role.roleName,
+      variant: 'warning' as const,
+    })),
+  ]
+
   const rbacRoles = permission?.rbac?.roles || []
-  const rbacMenus = permission?.rbac?.menus
+  const rbacMenus = permission?.rbac?.menus || []
+  const rbacPerms = permission?.rbac?.permissions || []
 
-  return (
-    <div className="user-detail">
-      <PageTitle title="用户详情" showBack onBack={() => navigate('/user-management')} />
+  const allFields: DetailFieldItem[] = [
+    { label: '用户名', value: detail.username },
+    { label: '昵称', value: detail.nickname },
+    { label: '真实姓名', value: detail.realName || '--' },
+    { label: '所属公司', value: detail.companyName || '--' },
+    { label: '所属部门', value: detail.deptName || '--' },
+    { label: '手机号', value: detail.phone || '--' },
+    { label: '邮箱', value: detail.email || '--' },
+    { label: '关联域', value: domains.length === 0 ? '--' : domains.map((d) => d.domainName).join('、') },
+    { label: '用户ID', value: detail.id },
+    { label: '创建时间', value: detail.createTime },
+    { label: '更新时间', value: detail.updateTime },
+  ]
 
-      <div className="ud-user-card">
-        <div className="ud-user-top">
-          <div className="ud-user-info">
-            <div className="ud-avatar">
-              {(detail.nickname || detail.username || '?').charAt(0)}
-            </div>
-            <span className="ud-username">{detail.nickname || detail.username || '--'}</span>
-          </div>
-          <div className="ud-user-tags">
-            <CompanyTag className="ud-tag-default">
-              {detail.status === 1 ? '启用' : '禁用'}
-            </CompanyTag>
-            {roles.map((role) => (
-              <CompanyTag key={role.id} className="ud-tag-default">
-                {role.roleName}
-              </CompanyTag>
-            ))}
-          </div>
-        </div>
-        <div className="ud-user-fields">
-          {baseFields.map((field) => (
-            <div className="ud-field-item" key={field.key}>
-              <span className="ud-field-label">{field.label}：</span>
-              <span className="ud-field-value">
-                {String(detailRecord[field.key] ?? '--')}
-              </span>
+  const tabs: DetailTabItem[] = [
+    {
+      key: 'detail',
+      label: '详情',
+      children: (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 32px', padding: '16px 0' }}>
+          {allFields.map((field) => (
+            <div key={field.label} style={{ display: 'flex', lineHeight: '22px' }}>
+              <span style={{ color: 'rgba(0,0,0,0.45)', marginRight: 4 }}>{field.label}：</span>
+              <span style={{ color: 'rgba(0,0,0,0.88)' }}>{field.value}</span>
             </div>
           ))}
         </div>
-        <div className="ud-user-relations">
-          <div className="ud-relation-row">
-            <span className="ud-relation-label">关联域：</span>
-            <span className="ud-relation-value">
-              {domains.length === 0 ? (
-                <span style={{ color: 'var(--color-text-tertiary)' }}>--</span>
+      ),
+    },
+    {
+      key: 'permission',
+      label: '菜单权限',
+      children: permLoading ? (
+        <Skeleton active paragraph={{ rows: 4 }} />
+      ) : (
+        <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div>
+            <div style={{ fontWeight: 500, marginBottom: 8 }}>角色权限</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {rbacRoles.length === 0 ? (
+                <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
               ) : (
-                domains.map((d) => (
-                  <CompanyTag key={d.id} className="ud-tag-default">
-                    {d.domainName}
+                rbacRoles.map((r) => (
+                  <CompanyTag key={r.id} color="warning">
+                    {r.roleName}
                   </CompanyTag>
                 ))
               )}
-            </span>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontWeight: 500, marginBottom: 8 }}>可访问菜单</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {rbacMenus.length === 0 ? (
+                <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
+              ) : (
+                rbacMenus.map((m) => (
+                  <CompanyTag key={m.id} color="processing">
+                    {m.label || m.name || '--'}
+                  </CompanyTag>
+                ))
+              )}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontWeight: 500, marginBottom: 8 }}>按钮权限标识</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {rbacPerms.length === 0 ? (
+                <span style={{ color: 'rgba(0,0,0,0.45)' }}>--</span>
+              ) : (
+                rbacPerms.map((p, idx) => (
+                  <CompanyTag key={idx} className="ud-tag-default">
+                    {p}
+                  </CompanyTag>
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      ),
+    },
+    {
+      key: 'history',
+      label: '变更记录',
+      children: (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 200,
+            color: 'rgba(0,0,0,0.45)',
+          }}
+        >
+          暂无变更记录
+        </div>
+      ),
+    },
+  ]
 
-      <div className="ud-divider" />
-
-      <div className="ud-content">
-        <CompanyTabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={[
-            {
-              key: 'detail',
-              label: '详情',
-              children: (
-                <div className="ud-tab-pane">
-                  <div className="ud-user-fields">
-                    {baseFields.map((field) => (
-                      <div className="ud-field-item" key={field.key}>
-                        <span className="ud-field-label">{field.label}：</span>
-                        <span className="ud-field-value">
-                          {String(detailRecord[field.key] ?? '--')}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ),
-            },
-            {
-              key: 'permission',
-              label: '菜单权限',
-              children: (
-                <div className="ud-tab-pane">
-                  {permLoading ? (
-                    <Skeleton active paragraph={{ rows: 4 }} />
-                  ) : (
-                    <>
-                      <div className="ud-perm-section">
-                        <div className="ud-perm-title">角色权限</div>
-                        <div className="ud-perm-tags">
-                          {rbacRoles.length === 0 ? (
-                            <span style={{ color: 'var(--color-text-tertiary)' }}>--</span>
-                          ) : (
-                            rbacRoles.map((r) => (
-                              <CompanyTag key={r.id} color="warning">
-                                {r.roleName}
-                              </CompanyTag>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                      <div className="ud-perm-section">
-                        <div className="ud-perm-title">可访问菜单</div>
-                        {renderMenuTree(rbacMenus)}
-                      </div>
-                      <div className="ud-perm-section">
-                        <div className="ud-perm-title">按钮权限标识</div>
-                        <div className="ud-perm-tags">
-                          {(permission?.rbac?.permissions || []).length === 0 ? (
-                            <span style={{ color: 'var(--color-text-tertiary)' }}>--</span>
-                          ) : (
-                            (permission?.rbac?.permissions || []).map((p, idx) => (
-                              <CompanyTag key={idx} className="ud-tag-default">
-                                {p}
-                              </CompanyTag>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ),
-            },
-            {
-              key: 'history',
-              label: '变更记录',
-              children: (
-                <div className="ud-tab-pane">
-                  <div className="ud-empty">暂无变更记录</div>
-                </div>
-              ),
-            },
-          ]}
-        />
-      </div>
-    </div>
+  return (
+    <DetailPageTemplate
+      title="用户详情"
+      showBack
+      onBack={() => navigate('/user-management')}
+      primaryName={detail.nickname}
+      tags={tags}
+      infoFields={infoFields}
+      infoColumns={3}
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+    />
   )
 }

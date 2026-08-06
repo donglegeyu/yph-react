@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -94,6 +95,7 @@ public class PageDefinitionServiceImpl
         entity.setParentMenuId(parseLong(dto.getParentMenuId()));
         entity.setBindMenuId(parseLong(dto.getBindMenuId()));
         entity.setSchemaJson(schemaJson);
+        entity.setUpdatedBy(operator);
         entity.setUpdatedTime(LocalDateTime.now());
 
         this.saveOrUpdate(entity);
@@ -102,7 +104,7 @@ public class PageDefinitionServiceImpl
 
     @Override
     @Transactional
-    public void publish(Long id, Long domainId) {
+    public void publish(Long id, Long domainId, String operator) {
         PageDefinition entity = this.getById(id);
         if (entity == null) {
             throw new BusinessException("页面定义不存在：" + id);
@@ -115,6 +117,7 @@ public class PageDefinitionServiceImpl
 
         // 1. 更新状态
         entity.setStatus("published");
+        entity.setUpdatedBy(operator);
         entity.setUpdatedTime(LocalDateTime.now());
         this.updateById(entity);
 
@@ -125,6 +128,94 @@ public class PageDefinitionServiceImpl
             log.error("发布时菜单联动失败 pageKey={}", dto.getPageKey(), e);
             throw new BusinessException("菜单联动失败：" + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public boolean removeById(Serializable id) {
+        PageDefinition entity = this.getById(id);
+        if (entity == null) {
+            return false;
+        }
+
+        // 仅对发布过的配置做菜单联动清理（草稿从未写入菜单，无需处理）
+        if ("published".equals(entity.getStatus())) {
+            try {
+                cleanupMenu(entity);
+            } catch (Exception e) {
+                log.error("删除时菜单联动清理失败 pageDefinitionId={}", id, e);
+                throw new BusinessException("菜单联动清理失败：" + e.getMessage());
+            }
+        }
+
+        return super.removeById(id);
+    }
+
+    /**
+     * 删除页面配置时的菜单反向联动：
+     * - new_child 模式：级联删除发布时创建的子菜单及其域/角色关联
+     * - bind_existing 模式：把菜单 path 还原为发布前的原值
+     */
+    private void cleanupMenu(PageDefinition entity) {
+        String mode = entity.getMenuLinkMode() != null ? entity.getMenuLinkMode() : "new_child";
+
+        if ("bind_existing".equals(mode)) {
+            restoreBindMenuPath(entity);
+            return;
+        }
+
+        // new_child 模式：按 key 定位发布时创建的子菜单
+        String childKey = "dynamic-" + entity.getPageKey();
+        LambdaQueryWrapper<NavMenu> q = new LambdaQueryWrapper<>();
+        q.eq(NavMenu::getKey, childKey);
+        NavMenu child = navMenuMapper.selectOne(q);
+        if (child == null) {
+            log.warn("删除联动 - 子菜单不存在，跳过: key={}", childKey);
+            return;
+        }
+        Long menuId = child.getId();
+        cascadeDeleteMenu(menuId);
+        log.info("删除联动 - 已级联删除子菜单: key={}, menuId={}", childKey, menuId);
+    }
+
+    /**
+     * bind_existing 模式：还原菜单 path 为发布前的原值。
+     * original_menu_path 为空（旧数据/异常情况）时清空 path，避免指向已删除的动态页。
+     */
+    private void restoreBindMenuPath(PageDefinition entity) {
+        if (entity.getBindMenuId() == null) {
+            log.warn("删除联动 - bind_existing 无 bindMenuId，跳过: pageDefinitionId={}", entity.getId());
+            return;
+        }
+        NavMenu menu = navMenuMapper.selectById(entity.getBindMenuId());
+        if (menu == null) {
+            log.warn("删除联动 - 绑定的菜单已不存在，跳过: bindMenuId={}", entity.getBindMenuId());
+            return;
+        }
+        String original = entity.getOriginalMenuPath();
+        // 还原到原 path；若原 path 缺失，置空避免指向已删除的 /dynamic/{pageKey}
+        menu.setPath(original);
+        navMenuMapper.updateById(menu);
+        log.info("删除联动 - 已还原菜单 path: menuId={}, path={}", menu.getId(), original);
+    }
+
+    /**
+     * 级联删除菜单：sys_role_menu → sys_domain_menu → nav_menu（均按 menuId 关联）
+     * nav_menu 走 MyBatis-Plus 逻辑删除（@TableLogic），其余两表为物理删除（无 deleted 字段）。
+     */
+    private void cascadeDeleteMenu(Long menuId) {
+        // 1. sys_role_menu（物理删除）
+        LambdaQueryWrapper<SysRoleMenu> rmQ = new LambdaQueryWrapper<>();
+        rmQ.eq(SysRoleMenu::getMenuId, menuId);
+        sysRoleMenuMapper.delete(rmQ);
+
+        // 2. sys_domain_menu（物理删除）
+        LambdaQueryWrapper<SysDomainMenu> dmQ = new LambdaQueryWrapper<>();
+        dmQ.eq(SysDomainMenu::getMenuId, menuId);
+        sysDomainMenuMapper.delete(dmQ);
+
+        // 3. nav_menu（逻辑删除）
+        navMenuMapper.deleteById(menuId);
     }
 
     @Override
@@ -151,6 +242,11 @@ public class PageDefinitionServiceImpl
     // ============= 内部：菜单联动 =============
 
     private void syncMenu(PageDefinition entity, PageDefinitionDTO dto, Long domainId) {
+        // 详情页等不需要菜单挂载的场景：generateMenu=false 时跳过菜单联动
+        if (Boolean.FALSE.equals(dto.getGenerateMenu())) {
+            log.info("菜单联动 - 跳过（generateMenu=false）pageKey={}", dto.getPageKey());
+            return;
+        }
         String path = "/dynamic/" + dto.getPageKey();
         String mode = entity.getMenuLinkMode() != null ? entity.getMenuLinkMode() : "new_child";
 
@@ -161,6 +257,12 @@ public class PageDefinitionServiceImpl
             NavMenu exist = navMenuMapper.selectById(entity.getBindMenuId());
             if (exist == null) {
                 throw new BusinessException("要绑定的菜单不存在：" + entity.getBindMenuId());
+            }
+            // 首次绑定时记录原 path，删除时用于还原；后续重复发布不覆盖
+            if (entity.getOriginalMenuPath() == null) {
+                entity.setOriginalMenuPath(exist.getPath());
+                this.updateById(entity);
+                log.info("菜单联动 - 记录原 path: menuId={}, originalPath={}", exist.getId(), exist.getPath());
             }
             exist.setPath(path);
             navMenuMapper.updateById(exist);

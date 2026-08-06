@@ -27,11 +27,15 @@ public class PageDefinition {
 
     private Long bindMenuId;
 
+    private String originalMenuPath;
+
     private String schemaJson;
 
     private String status;
 
     private String createdBy;
+
+    private String updatedBy;
 
     private LocalDateTime createdTime;
 

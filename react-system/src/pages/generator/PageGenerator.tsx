@@ -22,6 +22,7 @@ interface ListRecord {
   status: string
   templateType: string
   generateMenu: boolean
+  updatedBy: string
   updatedTime: string
 }
 
@@ -51,6 +52,7 @@ const fields: FieldDefinition[] = [
   { key: 'pageKey', label: '页面 key', type: 'input', width: 200 },
   { key: 'tableName', label: '业务表', type: 'input', width: 160 },
   { key: 'apiPrefix', label: 'API 前缀', type: 'input', width: 200, hideInFilter: true },
+  { key: 'updatedBy', label: '更新人', type: 'input', width: 120, hideInFilter: true },
   { key: 'updatedTime', label: '更新时间', type: 'daterange', width: 160, hideInFilter: true },
   { key: 'action', label: '操作', width: 168, fixed: 'right' },
 ]
@@ -62,6 +64,7 @@ const defaultColumnFields: ColumnField[] = [
   { key: 'pageKey', label: '页面 key', visible: true, width: 200 },
   { key: 'tableName', label: '业务表', visible: true, width: 160 },
   { key: 'apiPrefix', label: 'API 前缀', visible: true, width: 200 },
+  { key: 'updatedBy', label: '更新人', visible: true, width: 120 },
   { key: 'updatedTime', label: '更新时间', visible: true, width: 160 },
 ]
 
@@ -87,6 +90,7 @@ export default function PageGenerator() {
           status: item.status,
           templateType: item.templateType,
           generateMenu: item.generateMenu,
+          updatedBy: item.updatedBy || '-',
           updatedTime: item.updatedTime.slice(0, 19).replace('T', ' '),
         }))
         setDataSource(records)
@@ -137,7 +141,11 @@ export default function PageGenerator() {
 
   const handlePreview = useCallback(
     (record: ListRecord) => {
-      navigate(`/dynamic/${record.pageKey}`)
+      if (record.templateType === 'detail') {
+        navigate(`/dynamic/detail/${record.pageKey}/preview`)
+      } else {
+        navigate(`/dynamic/${record.pageKey}`)
+      }
     },
     [navigate],
   )
@@ -155,7 +163,12 @@ export default function PageGenerator() {
       }
 
       if (column.key === 'templateType') {
-        return <span>{r.templateType === 'list_basic' ? '基础列表' : r.templateType}</span>
+        const typeMap: Record<string, string> = {
+          list_basic: '基础列表',
+          list_tree: '树形列表',
+          detail: '详情页',
+        }
+        return <span>{typeMap[r.templateType] || r.templateType}</span>
       }
 
       if (column.key === 'action') {
