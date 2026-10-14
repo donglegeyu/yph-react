@@ -6,6 +6,8 @@ import com.material.server.common.BusinessException;
 import com.material.server.common.PageResult;
 import com.material.server.common.Result;
 import com.material.server.dto.PageDefinitionDTO;
+import com.material.server.dto.PublishResultDTO;
+import com.material.server.dto.ReadyCheckDTO;
 import com.material.server.entity.PageDefinition;
 import com.material.server.service.PageDefinitionService;
 import lombok.RequiredArgsConstructor;
@@ -81,16 +83,34 @@ public class PageDefinitionController {
     }
 
     /**
-     * 发布
+     * 发布（联动生成建表迁移脚本，只生成不执行；无脚本时返回表就绪状态）
      *
      * @param id       页面定义 ID
      * @param domainId 当前域 ID（菜单仅同步到该域，不跨域开放）
      */
     @PostMapping("/{id}/publish")
-    public Result<Void> publish(@PathVariable Long id,
-                                @RequestParam(required = false) Long domainId,
-                                @RequestHeader(value = "X-User-Name", required = false) String operator) {
-        pageDefinitionService.publish(id, domainId, operator != null ? operator : "system");
+    public Result<PublishResultDTO> publish(@PathVariable Long id,
+                                            @RequestParam(required = false) Long domainId,
+                                            @RequestHeader(value = "X-User-Name", required = false) String operator) {
+        PublishResultDTO result = pageDefinitionService.publish(id, domainId, operator != null ? operator : "system");
+        return Result.success(result);
+    }
+
+    /**
+     * 就绪检查：校验目标数据表与配置列是否真实存在，并更新页面的迁移状态
+     */
+    @PostMapping("/{id}/check-migration-ready")
+    public Result<ReadyCheckDTO> checkMigrationReady(@PathVariable Long id) {
+        return Result.success(pageDefinitionService.checkMigrationReady(id));
+    }
+
+    /**
+     * 取消发布：状态改回 draft，并反向清理菜单联动
+     */
+    @PostMapping("/{id}/unpublish")
+    public Result<Void> unpublish(@PathVariable Long id,
+                                  @RequestHeader(value = "X-User-Name", required = false) String operator) {
+        pageDefinitionService.unpublish(id, operator != null ? operator : "system");
         return Result.success();
     }
 

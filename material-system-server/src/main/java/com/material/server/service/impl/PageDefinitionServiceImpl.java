@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.material.server.common.BusinessException;
 import com.material.server.dto.PageDefinitionDTO;
+import com.material.server.dto.PublishResultDTO;
+import com.material.server.dto.ReadyCheckDTO;
 import com.material.server.entity.NavMenu;
 import com.material.server.entity.PageDefinition;
 import com.material.server.mapper.NavMenuMapper;
@@ -21,6 +23,7 @@ import com.material.server.entity.SysRoleMenu;
 import com.material.server.entity.SysUser;
 import com.material.server.entity.SysUserRole;
 import com.material.server.mapper.SysDomainMapper;
+import com.material.server.service.MigrationScriptService;
 import com.material.server.service.PageDefinitionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +45,7 @@ public class PageDefinitionServiceImpl
         implements PageDefinitionService {
 
     private final ObjectMapper objectMapper;
+    private final MigrationScriptService migrationScriptService;
     private final NavMenuMapper navMenuMapper;
     private final SysDomainMapper sysDomainMapper;
     private final SysDomainMenuMapper sysDomainMenuMapper;
@@ -104,7 +108,7 @@ public class PageDefinitionServiceImpl
 
     @Override
     @Transactional
-    public void publish(Long id, Long domainId, String operator) {
+    public PublishResultDTO publish(Long id, Long domainId, String operator) {
         PageDefinition entity = this.getById(id);
         if (entity == null) {
             throw new BusinessException("页面定义不存在：" + id);
@@ -115,19 +119,86 @@ public class PageDefinitionServiceImpl
             throw new BusinessException("schema 解析失败");
         }
 
-        // 1. 更新状态
+        // 1. 迁移脚本联动（只生成脚本文本并存档，绝不执行 DDL——项目红线）
+        //    绑定表缺列 / 表名非法等情况在此抛错，整个发布事务回滚
+        PublishResultDTO result = null;
+        if (dto.getTableName() != null && !dto.getTableName().trim().isEmpty()) {
+            try {
+                result = migrationScriptService.generateForPublish(entity, dto, operator);
+            } catch (BusinessException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("发布时生成迁移脚本失败 pageKey={}", dto.getPageKey(), e);
+                throw new BusinessException("生成建表脚本失败：" + e.getMessage());
+            }
+            // 有脚本：记录版本号，状态置为待入库；无脚本（表已就绪）：记录就绪状态
+            if (result.getScriptId() != null) {
+                entity.setMigrationVersion(result.getScriptVersion());
+            }
+            entity.setMigrationStatus(result.getMigrationStatus());
+        }
+
+        // 2. 更新发布状态
         entity.setStatus("published");
         entity.setUpdatedBy(operator);
         entity.setUpdatedTime(LocalDateTime.now());
         this.updateById(entity);
 
-        // 2. 联动 nav_menu（菜单仅同步到当前域）
+        // 3. 联动 nav_menu（菜单仅同步到当前域）
         try {
             syncMenu(entity, dto, domainId);
         } catch (Exception e) {
             log.error("发布时菜单联动失败 pageKey={}", dto.getPageKey(), e);
             throw new BusinessException("菜单联动失败：" + e.getMessage());
         }
+
+        return result != null ? result : noMigrationResult();
+    }
+
+    @Override
+    public ReadyCheckDTO checkMigrationReady(Long id) {
+        PageDefinition entity = this.getById(id);
+        if (entity == null) {
+            throw new BusinessException("页面定义不存在：" + id);
+        }
+        PageDefinitionDTO dto = deserialize(entity.getSchemaJson());
+        if (dto == null) {
+            throw new BusinessException("schema 解析失败");
+        }
+        return migrationScriptService.checkReady(entity, dto);
+    }
+
+    /** 页面未配置数据表时的兜底发布结果（不涉及迁移） */
+    private PublishResultDTO noMigrationResult() {
+        PublishResultDTO r = new PublishResultDTO();
+        r.setMigrationStatus("not_generated");
+        return r;
+    }
+
+    @Override
+    @Transactional
+    public void unpublish(Long id, String operator) {
+        PageDefinition entity = this.getById(id);
+        if (entity == null) {
+            throw new BusinessException("页面定义不存在：" + id);
+        }
+        if (!"published".equals(entity.getStatus())) {
+            throw new BusinessException("页面未发布，无需取消发布");
+        }
+
+        // 1. 反向清理菜单联动（new_child 级联删除子菜单；bind_existing 还原 path）
+        try {
+            cleanupMenu(entity);
+        } catch (Exception e) {
+            log.error("取消发布时菜单清理失败 pageKey={}", entity.getPageKey(), e);
+            throw new BusinessException("菜单清理失败：" + e.getMessage());
+        }
+
+        // 2. 状态改回草稿
+        entity.setStatus("draft");
+        entity.setUpdatedBy(operator);
+        entity.setUpdatedTime(LocalDateTime.now());
+        this.updateById(entity);
     }
 
     @Override

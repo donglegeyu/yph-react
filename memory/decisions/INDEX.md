@@ -9,3 +9,4 @@
 | D004 | 🔴 运维的 Dockerfile、application.yml 等部署文件不可改动（红线） | Active | [ops-files-readonly.md](./ops-files-readonly.md) |
 | D005 | 证件类型独立成表（certificate_type），与图片记录解耦 | Active | [certificate-type-table.md](./certificate-type-table.md) |
 | D006 | 🔴🔴 所有数据库变更必须走 Flyway，禁止手动改库（最高优先级红线） | Active | [flyway-only-for-db-changes.md](./flyway-only-for-db-changes.md) |
+| D007 | 页面生成器本轮迭代只改详情页模板，不碰列表页配置（会话级） | Active | [generator-detail-only-scope.md](./generator-detail-only-scope.md) |

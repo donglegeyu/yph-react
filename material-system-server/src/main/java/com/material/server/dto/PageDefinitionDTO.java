@@ -36,6 +36,9 @@ public class PageDefinitionDTO {
 
     private DetailHeaderConfig detailHeader;
 
+    /** 表单页模板配置（footerButtons 为空数组时不渲染底部操作区） */
+    private FormPageConfig formConfig;
+
     private String status;
     private String createdBy;
     private String createdTime;
@@ -69,6 +72,8 @@ public class PageDefinitionDTO {
         private Integer sortOrder;
         private DataSource dataSource;
         private Integer dataSourceCacheTtl;
+        /** 表单页字段所属分组 id（对应 formConfig.fieldGroups） */
+        private String groupId;
     }
 
     @Data
@@ -133,9 +138,19 @@ public class PageDefinitionDTO {
         private String contentType;
         private List<String> fieldKeys;
         private Integer fieldColumns;
+        // contentType=fields 分组模式：按分组渲染（Tab → Groups → Fields）
+        private List<DetailFieldGroupConfig> fieldGroups;
         private List<SubTableColumnConfig> subTableColumns;
         private String subTableTitle;
         private List<TimelineItemConfig> timelineItems;
+    }
+
+    @Data
+    public static class DetailFieldGroupConfig {
+        private String groupKey;
+        private String groupLabel;
+        private List<String> fieldKeys;
+        private Integer sortOrder;
     }
 
     @Data
@@ -149,6 +164,28 @@ public class PageDefinitionDTO {
     public static class TimelineItemConfig {
         private String time;
         private String content;
+        private Integer sortOrder;
+    }
+
+    @Data
+    public static class FormPageConfig {
+        private List<FooterButtonConfig> footerButtons;
+        /** 表单页字段分组（一等结构）：字段通过 FieldConfig.groupId 归属 */
+        private List<FormFieldGroupConfig> fieldGroups;
+    }
+
+    @Data
+    public static class FormFieldGroupConfig {
+        private String id;
+        private String name;
+    }
+
+    @Data
+    public static class FooterButtonConfig {
+        private String btnKey;
+        private String btnLabel;
+        private String btnType;
+        private String action;
         private Integer sortOrder;
     }
 }

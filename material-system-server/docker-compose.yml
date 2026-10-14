@@ -29,11 +29,14 @@ services:
       DB_URL: jdbc:mysql://material-mysql-react:3306/material_system_react?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       DB_USERNAME: root
       DB_PASSWORD: root123456
+      # 迁移脚本直接读挂载目录：页面生成器「一键放入」新脚本后，重启容器即生效，无需重新构建镜像
+      SPRING_FLYWAY_LOCATIONS: filesystem:/app/migration
     depends_on:
       mysql:
         condition: service_started
     volumes:
       - uploads-data:/app/uploads
+      - ./src/main/resources/db/migration:/app/migration:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/api/nav-menus"]
       interval: 30s

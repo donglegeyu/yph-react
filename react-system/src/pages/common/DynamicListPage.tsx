@@ -34,12 +34,15 @@ export default function DynamicListPage() {
   const [pageSize, setPageSize] = useState(20)
   // 是否回退到 mock（当 tableName 为空或接口报错时）
   const [useMockFallback, setUseMockFallback] = useState(false)
+  // 数据表尚未建表（后端报「表不存在」）：显示引导空态，不回退 mock
+  const [tableMissing, setTableMissing] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
     setUseMockFallback(false)
+    setTableMissing(false)
     getPageSchemaByPageKey(pageKey)
       .then((res) => {
         if (cancelled) return
@@ -122,9 +125,14 @@ export default function DynamicListPage() {
           setRecords(res.data.records || [])
           setTotal(res.data.total || 0)
         } else {
-          // 接口报错 → 回退 mock
-          CompanyMessage.warning('业务数据接口暂不可用，已切换为演示数据')
-          setUseMockFallback(true)
+          // 数据表还没建（建表脚本未放入/后端未重启）→ 显示引导空态，不回退 mock
+          if (res.message && res.message.includes('表不存在')) {
+            setTableMissing(true)
+          } else {
+            // 其他接口报错 → 回退 mock
+            CompanyMessage.warning('业务数据接口暂不可用，已切换为演示数据')
+            setUseMockFallback(true)
+          }
         }
       })
       .catch(() => {
@@ -213,6 +221,34 @@ export default function DynamicListPage() {
         <Empty description={error || '未找到页面配置'}>
           <CompanyButton type="primary" onClick={() => window.history.back()}>
             返回
+          </CompanyButton>
+        </Empty>
+      </div>
+    )
+  }
+
+  // 数据表尚未初始化：提示去页面生成器处理建表脚本
+  if (tableMissing) {
+    return (
+      <div style={{ padding: 48 }}>
+        <Empty description="数据表尚未初始化">
+          <div
+            style={{
+              maxWidth: 480,
+              margin: '0 auto 16px',
+              textAlign: 'left',
+              color: '#888',
+              lineHeight: 1.8,
+            }}
+          >
+            <p>该页面对应的数据表还没有在数据库中创建（建表脚本尚未放入后端项目）。</p>
+            <p>
+              处理方式：到「页面生成器」点页面标题右侧的「建表脚本」按钮，用「一键放入项目目录」把脚本放进后端
+              migration 目录，然后重启后端即可自动建表。
+            </p>
+          </div>
+          <CompanyButton type="primary" onClick={() => navigate('/page-generator')}>
+            去页面生成器
           </CompanyButton>
         </Empty>
       </div>
