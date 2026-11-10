@@ -27,6 +27,7 @@ const MenuManagement = lazy(() => import('@/pages/common/MenuManagement'))
 const DomainForm = lazy(() => import('@/pages/form/DomainForm'))
 const DomainManagement = lazy(() => import('@/pages/common/DomainManagement'))
 const UserManagement = lazy(() => import('@/pages/common/UserManagement'))
+const ModelManagement = lazy(() => import('@/pages/common/ModelManagement'))
 const UserDetail = lazy(() => import('@/pages/common/UserDetail'))
 const DepartmentManagement = lazy(() => import('@/pages/common/DepartmentManagement'))
 const RoleManagement = lazy(() => import('@/pages/common/RoleManagement'))
@@ -81,11 +82,17 @@ const DynamicListPage = lazy(() => import('@/pages/common/DynamicListPage'))
 const DynamicDetailPage = lazy(() => import('@/pages/common/DynamicDetailPage'))
 const DynamicFormPage = lazy(() => import('@/pages/common/DynamicFormPage'))
 const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
+const StockInDetail = lazy(() => import('@/pages/purchase/StockInDetail'))
 
 const routes: RouteObject[] = [
   {
     path: '/login',
     element: <LoginView />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: '/preview/stock-in',
+    element: <StockInDetail />,
     errorElement: <RouteErrorBoundary />,
   },
   {
@@ -161,6 +168,7 @@ const routes: RouteObject[] = [
       { path: 'page-generator', element: <PageGenerator /> },
       { path: 'page-generator/create', element: <PageGeneratorEdit /> },
       { path: 'page-generator/edit/:id', element: <PageGeneratorEdit /> },
+      { path: 'ai-model-config', element: <ModelManagement /> },
       { path: 'dynamic/:pageKey', element: <DynamicListPage /> },
       { path: 'dynamic/detail/:pageKey/:id', element: <DynamicDetailPage /> },
       { path: 'dynamic/form/:pageKey', element: <DynamicFormPage /> },

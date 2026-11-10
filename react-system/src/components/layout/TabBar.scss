@@ -101,3 +101,27 @@
     color: rgba(0, 0, 0, 0.88);
   }
 }
+
+// AI 智能助手页签按钮：声明逐条对齐组件库 AdminLayoutTemplate 的 admin-layout-ai-tab
+// （与普通页签同视觉：28px 高 / 3px 8px 内边距 / #F2F1F0 底 / hover #F0EEED；--cmt-* 变量缺省时用回退值）
+.ai-assistant-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: var(--cmt-item-radius, 4px);
+  background: var(--cmt-item-bg, #F2F1F0);
+  color: var(--cmt-text, rgba(0, 0, 0, 0.65));
+  font-size: var(--cmt-font-size, 14px);
+  line-height: 22px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+
+  &:hover {
+    background: var(--cmt-item-bg-hover, #F0EEED);
+  }
+}
