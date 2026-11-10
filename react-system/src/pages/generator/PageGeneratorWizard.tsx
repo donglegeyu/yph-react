@@ -1,10 +1,14 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Form, Input, Select, TreeSelect, Button, Space, App, Radio, Splitter } from 'antd'
 import { CompanyButton, CompanyMessage, SectionTitle, FormPageTemplate } from '@donglegeyu/company-ui'
+import type { AiPageCapability, AiValidateIssue, AiValidateReport, FormPatch } from '@donglegeyu/company-ui'
+import { registerPageCapability, resolvePageCapabilityKey } from '@/ai/pageCapabilityRegistry'
+import { useAppStore } from '@/store/app'
 import { DeleteOutlined, PlusOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
 import type { DataNode } from 'antd/es/tree'
+import type { TextAreaRef } from 'antd/es/input/TextArea'
 import type { PageDefinitionDTO, FieldConfig, ActionConfig, ActionType, ToolbarButtonConfig, ToolbarButtonType, DetailTagVariant, DetailTabContentType, FormFieldGroupConfig } from './types'
 import {
   createEmptyField,
@@ -17,6 +21,7 @@ import {
   createEmptyFieldGroup,
   createEmptyFooterButton,
   createEmptyFormFieldGroup,
+  createFormFieldGroupId,
   normalizeFormFieldGroups,
   toSnakeCase,
   ACTION_TYPE_OPTIONS,
@@ -105,21 +110,90 @@ function migrateLegacyStatusFields(cfg: PageDefinitionDTO): PageDefinitionDTO {
   return cfg
 }
 
-// 默认模式文本域 → 完整 FieldConfig[]
+// 文本行 → 基础 FieldConfig（默认模式：中文名 + 自动推导 key）
+function fieldFromLabel(label: string, idx: number): FieldConfig {
+  const fieldKey = suggestFieldKey(label)
+  return {
+    ...createEmptyField(idx),
+    fieldLabel: label,
+    fieldKey,
+    dbColumn: toSnakeCase(fieldKey),
+  }
+}
+
+// 默认模式文本域 → FieldConfig[]（不识别分组语法，供详情页/列表页等平铺场景）
 function parseFieldsText(text: string): FieldConfig[] {
-  const labels = text
+  return text
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean)
-  return labels.map((label, idx) => {
-    const fieldKey = suggestFieldKey(label)
-    return {
-      ...createEmptyField(idx),
-      fieldLabel: label,
-      fieldKey,
-      dbColumn: toSnakeCase(fieldKey),
-    }
+    .map((label, idx) => fieldFromLabel(label, idx))
+}
+
+// 文本域重建字段时按中文名匹配旧字段并继承其全部扩展配置（fieldType/width/开关/选项/数据源等），
+// 避免切高级模式或保存时静默丢失已有配置；文本域的语义就是「字段中文名列表」，同名 = 同一字段，改名/新增视为新字段
+function mergeParsedFields(parsed: FieldConfig[], oldFields: FieldConfig[]): FieldConfig[] {
+  const oldByLabel = new Map(
+    oldFields.filter((f) => f.fieldLabel.trim() && !f.isAction).map((f) => [f.fieldLabel.trim(), f]),
+  )
+  return parsed.map((p) => {
+    const old = oldByLabel.get(p.fieldLabel.trim())
+    return old ? { ...old, fieldLabel: p.fieldLabel } : p
   })
+}
+
+// 默认模式文本域（表单页）→ 字段 + 分组
+// 分组语法：单独一行 [分组名] 或 【分组名】 开启分组，其后字段归入该组；标记前的行为未分组字段；同名标记合并为同一组
+function parseFieldsTextWithGroups(text: string): {
+  fields: FieldConfig[]
+  groups: FormFieldGroupConfig[]
+} {
+  const groups: FormFieldGroupConfig[] = []
+  const fields: FieldConfig[] = []
+  let currentGroup: FormFieldGroupConfig | null = null
+  text
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      // [分组名] / 【分组名】；空名 [] 视为「未命名分组」标记（由「添加分组」按钮插入，用户可再填写）
+      const m = line.match(/^[【\[]([^】\]]*)[】\]]$/)
+      if (m) {
+        const name = m[1].trim()
+        const existing = groups.find((g) => g.name === name)
+        if (existing) {
+          currentGroup = existing
+        } else {
+          currentGroup = { id: createFormFieldGroupId(), name }
+          groups.push(currentGroup)
+        }
+        return
+      }
+      const field = fieldFromLabel(line, fields.length)
+      if (currentGroup) field.groupId = currentGroup.id
+      fields.push(field)
+    })
+  return { fields, groups }
+}
+
+// 字段 + 分组 → 默认模式文本域文本
+// 顺序与运行时渲染一致：未分组字段在前，其后按组序展开（[组名] 行 + 组内字段）
+function serializeFieldsText(fields: FieldConfig[], groups?: FormFieldGroupConfig[]): string {
+  const groupList = groups ?? []
+  const groupIds = new Set(groupList.map((g) => g.id))
+  const lines: string[] = fields
+    .filter((f) => !f.isAction && (!f.groupId || !groupIds.has(f.groupId)))
+    .map((f) => f.fieldLabel)
+    .filter(Boolean)
+  groupList.forEach((g) => {
+    lines.push(`[${g.name || '未命名分组'}]`)
+    fields
+      .filter((f) => !f.isAction && f.groupId === g.id)
+      .forEach((f) => {
+        if (f.fieldLabel) lines.push(f.fieldLabel)
+      })
+  })
+  return lines.join('\n')
 }
 
 // 默认模式文本域 → 完整 ActionConfig[]
@@ -177,8 +251,65 @@ function parseToolbarText(text: string): ToolbarButtonConfig[] {
   })
 }
 
+// ===== AI 页面能力（P2）：补丁解析与防御 =====
+const AI_FIELD_TYPES = new Set<string>([
+  'input',
+  'select',
+  'select-multi',
+  'radio',
+  'cascader',
+  'date',
+  'daterange',
+  'number',
+  'status',
+])
+const AI_TEMPLATE_TYPES = new Set<string>(['list_basic', 'list_tree', 'detail', 'form'])
+const AI_MENU_LINK_MODES = new Set<string>(['new_child', 'bind_existing'])
+const AI_TOP_LEVEL_KEYS = new Set<string>([
+  'pageName',
+  'pageKey',
+  'templateType',
+  'tableName',
+  'apiPrefix',
+  'generateMenu',
+  'menuLinkMode',
+  'parentMenuId',
+  'bindMenuId',
+  'sourceListPageKey',
+  'fields',
+])
+
+interface PageAiBackfillResult {
+  ok: boolean
+  errors: string[]
+  warnings: string[]
+  config?: PageDefinitionDTO
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null
+}
+
+function readPositiveNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value)
+    if (Number.isFinite(n) && n > 0) return n
+  }
+  return null
+}
+
+function cloneDraft<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T
+}
+
 export default function PageGeneratorWizard({ initial }: Props) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { modal } = App.useApp()
   const [config, setConfig] = useState<PageDefinitionDTO>(
     normalizeFormFieldGroups(migrateLegacyStatusFields(initial ?? createEmptyPage())),
@@ -187,20 +318,18 @@ export default function PageGeneratorWizard({ initial }: Props) {
   const isForm = config.templateType === 'form'
   const [saving, setSaving] = useState(false)
   const [keyTouched, setKeyTouched] = useState(false)
-  // 编辑已有配置时：若字段带有文本域无法表达的配置（控件类型/选项/状态映射/数据源/表单分组），初始进入高级模式，
-  // 否则默认模式的 previewConfig 会用 parseFieldsText 重建字段，导致 fieldType 等配置丢失（预览全变输入框）
+  // 编辑已有配置时：若字段带有文本域无法表达的配置（控件类型/选项/状态映射/数据源），初始进入高级模式，
+  // 否则默认模式的 previewConfig 会用 parseFieldsText 重建字段，导致 fieldType 等配置丢失（预览全变输入框）。
+  // 表单分组已可在默认模式用 [分组名] 语法表达，不再强制高级模式
   const [mode, setMode] = useState<'default' | 'advanced'>(() => {
     const fields = (initial?.fields ?? []).filter((f) => !f.isAction)
-    const hasRichConfig =
-      fields.some(
-        (f) =>
-          f.fieldType !== 'input' ||
-          (f.options?.length ?? 0) > 0 ||
-          (f.statusMap?.length ?? 0) > 0 ||
-          !!f.dataSource,
-      ) ||
-      !!initial?.formConfig?.fieldGroups?.length ||
-      fields.some((f) => f.groupId)
+    const hasRichConfig = fields.some(
+      (f) =>
+        f.fieldType !== 'input' ||
+        (f.options?.length ?? 0) > 0 ||
+        (f.statusMap?.length ?? 0) > 0 ||
+        !!f.dataSource,
+    )
     return hasRichConfig ? 'advanced' : 'default'
   })
   // 从后端拉取的 nav_menu 列表（带数字 id，用于菜单关联选择）
@@ -362,14 +491,20 @@ export default function PageGeneratorWizard({ initial }: Props) {
     }
   }
 
-  // 默认模式文本域：字段/操作列按钮，每行一项
+  // 默认模式文本域：字段/操作列按钮，每行一项；表单页带 [分组名] 行（与 config 分组数据互转）
   const [fieldsText, setFieldsText] = useState(() =>
-    (initial?.fields ?? [])
-      .filter((f) => !f.isAction)
-      .map((f) => f.fieldLabel)
-      .filter(Boolean)
-      .join('\n'),
+    serializeFieldsText(config.fields, config.formConfig?.fieldGroups),
   )
+  // 文本域 ref：用 antd 的 TextAreaRef 类型（antd 6 的 TextArea ref 不再是原生 DOM 类型）
+  const fieldsTextRef = useRef<TextAreaRef>(null)
+  // 默认模式表单页：「添加分组」按钮 → 在文本域末尾追加一行 [组名] 标记（组名由用户自行填写）
+  const handleAddGroupMarker = () => {
+    setFieldsText((prev) => {
+      const suffix = prev.length > 0 && !prev.endsWith('\n') ? '\n' : ''
+      return prev + suffix + '[]'
+    })
+    fieldsTextRef.current?.focus()
+  }
   const [actionsText, setActionsText] = useState(() =>
     (initial?.actions ?? [])
       .map((a) => a.actionLabel)
@@ -401,11 +536,14 @@ export default function PageGeneratorWizard({ initial }: Props) {
   // 默认模式：文本域实时同步为 config.fields/config.actions，供预览面板使用
   const previewConfig = useMemo<PageDefinitionDTO>(() => {
     if (mode !== 'default') return config
-    const parsedFields = parseFieldsText(fieldsText)
+    // 表单页识别 [分组名] 分组语法；详情页/列表页平铺
+    const parsed = isForm
+      ? parseFieldsTextWithGroups(fieldsText)
+      : { fields: parseFieldsText(fieldsText), groups: [] as FormFieldGroupConfig[] }
     const parsedActions = parseActionsText(actionsText)
     // 仅当存在 actions 时才附加操作列
     const fieldsWithAction =
-      parsedActions.length > 0 ? ensureActionColumn(parsedFields) : parsedFields
+      parsedActions.length > 0 ? ensureActionColumn(parsed.fields) : parsed.fields
     const parsedToolbar = parseToolbarText(toolbarText)
     return {
       ...config,
@@ -415,8 +553,11 @@ export default function PageGeneratorWizard({ initial }: Props) {
       })),
       actions: parsedActions.map((a, i) => ({ ...a, sortOrder: i })),
       toolbarButtons: parsedToolbar.map((b, i) => ({ ...b, sortOrder: i })),
+      ...(isForm
+        ? { formConfig: { ...config.formConfig, fieldGroups: parsed.groups } }
+        : {}),
     }
-  }, [mode, config, fieldsText, actionsText, toolbarText])
+  }, [mode, config, isForm, fieldsText, actionsText, toolbarText])
 
   const patchConfig = useCallback((p: Partial<PageDefinitionDTO>) => {
     setConfig((prev) => ({ ...prev, ...p }))
@@ -582,7 +723,7 @@ export default function PageGeneratorWizard({ initial }: Props) {
     }))
   }
 
-  const validateBeforeSave = (cfg: PageDefinitionDTO): string | null => {
+  const validateBeforeSave = useCallback((cfg: PageDefinitionDTO): string | null => {
     if (!cfg.pageKey.trim()) return '页面 key 不能为空'
     if (!cfg.pageName.trim()) return '页面名称不能为空'
     if (!cfg.tableName.trim()) return '业务表名不能为空'
@@ -597,13 +738,420 @@ export default function PageGeneratorWizard({ initial }: Props) {
       dupKeys.add(f.fieldKey)
     }
     return null
+  }, [])
+
+  // ===== AI 页面能力（P2）：上下文、回填、撤销、核验 =====
+  const activeTabKey = useAppStore((s) => s.activeTabKey)
+  const capabilityKey = resolvePageCapabilityKey(activeTabKey, location.pathname)
+
+  // 默认模式下文本域才是用户正在编辑的字段列表：把文本域解析结果与 config 合并，
+  // 既保留用户刚输入的行，也保留旧字段的扩展配置（类型/宽度/开关等）。
+  const buildEffectiveDraft = useCallback(
+    (source: {
+      config: PageDefinitionDTO
+      fieldsText: string
+      mode: 'default' | 'advanced'
+    }): PageDefinitionDTO => {
+      if (source.mode !== 'default') return source.config
+      const base = source.config
+      const parsed = isForm
+        ? parseFieldsTextWithGroups(source.fieldsText)
+        : { fields: parseFieldsText(source.fieldsText), groups: [] as FormFieldGroupConfig[] }
+      return {
+        ...base,
+        fields: [
+          ...mergeParsedFields(parsed.fields, base.fields),
+          ...base.fields.filter((f) => f.isAction),
+        ],
+        ...(isForm ? { formConfig: { ...base.formConfig, fieldGroups: parsed.groups } } : {}),
+      }
+    },
+    [isForm],
+  )
+
+  // 用 ref 暴露最新草稿：capability 只注册一次，也能读到实时状态
+  const draftRef = useRef({
+    config,
+    fieldsText,
+    mode,
+    effectiveConfig: buildEffectiveDraft({ config, fieldsText, mode }),
+  })
+  draftRef.current = {
+    config,
+    fieldsText,
+    mode,
+    effectiveConfig: buildEffectiveDraft({ config, fieldsText, mode }),
   }
+
+  const undoStackRef = useRef<{ config: PageDefinitionDTO; fieldsText: string }[]>([])
+  const MAX_AI_UNDO = 5
+
+  const applyDraft = useCallback((nextConfig: PageDefinitionDTO, nextFieldsText: string) => {
+    // 两份状态同时写入，保证默认/高级模式切换后看到同一份字段
+    setConfig(nextConfig)
+    setFieldsText(nextFieldsText)
+  }, [])
+
+  const backfill = useCallback(
+    (patch: FormPatch): PageAiBackfillResult => {
+      const draft = draftRef.current
+      const errors: string[] = []
+      const warnings: string[] = []
+      // 以「当前可见草稿」为基线，补丁只做增量合并
+      const base = draft.effectiveConfig
+
+      Object.keys(patch).forEach((key) => {
+        if (!AI_TOP_LEVEL_KEYS.has(key)) warnings.push(`忽略未知配置项：${key}`)
+      })
+
+      const topLevel: Partial<PageDefinitionDTO> = {}
+
+      const pageName = readString(patch.pageName)
+      if (pageName !== null) {
+        if (!pageName.trim()) errors.push('页面名称不能为空')
+        else topLevel.pageName = pageName.trim()
+      }
+      const pageKey = readString(patch.pageKey)
+      if (pageKey !== null) {
+        const kebab = pageKey.replace(/[\s_]+/g, '-').toLowerCase()
+        if (!kebab.trim()) errors.push('页面 key 不能为空')
+        else topLevel.pageKey = kebab
+      }
+      // 只给了页面名、且草稿还没有 key 时自动推导，避免保存被「key 不能为空」卡住
+      if (!topLevel.pageKey && topLevel.pageName && !base.pageKey.trim()) {
+        topLevel.pageKey = topLevel.pageName.replace(/[\s_]+/g, '-').toLowerCase()
+      }
+
+      const templateType = readString(patch.templateType)
+      if (templateType !== null) {
+        if (!AI_TEMPLATE_TYPES.has(templateType)) {
+          errors.push(`不支持的页面类型：${templateType}`)
+        } else {
+          topLevel.templateType = templateType
+        }
+      }
+
+      const tableName = readString(patch.tableName)
+      if (tableName !== null) {
+        if (!tableName.trim()) errors.push('业务表名不能为空')
+        else topLevel.tableName = tableName.trim()
+      }
+      const apiPrefix = readString(patch.apiPrefix)
+      if (apiPrefix !== null) {
+        if (!apiPrefix.trim()) errors.push('API 前缀不能为空')
+        else topLevel.apiPrefix = apiPrefix.trim()
+      }
+      const sourceListPageKey = readString(patch.sourceListPageKey)
+      if (sourceListPageKey !== null) topLevel.sourceListPageKey = sourceListPageKey.trim()
+
+      if (typeof patch.generateMenu === 'boolean') topLevel.generateMenu = patch.generateMenu
+
+      const menuLinkMode = readString(patch.menuLinkMode)
+      if (menuLinkMode !== null) {
+        if (!AI_MENU_LINK_MODES.has(menuLinkMode)) {
+          errors.push(`不支持的挂载方式：${menuLinkMode}`)
+        } else {
+          topLevel.menuLinkMode = menuLinkMode as PageDefinitionDTO['menuLinkMode']
+        }
+      }
+      for (const key of ['parentMenuId', 'bindMenuId'] as const) {
+        if (!(key in patch)) continue
+        const raw = patch[key]
+        if (raw === null) topLevel[key] = null
+        else if (typeof raw === 'string') topLevel[key] = raw.trim() || null
+        else if (typeof raw === 'number') topLevel[key] = String(raw)
+        else errors.push(`${key} 必须是字符串、数字或 null`)
+      }
+
+      // 字段增量合并：补丁未提及的字段、操作列、分组一律保留
+      const nextFields = base.fields.map((f) => ({ ...f }))
+      const additions: FieldConfig[] = []
+      const indexByKey = new Map<string, number>()
+      const indexByLabel = new Map<string, number>()
+      nextFields.forEach((f, i) => {
+        if (f.isAction) return
+        if (f.fieldKey) indexByKey.set(f.fieldKey, i)
+        if (f.fieldLabel) indexByLabel.set(f.fieldLabel, i)
+      })
+      // additions 的虚拟下标从 nextFields.length 开始，补丁内重复字段也能命中同一条
+      const fieldAt = (idx: number): FieldConfig =>
+        idx < nextFields.length ? nextFields[idx] : additions[idx - nextFields.length]
+      const setFieldAt = (idx: number, field: FieldConfig): void => {
+        if (idx < nextFields.length) nextFields[idx] = field
+        else additions[idx - nextFields.length] = field
+      }
+
+      const fieldsPatch = patch.fields
+      if (fieldsPatch !== undefined && !Array.isArray(fieldsPatch)) {
+        errors.push('fields 必须是字段数组')
+      }
+      if (Array.isArray(fieldsPatch)) {
+        fieldsPatch.forEach((raw, i) => {
+          if (!isRecord(raw)) {
+            errors.push(`第 ${i + 1} 个字段格式非法`)
+            return
+          }
+          const labelRaw = readString(raw.fieldLabel)
+          const keyRaw = readString(raw.fieldKey)
+          const label = labelRaw?.trim() ?? ''
+          const key = keyRaw?.trim() ?? ''
+          if (!label && !key) {
+            errors.push(`第 ${i + 1} 个字段缺少 fieldLabel 或 fieldKey`)
+            return
+          }
+          const typeRaw = readString(raw.fieldType)
+          if (typeRaw !== null && !AI_FIELD_TYPES.has(typeRaw)) {
+            errors.push(`字段「${label || key}」的 fieldType「${typeRaw}」不支持`)
+            return
+          }
+
+          let index = key ? indexByKey.get(key) : undefined
+          if (index === undefined && label) index = indexByLabel.get(label)
+
+          let nextField: FieldConfig
+          if (index !== undefined) {
+            nextField = { ...fieldAt(index) }
+          } else {
+            nextField = createEmptyField(nextFields.length + additions.length)
+          }
+
+          if (label) nextField.fieldLabel = label
+          if (key) nextField.fieldKey = key
+          if (!nextField.fieldKey) nextField.fieldKey = suggestFieldKey(nextField.fieldLabel)
+          if (!nextField.dbColumn) nextField.dbColumn = toSnakeCase(nextField.fieldKey)
+          if (!nextField.fieldLabel.trim()) errors.push(`第 ${i + 1} 个字段缺少中文字段名`)
+          if (typeRaw !== null) nextField.fieldType = typeRaw as FieldConfig['fieldType']
+
+          const width = readPositiveNumber(raw.width)
+          if (width !== null) nextField.width = width
+          if ('fixed' in raw) {
+            const fixed = raw.fixed
+            if (fixed === null || fixed === 'left' || fixed === 'right') {
+              nextField.fixed = fixed
+            } else {
+              errors.push(`字段「${label || key}」的 fixed 只能是 left/right/null`)
+            }
+          }
+          for (const boolKey of ['isFilter', 'sortable', 'isRequired'] as const) {
+            if (typeof raw[boolKey] === 'boolean') nextField[boolKey] = raw[boolKey]
+          }
+          const dbColumn = readString(raw.dbColumn)
+          if (dbColumn !== null) {
+            nextField.dbColumn = dbColumn.trim() || toSnakeCase(nextField.fieldKey)
+          }
+          const dbType = readString(raw.dbType)
+          if (dbType !== null) nextField.dbType = dbType.trim().toUpperCase()
+          const dbLength = readPositiveNumber(raw.dbLength)
+          if (dbLength !== null) nextField.dbLength = dbLength
+          if (Array.isArray(raw.options)) {
+            nextField.options = raw.options
+              .filter(isRecord)
+              .map((opt) => ({
+                label: readString(opt.label) ?? '',
+                value: readString(opt.value) ?? '',
+              }))
+              .filter((opt) => opt.label || opt.value)
+          }
+
+          if (index !== undefined) {
+            setFieldAt(index, nextField)
+            indexByKey.set(nextField.fieldKey, index)
+            indexByLabel.set(nextField.fieldLabel, index)
+          } else {
+            additions.push(nextField)
+            const newIndex = nextFields.length + additions.length - 1
+            indexByKey.set(nextField.fieldKey, newIndex)
+            indexByLabel.set(nextField.fieldLabel, newIndex)
+          }
+        })
+      }
+
+      // 防御：合并后不允许出现重复字段 key（含补丁新增与已有字段冲突）
+      if (errors.length === 0) {
+        const finalFields = [...nextFields.filter((f) => !f.isAction), ...additions]
+        const seen = new Set<string>()
+        for (const f of finalFields) {
+          const k = f.fieldKey.trim()
+          if (!k) continue
+          if (seen.has(k)) {
+            errors.push(`字段 key「${k}」重复`)
+            break
+          }
+          seen.add(k)
+        }
+      }
+
+      if (errors.length > 0) {
+        // 整包拒绝：不做部分回填，避免出现「一半更新一半没更新」的草稿
+        return { ok: false, errors, warnings }
+      }
+
+      const actionColumns = nextFields.filter((f) => f.isAction)
+      const nextConfig: PageDefinitionDTO = {
+        ...base,
+        ...topLevel,
+        fields: [
+          ...nextFields.filter((f) => !f.isAction),
+          ...additions,
+          ...actionColumns,
+        ].map((f, i) => ({ ...f, sortOrder: i })),
+      }
+      const nextFieldsText = serializeFieldsText(
+        nextConfig.fields,
+        nextConfig.formConfig?.fieldGroups,
+      )
+
+      // 压栈前先克隆，避免后续不可变更新时旧对象被就地修改
+      undoStackRef.current.push({
+        config: cloneDraft(draft.config),
+        fieldsText: draft.fieldsText,
+      })
+      while (undoStackRef.current.length > MAX_AI_UNDO) undoStackRef.current.shift()
+
+      applyDraft(nextConfig, nextFieldsText)
+      return { ok: true, errors: [], warnings, config: nextConfig }
+    },
+    [applyDraft],
+  )
+
+  const rollback = useCallback((): void => {
+    const prev = undoStackRef.current.pop()
+    if (!prev) return
+    applyDraft(prev.config, prev.fieldsText)
+  }, [applyDraft])
+
+  const getContext = useCallback(() => {
+    const draft = draftRef.current
+    const cfg = draft.effectiveConfig
+    const fields = cfg.fields.filter((f) => !f.isAction)
+    return {
+      sceneTitle: '页面生成器',
+      schema: {
+        target: 'page-generator.draft',
+        hint: '返回一个补丁对象；只写草稿，不要尝试发布或删除。',
+        patchTopLevelKeys: [...AI_TOP_LEVEL_KEYS],
+        fieldConfigKeys: {
+          fieldLabel: '中文字段名（必填）',
+          fieldKey: '字段 key（英文，留空则按中文名推导）',
+          fieldType: '字段类型，见 fieldTypeValues',
+          width: '列宽（数字，默认 120）',
+          fixed: '固定列：left / right / null',
+          isFilter: '是否作为筛选条件',
+          sortable: '是否支持排序',
+          isRequired: '表单页是否必填',
+          dbColumn: '数据库列名（留空按 key 转下划线）',
+          dbType: '数据库类型，如 VARCHAR / BIGINT / DECIMAL / DATETIME',
+          dbLength: '字段长度（数字）',
+          options: '静态选项数组 [{ label, value }]',
+        },
+        fieldTypeValues: [...AI_FIELD_TYPES],
+        templateTypeValues: [...AI_TEMPLATE_TYPES],
+        menuLinkModeValues: ['new_child', 'bind_existing'],
+      },
+      values: {
+        mode: draft.mode,
+        pageKey: cfg.pageKey,
+        pageName: cfg.pageName,
+        templateType: cfg.templateType,
+        tableName: cfg.tableName,
+        apiPrefix: cfg.apiPrefix,
+        generateMenu: cfg.generateMenu,
+        menuLinkMode: cfg.menuLinkMode,
+        parentMenuId: cfg.parentMenuId,
+        bindMenuId: cfg.bindMenuId,
+        sourceListPageKey: cfg.sourceListPageKey,
+        fieldCount: fields.length,
+        actionCount: cfg.fields.filter((f) => f.isAction).length,
+        fields: fields.map((f) => ({
+          fieldLabel: f.fieldLabel,
+          fieldKey: f.fieldKey,
+          fieldType: f.fieldType,
+          width: f.width,
+          fixed: f.fixed,
+          isFilter: f.isFilter,
+          sortable: f.sortable,
+          isRequired: f.isRequired ?? false,
+          dbColumn: f.dbColumn,
+          dbType: f.dbType,
+          dbLength: f.dbLength,
+        })),
+      },
+      extra: {
+        isAdvanced: draft.mode === 'advanced',
+        configuredFieldCount: fields.filter((f) => f.fieldKey.trim()).length,
+        totalFieldRows: draft.config.fields.length,
+        formGroupCount: cfg.formConfig?.fieldGroups?.length ?? 0,
+      },
+    }
+  }, [])
+
+  const validateDraft = useCallback(async (): Promise<AiValidateReport> => {
+    const cfg = draftRef.current.effectiveConfig
+    const issues: AiValidateIssue[] = []
+    const err = validateBeforeSave(cfg)
+    if (err) issues.push({ level: 'error', message: err })
+    const validFields = cfg.fields.filter((f) => f.fieldKey.trim())
+    if (validFields.length > 0 && !validFields.some((f) => f.isFilter)) {
+      issues.push({ level: 'warning', message: '当前没有字段作为筛选条件' })
+    }
+    if (cfg.templateType === 'form' && !validFields.some((f) => f.isRequired)) {
+      issues.push({ level: 'warning', message: '表单页没有任何必填字段' })
+    }
+    if (cfg.menuLinkMode === 'bind_existing' && !(cfg.bindMenuId || '').trim()) {
+      issues.push({ level: 'warning', message: '挂载方式为「绑定已有菜单」但未选择菜单' })
+    }
+    return { passed: !issues.some((i) => i.level === 'error'), issues }
+  }, [validateBeforeSave])
+
+  // 只暴露 backfill / rollback / validate；不提供 publish / delete / save
+  const pageCapability = useMemo<AiPageCapability>(
+    () => ({
+      scene: 'page-generator',
+      welcome:
+        '描述你要新增或调整的页面（列表 / 详情 / 表单），我会把结果补全到当前草稿。确认后才会写入，发布仍需你手动操作。',
+      getContext,
+      actions: {
+        backfill,
+        rollback,
+        validate: validateDraft,
+      },
+    }),
+    [getContext, backfill, rollback, validateDraft],
+  )
+
+  // 页面挂载即注册能力；卸载自动注销，未注册页面自然降级为通用问答
+  useEffect(() => {
+    if (!capabilityKey) return
+    return registerPageCapability(capabilityKey, pageCapability)
+  }, [capabilityKey, pageCapability])
+
+  // 开发环境手工验证入口：仅 vite dev 且 URL 带 ?aiDebug=1 时暴露，生产构建不生效
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    if (new URLSearchParams(window.location.search).get('aiDebug') !== '1') return
+    const debugApi = {
+      scene: 'page-generator',
+      getContext,
+      backfill,
+      rollback,
+      validate: validateDraft,
+      getDraft: () => cloneDraft(draftRef.current.effectiveConfig),
+    }
+    const w = window as unknown as Record<string, unknown>
+    w.__pageAiDebug = debugApi
+    return () => {
+      if (w.__pageAiDebug === debugApi) delete w.__pageAiDebug
+    }
+  }, [getContext, backfill, rollback, validateDraft])
 
   const handleSave = async (publish: boolean) => {
     // 默认模式：把文本域即时同步到 config（避免保存空数据）
     let savingConfig = config
     if (mode === 'default') {
-      const parsedFields = parseFieldsText(fieldsText)
+      // 表单页识别 [分组名] 分组语法；详情页/列表页平铺
+      const parsed = isForm
+        ? parseFieldsTextWithGroups(fieldsText)
+        : { fields: parseFieldsText(fieldsText), groups: [] as FormFieldGroupConfig[] }
       const parsedActions = parseActionsText(actionsText)
       const parsedToolbar = parseToolbarText(toolbarText)
       // 默认模式：仅当存在 actions 时才附加操作列
@@ -622,9 +1170,10 @@ export default function PageGeneratorWizard({ initial }: Props) {
                   return actionField
                 })()
               oldActionCol.width = 168
-              return [...parsedFields, oldActionCol]
+              // 按中文名匹配旧字段继承扩展配置（避免默认模式保存丢失 isRequired/width 等）
+              return [...mergeParsedFields(parsed.fields, config.fields), oldActionCol]
             })()
-          : parsedFields
+          : mergeParsedFields(parsed.fields, config.fields)
       savingConfig = {
         ...config,
         fields: fieldsWithAction.map((f, i) => ({
@@ -633,6 +1182,9 @@ export default function PageGeneratorWizard({ initial }: Props) {
         })),
         actions: parsedActions.map((a, i) => ({ ...a, sortOrder: i })),
         toolbarButtons: parsedToolbar.map((b, i) => ({ ...b, sortOrder: i })),
+        ...(isForm
+          ? { formConfig: { ...config.formConfig, fieldGroups: parsed.groups } }
+          : {}),
       }
       setConfig(savingConfig)
     }
@@ -703,17 +1255,20 @@ export default function PageGeneratorWizard({ initial }: Props) {
     })
   }
 
-  // 默认模式 → 高级模式：把文本域同步进 config
+  // 默认模式 → 高级模式：把文本域同步进 config（表单页连同 [分组名] 解析出的分组一起写入）
   const enrichForAdvanced = () => {
     setConfig((prev) => {
-      const newFields = parseFieldsText(fieldsText)
+      const allowGroups = prev.templateType === 'form'
+      const parsed = allowGroups
+        ? parseFieldsTextWithGroups(fieldsText)
+        : { fields: parseFieldsText(fieldsText), groups: [] as FormFieldGroupConfig[] }
       const newActions = parseActionsText(actionsText)
       const newToolbar = parseToolbarText(toolbarText)
 
-      // 保留原 config.fields 中的操作列（isAction=true）
+      // 保留原 config.fields 中的操作列（isAction=true）；其余字段按中文名匹配继承旧配置
       const oldActionCol = prev.fields.find((f) => f.isAction)
       const mergedFields = [
-        ...newFields,
+        ...mergeParsedFields(parsed.fields, prev.fields),
         ...(oldActionCol ? [oldActionCol] : []),
       ]
 
@@ -722,6 +1277,9 @@ export default function PageGeneratorWizard({ initial }: Props) {
         fields: mergedFields.map((f, i) => ({ ...f, sortOrder: i })),
         actions: newActions.map((a, i) => ({ ...a, sortOrder: i })),
         toolbarButtons: newToolbar.map((b, i) => ({ ...b, sortOrder: i })),
+        ...(allowGroups
+          ? { formConfig: { ...prev.formConfig, fieldGroups: parsed.groups } }
+          : {}),
       }
     })
   }
@@ -729,6 +1287,10 @@ export default function PageGeneratorWizard({ initial }: Props) {
   const handleModeChange = (m: 'default' | 'advanced') => {
     if (m === 'advanced' && mode === 'default') {
       enrichForAdvanced()
+    }
+    // 高级 → 默认：把字段（含分组）序列化回文本域，保证分组往返不丢失
+    if (m === 'default' && mode === 'advanced') {
+      setFieldsText(serializeFieldsText(config.fields, config.formConfig?.fieldGroups))
     }
     setMode(m)
   }
@@ -1094,13 +1656,12 @@ export default function PageGeneratorWizard({ initial }: Props) {
               </div>
             )}
 
-            {(isDetail || isForm) && (
+            {/* 详情页：页头信息（主名称/状态标签/字段列表） */}
+            {isDetail && (
               <div className="pgw-section-block">
-                <SectionTitle title="正文信息" />
+                <SectionTitle title="页头信息" />
                 {mode === 'default' ? (
                   <Form layout="vertical" requiredMark={requiredMark}>
-                    {isDetail && (
-                    <>
                     <Form.Item
                       label="主名称字段名（中文名，作为详情页大标题展示）"
                     >
@@ -1140,13 +1701,9 @@ export default function PageGeneratorWizard({ initial }: Props) {
                         autoSize={{ minRows: 3 }}
                       />
                     </Form.Item>
-                    </>
-                    )}
                   </Form>
                 ) : (
                   <>
-                    {isDetail && (
-                    <>
                     <Form layout="vertical" requiredMark={requiredMark}>
                       <Form.Item label="主名称字段（从已配置字段中选择）">
                         <Select
@@ -1286,86 +1843,112 @@ export default function PageGeneratorWizard({ initial }: Props) {
                       <div className="pgw-empty">暂无标签，点击上方「新增标签」配置</div>
                     )}
                     </div>
-                    </>
-                    )}
                   </>
                 )}
 
-                {(isDetail || isForm) && (
+                {mode === 'default' ? (
+                  <Form layout="vertical" requiredMark={requiredMark}>
+                    <Form.Item
+                      label="字段列表（每行一个字段，中文名，将作为详情页展示项）"
+                      className="pgw-form-item-none"
+                    >
+                      <Input.TextArea
+                        ref={fieldsTextRef}
+                        value={fieldsText}
+                        onChange={(e) => setFieldsText(e.target.value)}
+                        placeholder={'每行一个字段，例如：\n设备名称\n设备编号\n所属部门\n购入日期\n当前状态\n负责人'}
+                        autoSize={{ minRows: 5 }}
+                      />
+                    </Form.Item>
+                  </Form>
+                ) : (
                   <>
-                    {mode === 'default' ? (
-                      <Form layout="vertical" requiredMark={requiredMark}>
-                        <Form.Item
-                          label={`字段列表（每行一个字段，中文名，将作为${isForm ? '表单录入项' : '详情页展示项'}）`}
-                          className="pgw-form-item-none"
-                        >
-                          <Input.TextArea
-                            value={fieldsText}
-                            onChange={(e) => setFieldsText(e.target.value)}
-                            placeholder={'每行一个字段，例如：\n设备名称\n设备编号\n所属部门\n购入日期\n当前状态\n负责人'}
-                            autoSize={{ minRows: 5 }}
-                          />
-                        </Form.Item>
-                      </Form>
-                    ) : (
-                      <>
-                        <div className="pgw-toolbar">
-                          <span className="pgw-toolbar-count">共 {config.fields.length} 个字段</span>
-                          <div className="pgw-toolbar-actions">
-                            <CompanyButton type="link" icon={<PlusOutlined />} onClick={() => addField()}>新增字段</CompanyButton>
-                            {isForm && (
-                              <CompanyButton type="link" icon={<PlusOutlined />} onClick={addGroup}>新增分组</CompanyButton>
-                            )}
-                          </div>
-                        </div>
-                        <div className="pgw-field-list">
-                          {isForm ? (
-                            <>
-                              {/* 未分组字段平铺在前（与运行时渲染顺序一致） */}
-                              {formUngroupedFields.map(renderFieldCard)}
-                              {config.formConfig?.fieldGroups?.map((group, gi) => {
-                                const children = config.fields.filter((f) => f.groupId === group.id)
-                                const groupCount = config.formConfig?.fieldGroups?.length ?? 0
-                                return (
-                                  <div key={group.id} className="pgw-form-group-block">
-                                    <div className="pgw-form-group-head">
-                                      <Input
-                                        value={group.name}
-                                        onChange={(e) => renameGroup(group.id, e.target.value)}
-                                        placeholder="分组名称"
-                                        size="small"
-                                        style={{ width: 200 }}
-                                      />
-                                      <span className="pgw-form-group-count">{children.length} 个字段</span>
-                                      <Space size={0}>
-                                        <Button type="text" size="small" icon={<ArrowUpOutlined />} disabled={gi === 0} onClick={() => moveGroup(gi, -1)} />
-                                        <Button type="text" size="small" icon={<ArrowDownOutlined />} disabled={gi === groupCount - 1} onClick={() => moveGroup(gi, 1)} />
-                                        <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => removeGroup(group)} />
-                                      </Space>
-                                    </div>
-                                    <div className="pgw-field-list pgw-form-group-fields">
-                                      {children.map(renderFieldCard)}
-                                      {children.length === 0 && (
-                                        <div className="pgw-empty">暂无字段，点击下方「添加字段」放入该分组</div>
-                                      )}
-                                      <CompanyButton type="link" icon={<PlusOutlined />} onClick={() => addField(group.id)}>添加字段</CompanyButton>
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                              {config.fields.length === 0 && !config.formConfig?.fieldGroups?.length && (
-                                <div className="pgw-empty">暂无字段；可先「新增分组」，再往分组里添加字段</div>
+                    <div className="pgw-toolbar">
+                      <span className="pgw-toolbar-count">共 {config.fields.length} 个字段</span>
+                      <div className="pgw-toolbar-actions">
+                        <CompanyButton type="link" icon={<PlusOutlined />} onClick={() => addField()}>新增字段</CompanyButton>
+                      </div>
+                    </div>
+                    <div className="pgw-field-list">
+                      {config.fields.map(renderFieldCard)}
+                      {config.fields.length === 0 && (
+                        <div className="pgw-empty">暂无字段，点击上方「新增字段」开始配置</div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* 表单页：正文信息（字段列表 + 分组配置） */}
+            {isForm && (
+              <div className="pgw-section-block">
+                <SectionTitle title="正文信息" />
+                {mode === 'default' ? (
+                  <Form layout="vertical" requiredMark={requiredMark}>
+                    <div className="pgw-toolbar" style={{ marginBottom: 4 }}>
+                      <span className="pgw-toolbar-count">分组：单独一行写 [分组名]，其后字段归入该组</span>
+                      <div className="pgw-toolbar-actions">
+                        <CompanyButton type="link" icon={<PlusOutlined />} onClick={handleAddGroupMarker}>添加分组</CompanyButton>
+                      </div>
+                    </div>
+                    {/* 表单页说明已由上方「添加分组」提示行承担，不再显示冗长 label */}
+                    <Form.Item className="pgw-form-item-none">
+                      <Input.TextArea
+                        ref={fieldsTextRef}
+                        value={fieldsText}
+                        onChange={(e) => setFieldsText(e.target.value)}
+                        placeholder={'每行一个字段；需要分组时单独写一行 [分组名]，例如：\n设备名称\n设备编号\n[所属信息]\n所属部门\n负责人\n[其他信息]\n购入日期\n当前状态'}
+                        autoSize={{ minRows: 5 }}
+                      />
+                    </Form.Item>
+                  </Form>
+                ) : (
+                  <>
+                    <div className="pgw-toolbar">
+                      <span className="pgw-toolbar-count">共 {config.fields.length} 个字段</span>
+                      <div className="pgw-toolbar-actions">
+                        <CompanyButton type="link" icon={<PlusOutlined />} onClick={() => addField()}>新增字段</CompanyButton>
+                        <CompanyButton type="link" icon={<PlusOutlined />} onClick={addGroup}>新增分组</CompanyButton>
+                      </div>
+                    </div>
+                    <div className="pgw-field-list">
+                      {/* 未分组字段平铺在前（与运行时渲染顺序一致） */}
+                      {formUngroupedFields.map(renderFieldCard)}
+                      {config.formConfig?.fieldGroups?.map((group, gi) => {
+                        const children = config.fields.filter((f) => f.groupId === group.id)
+                        const groupCount = config.formConfig?.fieldGroups?.length ?? 0
+                        return (
+                          <div key={group.id} className="pgw-form-group-block">
+                            <div className="pgw-form-group-head">
+                              <Input
+                                value={group.name}
+                                onChange={(e) => renameGroup(group.id, e.target.value)}
+                                placeholder="分组名称"
+                                size="small"
+                                style={{ width: 200 }}
+                              />
+                              <span className="pgw-form-group-count">{children.length} 个字段</span>
+                              <Space size={0}>
+                                <Button type="text" size="small" icon={<ArrowUpOutlined />} disabled={gi === 0} onClick={() => moveGroup(gi, -1)} />
+                                <Button type="text" size="small" icon={<ArrowDownOutlined />} disabled={gi === groupCount - 1} onClick={() => moveGroup(gi, 1)} />
+                                <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => removeGroup(group)} />
+                              </Space>
+                            </div>
+                            <div className="pgw-field-list pgw-form-group-fields">
+                              {children.map(renderFieldCard)}
+                              {children.length === 0 && (
+                                <div className="pgw-empty">暂无字段，点击下方「添加字段」放入该分组</div>
                               )}
-                            </>
-                          ) : (
-                            config.fields.map(renderFieldCard)
-                          )}
-                          {!isForm && config.fields.length === 0 && (
-                            <div className="pgw-empty">暂无字段，点击上方「新增字段」开始配置</div>
-                          )}
-                        </div>
-                      </>
-                    )}
+                              <CompanyButton type="link" icon={<PlusOutlined />} onClick={() => addField(group.id)}>添加字段</CompanyButton>
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {config.fields.length === 0 && !config.formConfig?.fieldGroups?.length && (
+                        <div className="pgw-empty">暂无字段；可先「新增分组」，再往分组里添加字段</div>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
@@ -2017,7 +2600,9 @@ export default function PageGeneratorWizard({ initial }: Props) {
                 <>
                   <div className="pgw-toolbar">
                     <span className="pgw-toolbar-count">共 {config.fields.length} 个字段</span>
-                    <CompanyButton type="primary" onClick={() => addField()}>新增</CompanyButton>
+                    <div className="pgw-toolbar-actions">
+                      <CompanyButton type="link" icon={<PlusOutlined />} onClick={() => addField()}>新增字段</CompanyButton>
+                    </div>
                   </div>
                   <div className="pgw-field-list">
                     {config.fields.map((field, idx) => (
@@ -2062,9 +2647,11 @@ export default function PageGeneratorWizard({ initial }: Props) {
                 <span className="pgw-toolbar-count">
                   共 {config.actions.length} 个操作列按钮
                 </span>
-                <CompanyButton type="primary" onClick={addAction}>
-                  新增
-                </CompanyButton>
+                <div className="pgw-toolbar-actions">
+                  <CompanyButton type="link" icon={<PlusOutlined />} onClick={addAction}>
+                    新增按钮
+                  </CompanyButton>
+                </div>
             </div>
             {config.actions.map((action, idx) => (
               <div key={idx} className="pgw-field-item">
@@ -2163,9 +2750,11 @@ export default function PageGeneratorWizard({ initial }: Props) {
                 <span className="pgw-toolbar-count">
                   共 {config.toolbarButtons?.length || 0} 个工具栏按钮
                 </span>
-                <CompanyButton type="primary" onClick={addToolbarButton}>
-                  新增
-                </CompanyButton>
+                <div className="pgw-toolbar-actions">
+                  <CompanyButton type="link" icon={<PlusOutlined />} onClick={addToolbarButton}>
+                    新增按钮
+                  </CompanyButton>
+                </div>
               </div>
               {(config.toolbarButtons || []).map((btn, idx) => (
                 <div key={idx} className="pgw-field-item">

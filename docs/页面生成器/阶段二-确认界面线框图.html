@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>第二阶段 · AI 生成页面确认界面（线框图）</title>
+<style>
+  :root{
+    --ink:#262626;
+    --ink2:#595959;
+    --ink3:#8c8c8c;
+    --line:#d9d9d9;
+    --line2:#ededed;
+    --fill:#f5f5f5;
+    --fill2:#fbfbfb;
+    --brand:#F95914;
+    --brand-weak:#fff3ec;
+    --warn:#fff8e0;
+    --warn-line:#ffd591;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:#eceef0;
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:13px;
+    line-height:1.5;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;font-size:12px;color:var(--ink);}
+  .mono{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12px;color:var(--ink2);}
+
+  /* ---------- 顶部 ---------- */
+  .topbar{
+    flex:none;
+    height:58px;
+    padding:0 18px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background:#fff;
+    border-bottom:1px solid var(--line);
+  }
+  .crumb{font-size:12px;color:var(--ink3);}
+  .crumb b{color:var(--ink2);font-weight:500;}
+  .topbar .title{font-size:15px;font-weight:600;letter-spacing:.2px;}
+  .stage-tag{
+    font-size:11px;color:var(--ink2);
+    border:1px solid var(--line);border-radius:10px;
+    padding:1px 8px;background:var(--fill2);
+  }
+  .corner-note{
+    margin-left:auto;
+    font-size:11px;color:var(--ink3);
+    border:1px dashed var(--line);
+    border-radius:4px;
+    padding:3px 8px;
+    background:repeating-linear-gradient(45deg,#fafafa,#fafafa 4px,#f3f3f3 4px,#f3f3f3 8px);
+  }
+
+  /* ---------- 主工作区 ---------- */
+  .workspace{
+    flex:1;
+    min-height:0;
+    overflow:auto;
+    padding:14px 16px 0;
+  }
+  .cols{
+    display:grid;
+    grid-template-columns:260px minmax(540px,1fr) minmax(300px,350px);
+    gap:12px;
+    align-items:start;
+  }
+  .panel{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:6px;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  .panel-head{
+    flex:none;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 12px;
+    border-bottom:1px solid var(--line2);
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink2);
+    letter-spacing:.3px;
+  }
+  .panel-head .hint{font-weight:400;color:var(--ink3);font-size:11px;margin-left:auto;}
+  .panel-body{padding:12px;overflow:auto;}
+  .section-title{
+    display:flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:600;color:var(--ink);
+    padding-bottom:8px;margin-bottom:10px;
+    border-bottom:1px dashed var(--line2);
+  }
+  .section-title .sub{font-weight:400;color:var(--ink3);font-size:11px;}
+
+  /* ---------- 左：对话 ---------- */
+  .chat-body{padding:12px 12px 10px;display:flex;flex-direction:column;gap:10px;flex:1;}
+  .msg{max-width:92%;font-size:12px;line-height:1.65;}
+  .msg .who{font-size:10px;color:var(--ink3);margin-bottom:3px;}
+  .msg .bubble{
+    border:1px solid var(--line);border-radius:6px;
+    padding:8px 9px;background:var(--fill2);
+    color:var(--ink2);
+  }
+  .msg.me{align-self:flex-end;}
+  .msg.me .who{text-align:right;}
+  .msg.me .bubble{background:#f0f0f0;border-color:#e0e0e0;color:var(--ink);}
+  .msg.ai .bubble{border-left:2px solid var(--brand);background:#fff;}
+  .msg.ai .bubble strong{color:var(--ink);font-weight:600;}
+  .ai-options{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;}
+  .mini-chip{
+    font-size:11px;color:var(--ink2);
+    border:1px solid var(--line);border-radius:4px;
+    background:#fff;padding:2px 7px;
+  }
+  .mini-chip.on{border-color:var(--brand);color:var(--brand);background:var(--brand-weak);}
+  .chat-input{
+    flex:none;margin:0 12px 12px;
+    border:1px dashed var(--line);
+    border-radius:6px;background:var(--fill2);
+    padding:8px 9px;color:var(--ink3);font-size:12px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .chat-input span.dot{color:#c8c8c8;}
+
+  /* ---------- 中：属性 ---------- */
+  .attr-grid{
+    display:grid;
+    grid-template-columns:88px 1fr;
+    gap:6px 12px;
+    align-items:center;
+  }
+  .attr-grid > label{font-size:12px;color:var(--ink2);}
+  .attr-grid > label .req{color:var(--ink3);font-size:11px;margin-left:2px;}
+  .field-box{
+    height:28px;display:flex;align-items:center;
+    border:1px solid var(--line);border-radius:4px;
+    padding:0 9px;background:#fff;color:var(--ink);
+    font-size:12px;
+  }
+  .field-box.ph{color:var(--ink3);}
+  .field-box.code{font-family:"SF Mono",Menlo,monospace;font-size:12px;color:var(--ink2);}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;height:28px;}
+  .seg button{
+    border:0;background:#fff;padding:0 16px;font-size:12px;color:var(--ink2);
+    border-right:1px solid var(--line2);
+  }
+  .seg button:last-child{border-right:0;}
+  .seg button.active{background:var(--ink);color:#fff;}
+  .radios{display:flex;gap:14px;align-items:center;height:28px;}
+  .radio{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink2);}
+  .radio i{
+    width:12px;height:12px;border-radius:50%;
+    border:1px solid #bfbfbf;display:inline-block;position:relative;background:#fff;
+  }
+  .radio.on i{border-color:var(--ink);}
+  .radio.on i::after{
+    content:"";position:absolute;inset:3px;border-radius:50%;background:var(--ink);
+  }
+  .inline-hint{font-size:11px;color:var(--ink3);}
+  .sub-row{display:flex;gap:8px;align-items:center;}
+  .sub-row .field-box{flex:1;}
+  .select-box{position:relative;}
+  .select-box::after{
+    content:"▾";position:absolute;right:9px;top:50%;transform:translateY(-50%);
+    font-size:10px;color:var(--ink3);pointer-events:none;
+  }
+  .panel-body .panel + .panel{margin-top:14px;}
+
+  /* ---------- 中：字段表 ---------- */
+  .table-wrap{overflow-x:auto;border:1px solid var(--line2);border-radius:4px;}
+  .ftable{min-width:760px;}
+  .fgrid,
+  .fbody .frow{
+    display:grid;
+    grid-template-columns:26px 92px 100px 124px 50px 58px 120px 146px 44px;
+    align-items:center;
+  }
+  .fhead{
+    background:var(--fill);
+    border-bottom:1px solid var(--line);
+    font-size:11px;color:var(--ink3);
+    position:sticky;top:0;z-index:2;
+  }
+  .fhead > div{padding:7px 6px;border-right:1px solid #e8e8e8;height:100%;display:flex;align-items:center;}
+  .fhead > div:last-child{border-right:0;}
+  .fhead .th-note{display:block;font-size:10px;color:#a8a8a8;}
+  .fbody .frow{
+    border-bottom:1px solid var(--line2);
+    background:#fff;
+    cursor:pointer;
+    position:relative;
+  }
+  .fbody .frow:hover{background:#fafafa;}
+  .fbody .frow > div{padding:5px 6px;border-right:1px solid #f2f2f2;min-height:32px;display:flex;align-items:center;font-size:12px;}
+  .fbody .frow > div:last-child{border-right:0;}
+  .frow .idx{color:var(--ink3);font-size:11px;}
+  .frow .fname{font-family:"SF Mono",Menlo,monospace;font-size:11.5px;color:var(--ink2);}
+  .frow .flabel{color:var(--ink);}
+  .frow .grip{color:#c0c0c0;font-size:12px;letter-spacing:0;cursor:grab;user-select:none;}
+  .frow select{
+    width:100%;height:24px;border:1px solid var(--line);border-radius:3px;
+    background:#fff;padding:0 4px;color:var(--ink2);font-size:11.5px;
+  }
+  .frow .chk{
+    width:13px;height:13px;border:1px solid #c4c4c4;border-radius:2px;background:#fff;
+    display:inline-block;position:relative;
+  }
+  .frow .chk.on{border-color:var(--ink);background:#fff;}
+  .frow .chk.on::after{
+    content:"";position:absolute;left:3px;top:0px;width:5px;height:9px;
+    border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);
+    transform:rotate(40deg);
+  }
+  .frow .width-cell{display:flex;gap:4px;align-items:center;font-size:11px;color:var(--ink2);}
+  .frow .width-cell .w{
+    border:1px solid var(--line);border-radius:3px;background:#fff;
+    min-width:38px;padding:1px 4px;text-align:center;font-size:11px;color:var(--ink2);
+  }
+  .sort-badge{
+    border:1px solid var(--line);border-radius:3px;background:#fff;
+    font-size:10px;color:var(--ink3);padding:0 4px;line-height:16px;
+  }
+  .sort-badge.on{color:var(--ink);border-color:#bfbfbf;}
+  .frow .src{font-size:11px;color:var(--ink2);}
+  .frow .src .dict{border-bottom:1px dashed #bfbfbf;}
+  .frow .del{color:#bfbfbf;font-size:12px;text-align:center;width:100%;}
+  .frow .del:hover{color:var(--ink2);}
+  .frow.guess{background:var(--warn);box-shadow:inset 3px 0 0 var(--warn-line);}
+  .frow.guess:hover{background:#fff6d6;}
+  .frow.guess .fname{color:#ad6800;}
+  .frow .guess-dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:#faad14;margin-right:5px;vertical-align:1px;
+  }
+  .fbody.spotlight .frow.guess{animation:blink 1.2s ease-in-out 2;}
+  @keyframes blink{
+    0%,100%{background:var(--warn);}
+    50%{background:#ffe9b0;}
+  }
+  .frow.editing{background:#f7f7f7;}
+  .frow.dragging{opacity:.45;background:#fafafa;}
+  .frow.drag-over{box-shadow:inset 0 3px 0 var(--ink);}
+  .row-edit{
+    border-bottom:1px solid var(--line2);
+    background:#f9f9f9;
+    padding:10px 12px 10px 34px;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px 12px;
+    font-size:11px;color:var(--ink2);
+  }
+  .row-edit .re-item{display:flex;flex-direction:column;gap:3px;}
+  .row-edit .re-item span{color:var(--ink3);font-size:10px;}
+  .row-edit .re-box{
+    height:26px;border:1px solid var(--line);border-radius:3px;background:#fff;
+    display:flex;align-items:center;padding:0 7px;color:var(--ink2);font-size:11.5px;
+  }
+  .row-edit .re-note{grid-column:1/-1;color:var(--ink3);font-size:11px;display:flex;align-items:center;gap:6px;}
+  .row-edit .re-note .k{color:#ad6800;}
+  .row-edit .re-actions{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;}
+  .re-btn{border:1px solid var(--line);background:#fff;border-radius:3px;font-size:11px;padding:3px 12px;color:var(--ink2);}
+  .re-btn.primary{border-color:var(--brand);color:var(--brand);}
+
+  .confirm-chip{
+    display:inline-flex;align-items:center;gap:5px;
+    border:1px solid var(--brand);border-radius:11px;
+    background:var(--brand-weak);color:var(--brand);
+    font-size:11px;padding:1px 9px;cursor:pointer;font-weight:500;
+  }
+  .confirm-chip:hover{background:#ffe8dc;}
+  .legend{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--ink3);margin:0 0 8px;}
+  .legend .sw{display:inline-block;width:10px;height:10px;border:1px solid var(--warn-line);background:var(--warn);vertical-align:-1px;margin-right:4px;}
+  .table-foot{
+    display:flex;align-items:center;gap:10px;
+    padding-top:9px;font-size:11px;color:var(--ink3);
+  }
+  .table-foot .add{
+    border:1px dashed var(--line);background:#fff;border-radius:3px;
+    color:var(--ink2);font-size:11px;padding:3px 10px;
+  }
+  .table-foot .right{margin-left:auto;display:flex;gap:8px;}
+
+  .col-center{display:flex;flex-direction:column;gap:12px;min-width:0;}
+  .col-center .panel{flex:none;}
+
+  /* ---------- 右：真预览 ---------- */
+  .preview-panel .panel-head{justify-content:space-between;}
+  .live-tag{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:10px;color:var(--ink2);border:1px solid var(--line);
+    border-radius:9px;padding:0 7px;line-height:16px;background:#fff;font-weight:400;
+  }
+  .live-tag i{width:5px;height:5px;border-radius:50%;background:var(--brand);display:inline-block;}
+  .preview-body{padding:10px;flex:1;overflow:auto;background:#f7f7f7;display:flex;flex-direction:column;}
+  .preview-frame{
+    background:#fff;border:1px solid var(--line);border-radius:4px;
+    overflow:hidden;min-height:300px;flex:1;
+  }
+  .preview-frame .pf-bar{
+    height:24px;background:#efefef;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:4px;padding:0 8px;
+  }
+  .preview-frame .pf-bar i{width:6px;height:6px;border-radius:50%;background:#d0d0d0;}
+  .preview-frame .pf-url{
+    flex:1;height:13px;background:#fff;border:1px solid #e2e2e2;border-radius:2px;
+    font-size:9px;color:#b0b0b0;display:flex;align-items:center;padding:0 5px;
+    overflow:hidden;white-space:nowrap;
+  }
+  .pv{padding:10px 11px 14px;}
+  .pv-title{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:6px;margin-bottom:9px;}
+  .pv-title .bar{width:3px;height:11px;background:#cfcfcf;}
+  .pv-toolbar{display:flex;gap:5px;margin-bottom:8px;}
+  .sk{background:#ececec;border-radius:2px;height:11px;}
+  .sk.line{height:1px;background:#e6e6e6;}
+  .pv-input{height:18px;border:1px solid #e2e2e2;border-radius:2px;background:#fbfbfb;flex:1;}
+  .pv-btn{width:44px;height:18px;border:1px solid #e2e2e2;border-radius:2px;background:#fafafa;}
+  .pv-btn.dark{background:#e2e2e2;border-color:#d5d5d5;}
+  .pv-thead,.pv-row{
+    display:grid;grid-template-columns:1.4fr 1fr .9fr .8fr .6fr;
+    gap:6px;align-items:center;
+  }
+  .pv-thead{padding:5px 0;border-bottom:1px solid #e2e2e2;}
+  .pv-thead .sk{height:8px;width:70%;background:#dedede;}
+  .pv-row{padding:7px 0;border-bottom:1px solid #f0f0f0;}
+  .pv-row .sk{width:85%;}
+  .pv-row .sk.cell-chip{width:34px;height:10px;background:#e8e8e8;border-radius:2px;}
+  .pv-pager{display:flex;justify-content:flex-end;gap:4px;margin-top:10px;}
+  .pv-pager i{width:14px;height:12px;border:1px solid #e4e4e4;border-radius:2px;background:#fafafa;display:block;}
+  .pv-form-group{margin-bottom:11px;}
+  .pv-form-group .lg{width:34%;height:8px;background:#e4e4e4;border-radius:2px;margin-bottom:5px;}
+  .pv-form-group .fi{height:20px;border:1px solid #e2e2e2;border-radius:2px;background:#fcfcfc;}
+  .pv-form-group .fi.ta{height:42px;}
+  .pv-detail-block{
+    border:1px solid #ededed;border-radius:3px;padding:9px;margin-bottom:9px;background:#fcfcfc;
+  }
+  .pv-detail-block .hd{height:8px;width:30%;background:#dcdcdc;border-radius:2px;margin-bottom:9px;}
+  .pv-kv{display:grid;grid-template-columns:70px 1fr;gap:7px 8px;align-items:center;margin-bottom:6px;}
+  .pv-kv .k{height:8px;background:#e6e6e6;border-radius:2px;width:80%;}
+  .pv-kv .v{height:8px;background:#efefef;border-radius:2px;}
+  .pv-empty{
+    border:1px dashed var(--line);border-radius:4px;
+    color:var(--ink3);font-size:11px;text-align:center;padding:16px 8px;
+  }
+  .preview-note{
+    margin-top:9px;padding:7px 9px;
+    border:1px dashed var(--line);border-radius:4px;
+    background:#fff;font-size:11px;color:var(--ink3);line-height:1.6;
+  }
+  .preview-note b{color:var(--ink2);font-weight:500;}
+
+  /* ---------- 生成成功后 ---------- */
+  .success-block{
+    margin:14px 0 0;
+    background:#fff;border:1px solid var(--line);border-radius:6px;
+    padding:0;
+  }
+  .success-block .sb-head{
+    display:flex;align-items:center;gap:8px;
+    padding:10px 14px;border-bottom:1px solid var(--line2);
+    font-size:12px;font-weight:600;color:var(--ink2);
+  }
+  .sb-head .hint{font-weight:400;font-size:11px;color:var(--ink3);margin-left:auto;}
+  .sb-body{display:flex;align-items:center;gap:12px;padding:10px 14px;flex-wrap:wrap;}
+  .sb-steps{display:flex;align-items:center;gap:0;flex:1;flex-wrap:wrap;}
+  .sb-step{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink2);}
+  .sb-step .ok{
+    width:16px;height:16px;border-radius:50%;border:1px solid #bfbfbf;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:10px;color:var(--ink2);background:#fff;
+  }
+  .sb-step .ok.done{border-color:var(--ink2);}
+  .sb-step .ok.done::after{content:"✓";font-size:9px;}
+  .sb-step strong{color:var(--ink);font-weight:500;}
+  .sb-arrow{color:#cfcfcf;padding:0 12px;font-size:12px;}
+  .sb-cta{
+    margin-left:auto;
+    border:1px solid var(--brand);color:var(--brand);background:var(--brand-weak);
+    border-radius:4px;padding:5px 12px;font-size:12px;
+  }
+  .sb-cta:hover{background:#ffe8dc;}
+  .sb-foot{padding:0 14px 10px;font-size:11px;color:var(--ink3);}
+
+  /* ---------- 底部固定操作区 ---------- */
+  .actionbar{
+    flex:none;
+    background:#fff;
+    border-top:1px solid var(--line);
+    box-shadow:0 -2px 8px rgba(0,0,0,.03);
+    padding:10px 18px 11px;
+  }
+  .ab-hint{
+    display:flex;align-items:center;gap:7px;
+    font-size:12px;color:var(--ink2);
+    padding-bottom:9px;
+  }
+  .ab-hint .ico{
+    width:14px;height:14px;border-radius:50%;border:1px solid var(--line);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:9px;color:var(--ink3);flex:none;
+  }
+  .ab-hint .go{
+    color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;
+    font-size:12px;
+  }
+  .ab-hint .go:hover{border-bottom-color:var(--brand);}
+  .ab-bar{display:flex;align-items:center;gap:10px;}
+  .ab-meta{font-size:11px;color:var(--ink3);margin-right:auto;}
+  .btn{
+    border:1px solid var(--line);background:#fff;color:var(--ink2);
+    border-radius:4px;padding:5px 16px;font-size:12px;height:30px;
+  }
+  .btn:hover{border-color:#bfbfbf;color:var(--ink);}
+  .btn-primary{
+    border:1px solid var(--brand);background:var(--brand);color:#fff;
+    font-weight:500;
+  }
+  .btn-primary:hover{background:#e04f0d;border-color:#e04f0d;}
+  .btn-ghost{border-color:transparent;background:transparent;}
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width:1360px){
+    .cols{grid-template-columns:240px minmax(480px,1fr) 300px;}
+  }
+  @media (max-width:1180px){
+    .cols{grid-template-columns:240px 1fr;}
+    .preview-panel{grid-column:1/-1;}
+    .preview-frame{min-height:240px;}
+  }
+  @media (max-width:820px){
+    .cols{grid-template-columns:1fr;}
+    .chat-body{max-height:240px;}
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="crumb">页面生成器 / <b>第二阶段</b> / 确认</span>
+  <span class="stage-tag">AI 补全字段 → 人工确认</span>
+  <span class="title">设备管理（AI 草稿）</span>
+  <span class="corner-note">线框图，仅表达结构</span>
+</div>
+
+<div class="workspace">
+  <div class="cols">
+
+    <!-- ========== 左栏：对话 ========== -->
+    <aside class="panel">
+      <div class="panel-head">对话
+        <span class="hint">仅记录，不可再改</span>
+      </div>
+      <div class="panel-body chat-body">
+        <div class="msg me">
+          <div class="who">你</div>
+          <div class="bubble">帮我做一个设备管理页面，列表要能按状态筛选。</div>
+        </div>
+        <div class="msg me">
+          <div class="who">你</div>
+          <div class="bubble">字段大概是：设备名称、设备编号、当前状态、设备分类、所属部门、购入日期、负责人。</div>
+        </div>
+        <div class="msg ai">
+          <div class="who">AI</div>
+          <div class="bubble">
+            「当前状态」的取值是 <strong>0 / 1</strong> 还是<strong>字典码值</strong>？这会决定筛选控件和列表展示方式。
+            <div class="ai-options">
+              <span class="mini-chip" data-answer="0/1">0 / 1 布尔</span>
+              <span class="mini-chip" data-answer="dict">字典码值</span>
+              <span class="mini-chip" data-answer="later">稍后确认</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input">
+        <span>继续说，比如「再加一个备注字段」</span>
+        <span class="dot">↑</span>
+      </div>
+    </aside>
+
+    <!-- ========== 中栏：属性 + 字段表 ========== -->
+    <div class="col-center">
+
+      <!-- 页面属性 -->
+      <section class="panel">
+        <div class="panel-head">页面属性
+          <span class="hint">AI 已根据对话预填，可逐项修改</span>
+        </div>
+        <div class="panel-body">
+          <div class="attr-grid">
+            <label>页面名称</label>
+            <div class="field-box">设备管理</div>
+
+            <label>页面类型</label>
+            <div class="seg" id="typeSeg">
+              <button class="active" data-type="list">列表</button>
+              <button data-type="detail">详情</button>
+              <button data-type="form">表单</button>
+            </div>
+
+            <label>路由</label>
+            <div class="field-box code">/equipment-manage</div>
+
+            <label>菜单归属</label>
+            <div class="radios" id="menuRadios">
+              <span class="radio on" data-menu="new"><i></i>新建子菜单</span>
+              <span class="radio" data-menu="bind"><i></i>绑定已有菜单</span>
+            </div>
+
+            <label></label>
+            <div class="sub-row" id="parentRow">
+              <div class="field-box select-box ph">选择父菜单（如 设备中心）</div>
+              <span class="inline-hint">生成后在左侧导航出现</span>
+            </div>
+
+            <label>API 前缀</label>
+            <div class="field-box code">/api/equipments</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 字段表 -->
+      <section class="panel">
+        <div class="panel-head">字段表
+          <span class="confirm-chip" id="confirmChip">⚠ 3 项待确认</span>
+          <span class="hint">拖拽行首 ≡ 可排序 · 点击行可展开行内编辑</span>
+        </div>
+        <div class="panel-body">
+          <div class="legend">
+            <span><span class="sw"></span>黄底 = AI 猜测不准，需人工确认</span>
+            <span>共 8 个字段 · 其中 3 项为猜测</span>
+          </div>
+
+          <div class="table-wrap">
+            <div class="ftable">
+              <div class="fgrid fhead">
+                <div></div>
+                <div>字段名</div>
+                <div>中文标签</div>
+                <div>控件类型</div>
+                <div>必填</div>
+                <div>进筛选</div>
+                <div>列宽 / 排序</div>
+                <div>枚举 / 字典来源</div>
+                <div>操作</div>
+              </div>
+
+              <div class="fbody" id="fbody">
+
+                <div class="frow" draggable="true" data-key="name" data-hint="AI 判断：设备名称必填且需要精确检索。">
+                  <div><span class="grip">≡</span></div>
+                  <div class="fname">name</div>
+                  <div class="flabel">设备名称</div>
+                  <div>
+                    <select class="type-select"><option>输入框</option><option>多行文本</option><option>下拉选择</option></select>
+                  </div>
+                  <div><span class="chk on"></span></div>
+                  <div><span class="chk on"></span></div>
+                  <div class="width-cell"><span class="w">120</span><span class="sort-badge on">↑</span></div>
+                  <div class="src">—</div>
+                  <div><span class="del" title="删除字段">×</span></div>
+                </div>
+
+                <div class="frow" draggable="true" data-key="code" data-hint="AI 判断：设备编号唯一，建议必填 + 进筛选。">
+                  <div><span class="grip">≡</span></div>
+                  <div class="fname">code</div>
+                  <div class="flabel">设备编号</div>
+                  <div>
+                    <select class="type-select"><option>输入框</option><option>多行文本</option><option>日期选择</option></select>
+                  </div>
+                  <div><span class="chk on"></span></div>
+                  <div><span class="chk"></span></div>
+                  <div class="width-cell"><span class="w">140</span><span class="sort-badge">↑</span></div>
+                  <div class="src">—</div>
+                  <div><span class="del" title="删除字段">×</span></div>
+                </div>
+
+                <div class="frow guess" draggable="true" data-key="status" data-hint="AI 猜测：状态取值可能是 0/1，也可能是「设备状态」字典码值，需人工确认。">
+                  <div><span class="grip">≡</span></div>
+                  <div class="fname"><span class="guess-dot"></span>status</div>
+                  <div class="flabel">当前状态</div>
+                  <div>
+                    <select class="type-select"><option>下拉选择</option><option>开关</option><option>输入框</option></select>
+                  </div>
+                  <div><span class="chk"></span></div>
+                  <div><span class="chk on"></span></div>
+                  <div class="width-cell"><span class="w">100</span><span class="sort-badge">↑</span></div>
+                  <div class="src"><span class="dict">待确认：0/1 或字典</span></div>
+                  <div><span class="del" title="删除字段">×</span></div>
+                </div>
+
+                <div class="frow guess" draggable="true" data-key="category" data-hint="AI 猜测：分类来源假定为「设备分类」字典，未在对话中出现。">
+                  <div><span class="grip">≡</span></div>
+                  <div class="fname"><span class="guess-dot"></span>category</div>
+                  <div class="flabel">设备分类</div>
+                  <div>
+                    <select class="type-select"><option>下拉选择</option><option>树选择</option><option>输入框</option></select>
+                  </div>
+                  <div><span class="chk"></span></div>
+                  <div><span class="chk on"></span></div>
+                  <div class="width-cell"><span class="w">110</span><span class="sort-badge">↑</span></div>
+                  <div class="src"><span class="dict">字典：设备分类（猜）</span></div>
+                  <div><span class="del" title="删除字段">×</span></div>
+                </div>
+
+                <div class="frow guess" draggable="true" data-key="dept" data-hint="AI 猜测：所属部门建议取部门树，是否为必填待定。">
+                  <div><span class="grip">≡</span></div>
+                  <div class="fname"><span class="guess-dot"></span>dept</div>
+                  <div class="flabel">所属部门</div>
+                  <div>
+                    <select class="type-select"><option>树选择</option><option>下拉选择</option><option>输入框</option></select>
+                  </div>
+                  <div><span class="chk"></span></div>
+                  <div><span class="chk on"></span></div>
+                  <div class="width-cell"><span class="w">120</span><span class="sort-badge">↑</span></div>
+                  <div class="src"><span class="dict">部门树（猜）</span></div>
+                  <div><span class="del" title="删除字段">×</span></div>
+                </div>
+
+                <div class="frow" draggable="true" data-key="purchaseDate" data-hint="AI 判断：购入日期用于排序，默认倒序。">
+                  <div><span class="grip">≡</span></div>
+                  <div class="fname">purchaseDate</div>
+                  <div class="flabel">购入日期</div>
+                  <div>
+                    <select class="type-select"><option>日期选择</option><option>输入框</option><option>日期范围</option></select>
+                  </div>
+                  <div><span class="chk"></span></div>
+                  <div><span class="chk"></span></div>
+                  <div class="width-cell"><span class="w">130</span><span class="sort-badge on">↑</span></div>
+                  <div class="src">—</div>
+                  <div><span class="del" title="删除字段">×</span></div>
+                </div>
+
+                <div class="frow" draggable="true" data-key="owner" data-hint="AI 判断：负责人取人员选择器，是否必填未定。">
+                  <div><span class="grip">≡</span></div>
+                  <div class="fname">owner</div>
+                  <div class="flabel">负责人</div>
+                  <div>
+                    <select class="type-select"><option>人员选择</option><option>输入框</option><option>下拉选择</option></select>
+                  </div>
+                  <div><span class="chk"></span></div>
+                  <div><span class="chk"></span></div>
+                  <div class="width-cell"><span class="w">100</span><span class="sort-badge">↑</span></div>
+                  <div class="src">—</div>
+                  <div><span class="del" title="删除字段">×</span></div>
+                </div>
+
+                <div class="frow" draggable="true" data-key="remark" data-hint="AI 判断：备注仅详情页展示，不参与列表。">
+                  <div><span class="grip">≡</span></div>
+                  <div class="fname">remark</div>
+                  <div class="flabel">备注</div>
+                  <div>
+                    <select class="type-select"><option>多行文本</option><option>输入框</option></select>
+                  </div>
+                  <div><span class="chk"></span></div>
+                  <div><span class="chk"></span></div>
+                  <div class="width-cell"><span class="w">—</span><span class="sort-badge">—</span></div>
+                  <div class="src">—</div>
+                  <div><span class="del" title="删除字段">×</span></div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <div class="table-foot">
+            <button class="add">+ 添加字段（示意）</button>
+            <div class="right">
+              <span>字段排序会同步到列表页与表单页</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+    <!-- ========== 右栏：真预览 ========== -->
+    <aside class="panel preview-panel">
+      <div class="panel-head">真预览
+        <span class="live-tag"><i></i>实时</span>
+      </div>
+      <div class="preview-body">
+        <div class="preview-frame">
+          <div class="pf-bar">
+            <i></i><i></i><i></i>
+            <div class="pf-url" id="pvUrl">/equipment-manage</div>
+          </div>
+          <div class="pv" id="pv">
+            <div class="pv-title"><span class="bar"></span>设备管理</div>
+            <div class="pv-toolbar">
+              <div class="pv-input"></div>
+              <div class="pv-btn"></div>
+              <div class="pv-btn dark"></div>
+            </div>
+            <div class="pv-thead">
+              <div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div>
+            </div>
+            <div class="pv-row"><div class="sk"></div><div class="sk"></div><span class="sk cell-chip"></span><div class="sk"></div><div class="sk"></div></div>
+            <div class="pv-row"><div class="sk"></div><div class="sk"></div><span class="sk cell-chip"></span><div class="sk"></div><div class="sk"></div></div>
+            <div class="pv-row"><div class="sk"></div><div class="sk"></div><span class="sk cell-chip"></span><div class="sk"></div><div class="sk"></div></div>
+            <div class="pv-row"><div class="sk"></div><div class="sk"></div><span class="sk cell-chip"></span><div class="sk"></div><div class="sk"></div></div>
+            <div class="pv-row"><div class="sk"></div><div class="sk"></div><span class="sk cell-chip"></span><div class="sk"></div><div class="sk"></div></div>
+            <div class="pv-pager"><i></i><i></i><i></i></div>
+          </div>
+        </div>
+        <div class="preview-note">
+          <b>此处为生成器真实渲染</b>，随字段变更实时刷新。<br />
+          线框图中的灰块仅示意位置与密度，不代表最终视觉。
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- 生成成功后（独立区块示意） -->
+  <section class="success-block" id="successBlock">
+    <div class="sb-head">生成成功后
+      <span class="hint">独立区块 · 与上方确认态不共存</span>
+    </div>
+    <div class="sb-body">
+      <div class="sb-steps">
+        <div class="sb-step"><span class="ok done"></span><strong>页面已创建</strong><span class="mono">/equipment-manage</span></div>
+        <span class="sb-arrow">→</span>
+        <div class="sb-step"><span class="ok done"></span><strong>菜单已生成</strong><span>设备中心 / 设备管理</span></div>
+        <span class="sb-arrow">→</span>
+        <div class="sb-step"><span class="ok"></span><span>其他域待开启</span></div>
+      </div>
+      <button class="sb-cta">去域管理开启其他域 →</button>
+    </div>
+    <div class="sb-foot">默认域立即可见；其他域需在域管理中勾选该菜单后才会出现。</div>
+  </section>
+</div>
+
+<!-- 底部固定操作区 -->
+<div class="actionbar">
+  <div class="ab-hint">
+    <span class="ico">i</span>
+    <span>生成后仅在<strong>默认域</strong>可见，其他域需在域管理开启</span>
+    <a class="go" href="#" onclick="return false;">去域管理 →</a>
+  </div>
+  <div class="ab-bar">
+    <span class="ab-meta">草稿保存时间 10:24 · 生成后可在页面生成器中二次编辑</span>
+    <button class="btn btn-ghost">取消</button>
+    <button class="btn">保存草稿</button>
+    <button class="btn btn-primary" id="publishBtn">生成并发布</button>
+  </div>
+</div>
+<script>
+(function () {
+  var fbody = document.getElementById('fbody');
+  var pv = document.getElementById('pv');
+  var pvUrl = document.getElementById('pvUrl');
+  var layout = 'list';
+
+  /* ---------- 右栏预览：随页面类型切换 ---------- */
+  var rowSkeleton =
+    '<div class="pv-row">' +
+      '<div class="sk"></div><div class="sk"></div>' +
+      '<span class="sk cell-chip"></span>' +
+      '<div class="sk"></div><div class="sk"></div>' +
+    '</div>';
+
+  function renderPreview() {
+    var urlMap = { list: '/equipment-manage', detail: '/equipment-manage/detail', form: '/equipment-manage/create' };
+    pvUrl.textContent = urlMap[layout];
+
+    if (layout === 'detail') {
+      pv.innerHTML =
+        '<div class="pv-title"><span class="bar"></span>设备详情</div>' +
+        '<div class="pv-detail-block"><div class="hd"></div>' +
+          '<div class="pv-kv"><div class="k"></div><div class="v"></div></div>' +
+          '<div class="pv-kv"><div class="k"></div><div class="v"></div></div>' +
+          '<div class="pv-kv"><div class="k"></div><div class="v"></div></div>' +
+          '<div class="pv-kv"><div class="k"></div><div class="v"></div></div>' +
+        '</div>' +
+        '<div class="pv-detail-block"><div class="hd"></div>' +
+          '<div class="pv-kv"><div class="k"></div><div class="v"></div></div>' +
+          '<div class="pv-kv"><div class="k"></div><div class="v"></div></div>' +
+        '</div>';
+      return;
+    }
+
+    if (layout === 'form') {
+      pv.innerHTML =
+        '<div class="pv-title"><span class="bar"></span>新建设备</div>' +
+        '<div class="pv-form-group"><div class="lg"></div><div class="fi"></div></div>' +
+        '<div class="pv-form-group"><div class="lg"></div><div class="fi"></div></div>' +
+        '<div class="pv-form-group"><div class="lg"></div><div class="fi"></div></div>' +
+        '<div class="pv-form-group"><div class="lg"></div><div class="fi"></div></div>' +
+        '<div class="pv-form-group"><div class="lg"></div><div class="fi ta"></div></div>' +
+        '<div style="display:flex;gap:6px;justify-content:flex-end">' +
+          '<div class="pv-btn"></div><div class="pv-btn dark"></div>' +
+        '</div>';
+      return;
+    }
+
+    pv.innerHTML =
+      '<div class="pv-title"><span class="bar"></span>设备管理</div>' +
+      '<div class="pv-toolbar"><div class="pv-input"></div><div class="pv-btn"></div><div class="pv-btn dark"></div></div>' +
+      '<div class="pv-thead">' +
+        '<div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div>' +
+      '</div>' +
+      rowSkeleton + rowSkeleton + rowSkeleton + rowSkeleton + rowSkeleton +
+      '<div class="pv-pager"><i></i><i></i><i></i></div>';
+  }
+
+  document.querySelectorAll('#typeSeg button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('#typeSeg button').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      layout = btn.getAttribute('data-type');
+      renderPreview();
+    });
+  });
+
+  /* ---------- 菜单归属切换 ---------- */
+  var parentRow = document.getElementById('parentRow');
+  document.querySelectorAll('#menuRadios .radio').forEach(function (radio) {
+    radio.addEventListener('click', function () {
+      document.querySelectorAll('#menuRadios .radio').forEach(function (r) { r.classList.remove('on'); });
+      radio.classList.add('on');
+      var box = parentRow.querySelector('.field-box');
+      if (radio.getAttribute('data-menu') === 'bind') {
+        box.textContent = '选择已有菜单（如 设备管理）';
+        parentRow.querySelector('.inline-hint').textContent = '沿用原菜单位置，不新增导航项';
+      } else {
+        box.textContent = '选择父菜单（如 设备中心）';
+        parentRow.querySelector('.inline-hint').textContent = '生成后在左侧导航出现';
+      }
+    });
+  });
+
+  /* ---------- 对话里的追问选项（示意） ---------- */
+  document.querySelectorAll('.ai-options .mini-chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      document.querySelectorAll('.ai-options .mini-chip').forEach(function (c) { c.classList.remove('on'); });
+      chip.classList.add('on');
+    });
+  });
+
+  /* ---------- 字段表：行内编辑 ---------- */
+  var editingRow = null;
+
+  function closeEditor() {
+    var panel = fbody.querySelector('.row-edit');
+    if (panel) panel.remove();
+    if (editingRow) editingRow.classList.remove('editing');
+    editingRow = null;
+  }
+
+  function openEditor(row) {
+    closeEditor();
+    editingRow = row;
+    row.classList.add('editing');
+    var hint = row.getAttribute('data-hint') || '根据对话与常见字段推断。';
+    var panel = document.createElement('div');
+    panel.className = 'row-edit';
+    panel.innerHTML =
+      '<div class="re-item"><span>字段名</span><div class="re-box">' + row.querySelector('.fname').textContent.trim() + '</div></div>' +
+      '<div class="re-item"><span>中文标签</span><div class="re-box">' + row.querySelector('.flabel').textContent.trim() + '</div></div>' +
+      '<div class="re-item"><span>控件类型</span><div class="re-box">' + row.querySelector('.type-select').value + ' ▾</div></div>' +
+      '<div class="re-item"><span>列表列宽</span><div class="re-box">' + row.querySelector('.width-cell .w').textContent.trim() + ' px</div></div>' +
+      '<div class="re-item"><span>默认排序</span><div class="re-box">升序 / 图标切换 ▾</div></div>' +
+      '<div class="re-item"><span>枚举 / 字典来源</span><div class="re-box">' + row.querySelector('.src').textContent.trim() + ' ▾</div></div>' +
+      '<div class="re-note"><span>AI 依据</span><span class="k">' + hint + '</span></div>' +
+      '<div class="re-actions"><button type="button" class="re-btn" data-act="cancel">取消</button>' +
+      '<button type="button" class="re-btn primary" data-act="apply">应用</button></div>';
+    row.after(panel);
+  }
+
+  fbody.addEventListener('click', function (e) {
+    var row = e.target.closest('.frow');
+    if (!row) return;
+
+    if (e.target.closest('select')) return;
+
+    var chk = e.target.closest('.chk');
+    if (chk) { chk.classList.toggle('on'); return; }
+
+    if (e.target.closest('.del')) {
+      closeEditor();
+      row.remove();
+      return;
+    }
+
+    if (row === editingRow) { closeEditor(); } else { openEditor(row); }
+  });
+
+  fbody.addEventListener('click', function (e) {
+    var btn = e.target.closest('.re-btn');
+    if (btn) {
+      if (btn.getAttribute('data-act') === 'apply') closeEditor();
+      else closeEditor();
+    }
+  });
+
+  /* ---------- 待确认高亮 ---------- */
+  var chip = document.getElementById('confirmChip');
+  chip.addEventListener('click', function () {
+    fbody.classList.remove('spotlight');
+    void fbody.offsetWidth;
+    fbody.classList.add('spotlight');
+    var first = fbody.querySelector('.frow.guess');
+    if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setTimeout(function () { fbody.classList.remove('spotlight'); }, 2600);
+  });
+
+  /* ---------- 拖拽排序示意 ---------- */
+  var dragRow = null;
+  fbody.addEventListener('dragstart', function (e) {
+    var row = e.target.closest('.frow');
+    if (!row) return;
+    dragRow = row;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'row');
+  });
+  fbody.addEventListener('dragend', function () {
+    if (dragRow) dragRow.classList.remove('dragging');
+    dragRow = null;
+    fbody.querySelectorAll('.drag-over').forEach(function (r) { r.classList.remove('drag-over'); });
+  });
+  fbody.addEventListener('dragover', function (e) {
+    var row = e.target.closest('.frow');
+    if (!row || !dragRow || row === dragRow) return;
+    e.preventDefault();
+    fbody.querySelectorAll('.drag-over').forEach(function (r) { r.classList.remove('drag-over'); });
+    row.classList.add('drag-over');
+  });
+  fbody.addEventListener('drop', function (e) {
+    var row = e.target.closest('.frow');
+    if (!row || !dragRow) return;
+    e.preventDefault();
+    var rect = row.getBoundingClientRect();
+    if (e.clientY > rect.top + rect.height / 2) row.after(dragRow);
+    else row.before(dragRow);
+    row.classList.remove('drag-over');
+  });
+
+  /* ---------- 生成并发布（示意） ---------- */
+  document.getElementById('publishBtn').addEventListener('click', function () {
+    var block = document.getElementById('successBlock');
+    block.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    block.style.outline = '2px solid #F95914';
+    setTimeout(function () { block.style.outline = ''; }, 1200);
+  });
+
+  renderPreview();
+})();
+</script>
+
+
+</body>
+</html>

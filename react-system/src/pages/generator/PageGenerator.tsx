@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { App } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   CompanyButton,
   CompanyMessage,
@@ -12,6 +12,7 @@ import {
   ActionCell,
   type FieldDefinition,
   type ColumnField,
+  type AiPageCapability,
 } from '@donglegeyu/company-ui'
 import {
   listPageDefinitions,
@@ -19,8 +20,12 @@ import {
   publishPageDefinition,
   unpublishPageDefinition,
   saveMigrationFileLocal,
+  savePageDefinition,
   type PublishResultData,
 } from './services'
+import { buildDraftFromPatch } from './aiDraftFromPatch'
+import { registerPageCapability, resolvePageCapabilityKey } from '@/ai/pageCapabilityRegistry'
+import { useAppStore } from '@/store/app'
 import MigrationScriptDrawer, { migrationStatusTag } from './components/MigrationScriptDrawer'
 import PageErrorBoundary from '@/components/PageErrorBoundary'
 
@@ -123,6 +128,60 @@ export default function PageGenerator() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // ---- AI 页面生成器（列表页）：scene=page-generator 走补丁协议，确认后创建草稿记录 ----
+  const activeTabKey = useAppStore((state) => state.activeTabKey)
+  const { pathname } = useLocation()
+  const capabilityKey = resolvePageCapabilityKey(activeTabKey, pathname)
+
+  const aiGetContext = useCallback(
+    () => ({
+      sceneTitle: '页面生成器',
+      values: { mode: 'create' },
+      extra: { scope: 'list', existingPageCount: dataSource.length },
+    }),
+    [dataSource.length],
+  )
+
+  // 用户在 action 卡片上点「确认」后才会执行；只创建 draft，不发布
+  const handleAiBackfill = useCallback(
+    (patch: Record<string, unknown>) => {
+      void (async () => {
+        try {
+          const listRes = await listPageDefinitions()
+          const existingKeys = (listRes.data || []).map((item) => item.pageKey)
+          const { dto, warnings } = buildDraftFromPatch(patch, existingKeys)
+          const res = await savePageDefinition(dto)
+          if (res.code === 200) {
+            warnings.forEach((warning) => CompanyMessage.warning(warning))
+            CompanyMessage.success(`已创建草稿「${dto.pageName}」，请编辑确认后手动发布`)
+            fetchData()
+          } else {
+            CompanyMessage.error(`草稿创建失败：${res.message}`)
+          }
+        } catch (e) {
+          CompanyMessage.error(`草稿创建失败：${String(e)}`)
+        }
+      })()
+    },
+    [fetchData],
+  )
+
+  const pageCapability = useMemo<AiPageCapability>(
+    () => ({
+      scene: 'page-generator',
+      welcome:
+        '描述你要生成的页面（列表 / 详情 / 表单），我会生成草稿补丁；确认后在列表创建草稿，发布仍需你手动操作。',
+      getContext: aiGetContext,
+      actions: { backfill: handleAiBackfill },
+    }),
+    [aiGetContext, handleAiBackfill],
+  )
+
+  useEffect(() => {
+    if (!capabilityKey) return
+    return registerPageCapability(capabilityKey, pageCapability)
+  }, [capabilityKey, pageCapability])
 
   const handleCreate = useCallback(() => {
     navigate('/page-generator/create')
@@ -266,7 +325,7 @@ export default function PageGenerator() {
           r.status === 'published'
             ? { key: 'unpublish', label: '取消发布', onClick: () => handleUnpublish(r) }
             : { key: 'publish', label: '发布', onClick: () => handlePublish(r) },
-          { key: 'delete', label: '删除', danger: true, onClick: () => handleDelete(r) },
+          { key: 'delete', label: '删除', onClick: () => handleDelete(r) },
         ]
         return <ActionCell buttons={buttons} />
       }

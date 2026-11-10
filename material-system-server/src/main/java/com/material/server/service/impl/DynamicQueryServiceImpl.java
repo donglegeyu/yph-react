@@ -39,7 +39,7 @@ public class DynamicQueryServiceImpl implements DynamicQueryService {
     private static final Set<String> ALLOWED_OPS = Set.of(
             "eq", "ne", "like", "ll", "rl",
             "gt", "gte", "lt", "lte",
-            "in", "null", "notnull"
+            "in", "between", "null", "notnull"
     );
 
     private static final int MAX_SIZE = 200;
@@ -58,6 +58,13 @@ public class DynamicQueryServiceImpl implements DynamicQueryService {
 
         // 构建 WHERE 子句
         String whereClause = buildWhereClause(param.getFilter(), params);
+
+        // 表有 deleted 列时自动过滤已逻辑删除的记录（页面生成器建的表默认带 deleted）
+        if (hasDeletedColumn(param.getTable())) {
+            whereClause = whereClause == null
+                    ? "`deleted` = 0"
+                    : whereClause + " AND `deleted` = 0";
+        }
 
         // 构建 ORDER BY 子句
         String orderByClause = buildOrderByClause(param.getOrderBy());
@@ -107,6 +114,15 @@ public class DynamicQueryServiceImpl implements DynamicQueryService {
         if (cnt == null || cnt == 0) {
             throw new BusinessException("表不存在：" + table);
         }
+    }
+
+    /** 表是否有 deleted 列（有则查询时自动过滤逻辑删除记录） */
+    private boolean hasDeletedColumn(String table) {
+        Integer cnt = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'deleted'",
+                Integer.class, table);
+        return cnt != null && cnt > 0;
     }
 
     private String buildSelectClause(String select) {
@@ -205,6 +221,25 @@ public class DynamicQueryServiceImpl implements DynamicQueryService {
                 }
                 if (placeholders.isEmpty()) return null;
                 return "`" + field + "` IN (" + String.join(", ", placeholders) + ")";
+            case "between":
+                // 值格式：v1|v2（如日期范围 2026-01-01|2026-01-31）
+                if (value == null || value.isEmpty()) return null;
+                String[] range = value.split("\\|");
+                String from = range.length > 0 ? range[0].trim() : "";
+                String to = range.length > 1 ? range[1].trim() : "";
+                if (from.isEmpty() && to.isEmpty()) return null;
+                // 只有单边界时退化为 gte / lte
+                if (from.isEmpty()) {
+                    params.add(to);
+                    return "`" + field + "` <= ?";
+                }
+                if (to.isEmpty()) {
+                    params.add(from);
+                    return "`" + field + "` >= ?";
+                }
+                params.add(from);
+                params.add(to);
+                return "`" + field + "` BETWEEN ? AND ?";
             case "null":
                 return "`" + field + "` IS NULL";
             case "notnull":
