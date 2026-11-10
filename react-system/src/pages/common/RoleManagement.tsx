@@ -336,7 +336,6 @@ export default function RoleManagement() {
           {
             key: 'delete',
             label: '删除',
-            danger: true,
             confirm: true,
             confirmTitle: '确定删除该角色？',
             onClick: () => handleDelete(roleRecord),

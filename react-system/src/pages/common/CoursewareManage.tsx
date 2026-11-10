@@ -210,7 +210,7 @@ export default function CoursewareManage() {
 
         // 草稿和审批拒绝状态可以删除
         if (r.coursewareStatus === 'draft' || r.approvalStatus === 'rejected') {
-          buttons.push({ key: 'delete', label: '删除', danger: true, onClick: () => handleDelete(r) })
+          buttons.push({ key: 'delete', label: '删除', onClick: () => handleDelete(r) })
         }
 
         // 草稿状态可提交审批，审批拒绝状态可重新提交

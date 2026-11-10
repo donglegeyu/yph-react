@@ -205,7 +205,7 @@ export default function QuestionBankList() {
         // 草稿和审批拒绝状态可编辑、删除、提交审批
         if (r.status === 'draft' || r.approvalStatus === 'rejected') {
           buttons.push({ key: 'edit', label: '编辑', onClick: () => handleEdit(r) })
-          buttons.push({ key: 'delete', label: '删除', danger: true, onClick: () => handleDelete(r) })
+          buttons.push({ key: 'delete', label: '删除', onClick: () => handleDelete(r) })
           buttons.push({ key: 'submit', label: '提交审批', onClick: () => handleSubmitApproval(r) })
         }
 

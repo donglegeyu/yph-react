@@ -271,7 +271,7 @@ export default function TrainingTaskList() {
         // 草稿/进行中状态可编辑和删除
         if (r.taskStatus === 'draft' || r.taskStatus === 'in_progress') {
           buttons.push({ key: 'edit', label: '编辑', onClick: () => handleEdit(r) })
-          buttons.push({ key: 'delete', label: '删除', danger: true, onClick: () => handleDelete(r) })
+          buttons.push({ key: 'delete', label: '删除', onClick: () => handleDelete(r) })
         }
 
         // 未提交状态可提交审批

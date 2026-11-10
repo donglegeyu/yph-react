@@ -283,7 +283,7 @@ export default function QualityFeedbackList() {
         }
 
         if (r.approvalStatus === 'draft' || r.feedbackStatus === 'pending') {
-          buttons.push({ key: 'delete', label: '删除', danger: true, onClick: () => handleDelete(r) })
+          buttons.push({ key: 'delete', label: '删除', onClick: () => handleDelete(r) })
         }
 
         return <ActionCell buttons={buttons} />

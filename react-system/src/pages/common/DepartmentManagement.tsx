@@ -251,7 +251,6 @@ export default function DepartmentManagement() {
               {
                 key: 'delete',
                 label: '删除',
-                danger: true,
                 confirm: true,
                 confirmTitle: `确定删除部门「${item.deptName}」？`,
                 onClick: () => handleDelete(item),
