@@ -16,6 +16,9 @@ import {
   buildTreeMockRecords,
   fetchDynamicQuery,
   buildFilterString,
+  buildColumnKeyMap,
+  mapRecordToFront,
+  deleteDynamicRecord,
 } from '@/pages/generator/services'
 import PageErrorBoundary from '@/components/PageErrorBoundary'
 
@@ -36,6 +39,10 @@ export default function DynamicListPage() {
   const [useMockFallback, setUseMockFallback] = useState(false)
   // 数据表尚未建表（后端报「表不存在」）：显示引导空态，不回退 mock
   const [tableMissing, setTableMissing] = useState(false)
+  // 删除成功后触发列表刷新（不重置筛选/分页）
+  const [refreshTick, setRefreshTick] = useState(0)
+  // 列头排序状态（fieldKey + 方向；null 表示未排序）
+  const [sortState, setSortState] = useState<{ field: string; dir: 'asc' | 'desc' } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -102,15 +109,25 @@ export default function DynamicListPage() {
     return buildMockRecords(validFields, 20)
   }, [schema, sortedFields])
 
+  // fieldKey → dbColumn 映射（表列名 snake_case 与字段 key camelCase 的转换）
+  const columnKeyMap = useMemo(() => buildColumnKeyMap(sortedFields), [sortedFields])
+
   // 真实数据拉取：当 schema 加载完 + 非 mock 模式时，按分页/筛选拉数据
   useEffect(() => {
     if (!schema || useMockFallback || !schema.tableName) return
     let cancelled = false
 
-    const validFieldKeys = sortedFields
-      .filter((f) => f.fieldKey && !f.isAction)
+    const validFields = sortedFields.filter((f) => f.fieldKey && !f.isAction)
+    const validFieldKeys = validFields.map((f) => f.fieldKey)
+    // 日期范围字段 → between 操作符
+    const rangeFieldKeys = validFields
+      .filter((f) => f.fieldType === 'daterange')
       .map((f) => f.fieldKey)
-    const filter = buildFilterString(filterParams, validFieldKeys)
+    const filter = buildFilterString(filterParams, validFieldKeys, columnKeyMap, rangeFieldKeys)
+    // 排序：fieldKey → dbColumn，格式 field:dir（后端 buildOrderByClause 解析）
+    const orderBy = sortState
+      ? `${columnKeyMap[sortState.field] || sortState.field}:${sortState.dir}`
+      : undefined
 
     setLoading(true)
     fetchDynamicQuery({
@@ -118,11 +135,13 @@ export default function DynamicListPage() {
       current,
       size: pageSize,
       filter: filter || undefined,
+      orderBy,
     })
       .then((res) => {
         if (cancelled) return
         if (res.code === 200 && res.data) {
-          setRecords(res.data.records || [])
+          // 后端记录 key 是 dbColumn（snake_case）→ 转成 fieldKey 供表格渲染
+          setRecords((res.data.records || []).map((r) => mapRecordToFront(r, columnKeyMap)))
           setTotal(res.data.total || 0)
         } else {
           // 数据表还没建（建表脚本未放入/后端未重启）→ 显示引导空态，不回退 mock
@@ -147,7 +166,7 @@ export default function DynamicListPage() {
     return () => {
       cancelled = true
     }
-  }, [schema, useMockFallback, current, pageSize, filterParams, sortedFields])
+  }, [schema, useMockFallback, current, pageSize, filterParams, sortedFields, columnKeyMap, sortState, refreshTick])
 
   const dataSource = useMockFallback ? mockData : records
 
@@ -167,13 +186,44 @@ export default function DynamicListPage() {
           .map((act) => ({
             key: act.actionKey,
             label: act.actionLabel,
-            danger: act.actionType === 'delete',
             onClick: () => {
               if (act.actionType === 'detail') {
                 const detailKey = schema.sourceListPageKey
                   ? `${schema.sourceListPageKey}-detail`
                   : `${pageKey}-detail`
                 navigate(`/dynamic/detail/${detailKey}/${record.id}`)
+                return
+              }
+              if (act.actionType === 'edit') {
+                navigate(`/dynamic/form/${pageKey}/${record.id}`)
+                return
+              }
+              if (act.actionType === 'delete') {
+                if (useMockFallback || !schema.tableName) {
+                  CompanyMessage.info('演示数据，完成建表后才能删除')
+                  return
+                }
+                modal.confirm({
+                  title: `确认${act.actionLabel}`,
+                  content: '删除后不可恢复，是否继续？',
+                  onOk: async () => {
+                    const res = await deleteDynamicRecord(
+                      schema.tableName,
+                      record.id as string | number,
+                    )
+                    if (res.code === 200) {
+                      CompanyMessage.success('删除成功')
+                      // 当前页只剩这一条且不在第一页 → 回退一页；否则刷新当前页
+                      if (records.length === 1 && current > 1) {
+                        setCurrent((c) => c - 1)
+                      } else {
+                        setRefreshTick((t) => t + 1)
+                      }
+                    } else {
+                      CompanyMessage.error(res.message || '删除失败')
+                    }
+                  },
+                })
                 return
               }
               if (act.needConfirm) {
@@ -204,7 +254,7 @@ export default function DynamicListPage() {
 
       return <span>{raw != null && raw !== '' ? String(raw) : '-'}</span>
     },
-    [schema, sortedFields, modal],
+    [schema, sortedFields, modal, records, current, useMockFallback, pageKey, navigate],
   )
 
   if (loading && !schema) {
@@ -266,9 +316,14 @@ export default function DynamicListPage() {
           <CompanyButton
             key={`${b.btnKey}-${i}`}
             type={b.btnType === 'primary' ? 'primary' : 'default'}
-            onClick={() =>
+            onClick={() => {
+              // 新增类按钮 → 跳转动态表单页（若已配置表单模板则渲染配置，否则走默认表单）
+              if (['新增', '新建', '添加'].includes(b.btnLabel)) {
+                navigate(`/dynamic/form/${pageKey}`)
+                return
+              }
               CompanyMessage.info(b.tooltip || `${b.btnLabel}功能待接入后端`)
-            }
+            }}
           >
             {b.btnLabel}
           </CompanyButton>
@@ -314,6 +369,18 @@ export default function DynamicListPage() {
           setFilterParams({})
           setCurrent(1)
         }}
+        onChange={(data) => {
+          // 表头排序回调（SmartListTemplate 内部 Table onChange 转发 { sortField, sortOrder }）
+          // FilterForm 的筛选数据不含 sortOrder，以此区分
+          if ('sortOrder' in data) {
+            const order = data.sortOrder as 'ascend' | 'descend' | undefined
+            setSortState(
+              order && data.sortField
+                ? { field: String(data.sortField), dir: order === 'ascend' ? 'asc' : 'desc' }
+                : null,
+            )
+          }
+        }}
         columnFields={columnFields}
         defaultColumnFields={columnFields}
         onColumnSettingsChange={() => undefined}
@@ -333,6 +400,7 @@ function toFieldDefinition(field: FieldConfig): FieldDefinition {
     width: field.width,
     fixed: field.fixed ?? undefined,
     hideInFilter: !field.isFilter,
+    sortable: field.sortable === true,
   }
   if (field.fieldType === 'select' && field.options.length > 0) {
     def.options = [{ label: '全部', value: '' }, ...field.options]

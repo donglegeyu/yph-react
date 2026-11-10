@@ -61,6 +61,8 @@ public class PageDefinitionDTO {
         private String fixed;
         private Boolean isFilter;
         private Boolean sortable;
+        /** 表单页该字段是否必填（与前端 FieldConfig.isRequired 对齐） */
+        private Boolean isRequired;
         private List<Map<String, Object>> options;
         private Boolean isStatusTag;
         private List<Map<String, Object>> statusMap;

@@ -239,7 +239,6 @@ export default function SkillManagement() {
           {
             key: 'delete',
             label: '删除',
-            danger: true,
             onClick: () => {
               modal.confirm({
                 title: '确认要删除这项内容吗？',

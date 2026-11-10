@@ -32,6 +32,8 @@ interface AppState {
   secondSidebarHovered: boolean
   secondSidebarFixed: boolean
   isFirstMenuHovering: boolean
+  /** AI 助手面板开合（全局唯一真相源，与页签/路由解耦；刷新后默认关闭） */
+  aiPanelOpen: boolean
 
   setActiveFirstMenu: (key: string) => void
   setActiveKey: (key: string) => void
@@ -50,6 +52,7 @@ interface AppState {
   openTab: (key: string, label: string, path: string) => void
   closeTab: (key: string) => TabItem | null
   setActiveTabKey: (key: string) => void
+  setAiPanelOpen: (open: boolean) => void
 
   fetchMenus: (options?: { resetActive?: boolean }) => Promise<void>
   fetchFavorites: () => Promise<void>
@@ -121,6 +124,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   secondSidebarHovered: false,
   secondSidebarFixed: savedSecondSidebarFixed !== 'false',
   isFirstMenuHovering: false,
+  aiPanelOpen: false,
   menusLoaded: false,
 
   setActiveFirstMenu: (key) => {
@@ -293,6 +297,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ activeTabKey: key })
     localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB_KEY, key)
   },
+  setAiPanelOpen: (open) => set({ aiPanelOpen: open }),
 
   selectFirstMenu: (key) => {
     set({ activeFirstMenu: key })

@@ -1,0 +1,76 @@
+// AI 智能助手面板列：与主区（页签栏 + 内容区）并列的根级全高独立列，对齐设计稿 4 列布局
+// （一级导航 + 二级导航 + 主区自适应 + AI 面板列，面板列从页签栏顶部通到底，与主区间距为 0）。
+// 宽度消费组件内注入的 --ai-aside-width CSS 变量（拖拽手柄实时更新），颜色消费 --ai-aside-* 变量（源自 theme token）
+.ai-assistant-aside {
+  position: relative; // 左缘拖拽手柄的定位上下文
+  flex: 0 0 auto;
+  width: var(--ai-aside-width, 363px);
+  min-width: 0;
+  overflow: hidden;
+
+  // 内层主体：承载背景与面板内容（宽度变化只更新外层 CSS 变量，本层 memo 不重渲染）
+  &__body {
+    height: 100%;
+    background: var(--ai-aside-bg, #fff);
+  }
+
+  // 左缘拖拽手柄：10px 透明热区，hover/拖拽中浮现 3×24px 中性色短线（垂直居中）
+  &__resize-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 10px;
+    cursor: col-resize;
+    z-index: 2;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 3px;
+      height: 24px;
+      transform: translateY(-50%);
+      border-radius: 1.5px;
+      background: transparent;
+      transition: background-color 0.2s ease;
+    }
+
+    &:hover::after,
+    &.is-dragging::after {
+      background: var(--ai-aside-resize-color, #bfbfbf);
+    }
+  }
+
+  // ===== 面板降级态（独立错误边界兜底） =====
+  &__error {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  &__error-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ai-aside-text, rgba(0, 0, 0, 0.65));
+  }
+
+  &__error-message {
+    font-size: 12px;
+    color: var(--ai-aside-text, rgba(0, 0, 0, 0.65));
+    opacity: 0.65;
+    word-break: break-all;
+  }
+}
+
+// 拖拽 AI 面板分隔条期间：全局禁止文本选中 + 统一 col-resize 光标
+body.ai-aside-resizing {
+  user-select: none;
+  cursor: col-resize;
+}

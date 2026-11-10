@@ -27,6 +27,10 @@ export const API_ENDPOINTS = {
   // 用户偏好
   USER_PREFERENCES: `${API_BASE}/user-preferences`,
 
+  // AI 智能助手（OpenAI 兼容网关配置 + 对话流式代理）
+  AI_MODEL_CONFIGS: `${API_BASE}/ai-model-configs`,
+  AI_CHAT_STREAM: `${API_BASE}/ai/chat/stream`,
+
   // 采购订单
   PURCHASE_ORDERS: `${API_BASE}/purchase-orders`,
 
@@ -101,6 +105,10 @@ export const API_ENDPOINTS = {
   DYNAMIC_PAGES: `${API_BASE}/dynamic/pages`,
   // 动态数据查询（按 tableName 分页查询业务数据）
   DYNAMIC_QUERY: `${API_BASE}/dynamic/query`,
+  // 动态数据保存（新增/编辑，POST body: { table, id, data, operator }）
+  DYNAMIC_SAVE: `${API_BASE}/dynamic/save`,
+  // 动态数据删除（逻辑删除，DELETE ?table=&id=）
+  DYNAMIC_DELETE: `${API_BASE}/dynamic/delete`,
 } as const
 
 // 图标服务 API

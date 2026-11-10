@@ -326,7 +326,6 @@ export default function PreviewPanel({ config }: Props) {
         .map((act) => ({
           key: act.actionKey,
           label: act.actionLabel,
-          danger: act.actionType === 'delete',
           onClick: () => {
             if (act.needConfirm) {
               modal.confirm({
@@ -536,8 +535,16 @@ function renderDetailValue(field: FieldConfig, raw: unknown): ReactNode {
 }
 
 // 表单页：字段配置 → BaseInfoForm 字段定义（预览与运行时共用映射规则）
-function toPreviewFormField(field: FieldConfig): FormFieldItem {
-  const base = { name: field.fieldKey, label: field.fieldLabel || field.fieldKey }
+  function toPreviewFormField(field: FieldConfig): FormFieldItem {
+    // required 仅控制星号显示，真正拦截空值靠 rules
+    const required = field.isRequired === true
+    const label = field.fieldLabel || field.fieldKey
+    const base = {
+      name: field.fieldKey,
+      label,
+      required,
+      rules: required ? [{ required: true, message: `${label}不能为空` }] : undefined,
+    }
   const dsFieldTypes = ['select', 'select-multi', 'radio', 'cascader']
   const options = dsFieldTypes.includes(field.fieldType) ? resolveMockOptions(field) : undefined
   switch (field.fieldType) {

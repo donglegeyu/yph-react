@@ -221,6 +221,27 @@ export default function FieldEditor({ value, onChange, mode = 'list', groups, ex
             />
             <span style={labelStyle}>支持排序</span>
           </Space>
+          <Space size={4}>
+            <Switch
+              size="small"
+              checked={value.isRequired === true}
+              onChange={(v) => patch({ isRequired: v })}
+            />
+            <span style={labelStyle}>必填</span>
+          </Space>
+        </div>
+      )}
+
+      {expanded && isFormMode && (
+        <div className="pgw-switch-grid">
+          <Space size={4}>
+            <Switch
+              size="small"
+              checked={value.isRequired === true}
+              onChange={(v) => patch({ isRequired: v })}
+            />
+            <span style={labelStyle}>必填</span>
+          </Space>
         </div>
       )}
 

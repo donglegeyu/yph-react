@@ -883,7 +883,7 @@ export default function MenuManagement() {
     }
     buttons.push({ key: 'move', label: '移动', onClick: () => openMoveDrawer(record) })
     if (record.menuType !== '系统菜单-上') {
-      buttons.push({ key: 'delete', label: '删除', danger: true, confirm: true, confirmTitle: '确定删除？', onClick: () => handleDelete(record) })
+      buttons.push({ key: 'delete', label: '删除', confirm: true, confirmTitle: '确定删除？', onClick: () => handleDelete(record) })
     }
     return buttons
   }, [handleEdit, handleToggleStatus, handleAddChild, openMoveDrawer, handleDelete])

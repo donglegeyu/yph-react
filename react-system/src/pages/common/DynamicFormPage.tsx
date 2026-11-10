@@ -16,12 +16,23 @@ import {
   fetchMetaOptions,
   resolveMockOptions,
   saveDynamicRecord,
+  buildColumnKeyMap,
+  mapRecordToFront,
+  mapValuesToDb,
 } from '@/pages/generator/services'
 import PageErrorBoundary from '@/components/PageErrorBoundary'
 
 /** 字段配置 → BaseInfoForm 字段定义（与 PreviewPanel 预览映射保持一致） */
 function toDynamicFormField(field: FieldConfig, options?: SelectOption[]): FormFieldItem {
-  const base = { name: field.fieldKey, label: field.fieldLabel || field.fieldKey }
+  // required 仅控制星号显示，真正拦截空值靠 rules（BaseInfoForm 透传 antd Form.Item）
+  const required = field.isRequired === true
+  const label = field.fieldLabel || field.fieldKey
+  const base = {
+    name: field.fieldKey,
+    label,
+    required,
+    rules: required ? [{ required: true, message: `${label}不能为空` }] : undefined,
+  }
   switch (field.fieldType) {
     case 'number':
       return { ...base, type: 'input-number', placeholder: '请输入' }
@@ -103,6 +114,9 @@ function DynamicFormPageInner() {
     [sortedFields],
   )
 
+  // fieldKey → dbColumn 映射（提交/回填时转换 key）
+  const columnKeyMap = useMemo(() => buildColumnKeyMap(sortedFields), [sortedFields])
+
   // 编辑模式：拉取记录回填表单；预览/新建模式：空表单
   useEffect(() => {
     if (!schema) return
@@ -119,7 +133,8 @@ function DynamicFormPageInner() {
       .then((res) => {
         const record = res.code === 200 ? res.data?.records?.[0] : undefined
         if (record) {
-          setFormValues(record as FormValues)
+          // 后端记录 key 是 dbColumn（snake_case）→ 转成 fieldKey 回填表单
+          setFormValues(mapRecordToFront(record, columnKeyMap) as FormValues)
         } else {
           CompanyMessage.warning('未找到该条记录，已展示空表单')
           setFormValues({})
@@ -129,7 +144,7 @@ function DynamicFormPageInner() {
         CompanyMessage.warning('记录加载失败，已展示空表单')
         setFormValues({})
       })
-  }, [schema, id, isPreview, isEdit])
+  }, [schema, id, isPreview, isEdit, columnKeyMap])
 
   // 远程选项加载：tableRef 数据源走真实接口，其余用配置/演示数据
   useEffect(() => {
@@ -193,13 +208,18 @@ function DynamicFormPageInner() {
       CompanyMessage.info(stay ? '保存（演示）' : '提交（演示）')
       return
     }
-    if (!schema?.apiPrefix) {
-      CompanyMessage.warning('该页面未配置 API 前缀，无法提交')
+    if (!schema?.tableName) {
+      CompanyMessage.warning('该页面未配置业务表，无法提交')
       return
     }
     setSubmitting(true)
     try {
-      const res = await saveDynamicRecord(schema.apiPrefix, isEdit ? id : null, values)
+      // 表单值 key 是 fieldKey（camelCase）→ 转成 dbColumn（snake_case）提交
+      const dbValues = mapValuesToDb(
+        (values ?? {}) as Record<string, unknown>,
+        columnKeyMap,
+      )
+      const res = await saveDynamicRecord(schema.tableName, isEdit ? id : null, dbValues)
       if (res.code === 200) {
         CompanyMessage.success(stay ? '保存成功' : isEdit ? '保存成功' : '提交成功')
         if (!stay) handleBack()

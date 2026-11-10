@@ -178,7 +178,6 @@ export default function DomainManagement() {
           buttons.push({
             key: 'delete',
             label: '删除',
-            danger: true,
             confirm: true,
             confirmTitle: '确定删除？',
             onClick: () => handleDelete(domainRecord),

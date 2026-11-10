@@ -4,6 +4,25 @@ import { useAppStore } from '@/store/app'
 import { CompanyTooltip, SvgIcon } from '@donglegeyu/company-ui'
 import './TabBar.scss'
 
+/** AI 助手页签按钮：对齐组件库 AdminLayoutTemplate 内置的 admin-layout-ai-tab（页签同视觉，排在动作区末尾）；
+ * 面板打开后隐藏自身，面板自带关闭入口；开合走 store（与页签/路由解耦），流式期间仅本组件重渲染 */
+function AiAssistantTrigger() {
+  const aiPanelOpen = useAppStore((s) => s.aiPanelOpen)
+  const setAiPanelOpen = useAppStore((s) => s.setAiPanelOpen)
+  if (aiPanelOpen) return null
+  return (
+    <button
+      type="button"
+      className="ai-assistant-tab"
+      aria-label="打开 AI 智能助手面板"
+      onClick={() => setAiPanelOpen(true)}
+    >
+      <SvgIcon name="writing-fluently" size={15} />
+      <span>AI 智能助手</span>
+    </button>
+  )
+}
+
 export default function TabBar() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -126,6 +145,7 @@ export default function TabBar() {
         <CompanyTooltip title="全屏">
           <SvgIcon href="fullscreen" className="action-icon" />
         </CompanyTooltip>
+        <AiAssistantTrigger />
       </div>
     </div>
   )

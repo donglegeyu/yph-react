@@ -119,7 +119,7 @@ export function useActions(options: UseActionsOptions = {}) {
       { key: 'detail', label: '详情', type: 'text', onClick: () => handleDetail(record) },
       { key: 'edit', label: '编辑', type: 'text', onClick: () => handleEdit(record) },
       ...(onSubmit ? [{ key: 'submit', label: '提交', type: 'text' as const, onClick: () => handleSubmit(record) }] : []),
-      { key: 'delete', label: '删除', danger: true, confirm: true, confirmTitle: '确定删除？', type: 'text' as const, onClick: () => handleDelete(record) },
+      { key: 'delete', label: '删除', confirm: true, confirmTitle: '确定删除？', type: 'text' as const, onClick: () => handleDelete(record) },
     ]
     if (customButtons?.length) {
       const customMap = new Map(customButtons.map((btn) => [btn.key, btn]))
@@ -140,7 +140,7 @@ export function useActions(options: UseActionsOptions = {}) {
   }
 
   function getDeleteButton(record: any, confirmCallback?: () => void): ActionButton {
-    return { key: 'delete', label: '删除', danger: true, confirm: true, confirmTitle: '确定删除？', onClick: () => handleDelete(record, confirmCallback) }
+    return { key: 'delete', label: '删除', confirm: true, confirmTitle: '确定删除？', onClick: () => handleDelete(record, confirmCallback) }
   }
 
   function getSubmitButton(record: any): ActionButton {

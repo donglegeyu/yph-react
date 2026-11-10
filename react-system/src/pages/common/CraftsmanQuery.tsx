@@ -1,5 +1,5 @@
-import { useEffect, useCallback, useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useCallback, useMemo, useState, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Tag, Space, Upload, ConfigProvider, App } from 'antd'
 import { InboxOutlined, ExportOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
@@ -12,8 +12,12 @@ import {
   companyTheme,
   type FieldDefinition,
   type ColumnField,
+  type AiPageCapability,
 } from '@donglegeyu/company-ui'
 import { API_ENDPOINTS } from '@/constants/api'
+import { registerPageCapability, resolvePageCapabilityKey } from '@/ai/pageCapabilityRegistry'
+import { buildListPageContext } from '@/ai/pageContextTypes'
+import { useAppStore } from '@/store/app'
 import { SERVICE_PROVIDER_LIST } from '@/constants/serviceProviders'
 import { SOURCE_CHANNEL_LIST, formatSourceChannel } from '@/constants/sourceChannels'
 import { useListData, useStatusMap, useMenuTitle } from '@/hooks'
@@ -107,6 +111,48 @@ export default function CraftsmanQuery() {
 
   const [columnFields, setColumnFields] = useState<ColumnField[]>(defaultColumnFields)
   const initializedRef = useRef(false)
+
+  // ---- AI 第二档：页面级上下文（只写 extra.page，基础信息 extra.base 由传输层负责）----
+  const activeTabKey = useAppStore((state) => state.activeTabKey)
+  const { pathname } = useLocation()
+  const capabilityKey = resolvePageCapabilityKey(activeTabKey, pathname)
+
+  // getContext 每轮取最新筛选/分页/列设置，避免能力对象随状态频繁重注册
+  const pageStateRef = useRef({ filterParams, pagination, columnFields })
+  useEffect(() => {
+    pageStateRef.current = { filterParams, pagination, columnFields }
+  }, [filterParams, pagination, columnFields])
+
+  const pageCapability = useMemo<AiPageCapability>(
+    () => ({
+      scene: 'page',
+      getContext: () => {
+        const { filterParams: filters, pagination: page, columnFields: columns } =
+          pageStateRef.current
+        return {
+          sceneTitle: menuTitle || '工匠查询',
+          extra: {
+            page: buildListPageContext({
+              filterParams: filters,
+              fieldDefs: fields,
+              total: page.total,
+              pageNo: page.current,
+              pageSize: page.pageSize,
+              visibleColumnLabels: columns
+                .filter((column) => column.visible && column.key !== 'action')
+                .map((column) => column.label),
+            }),
+          },
+        }
+      },
+    }),
+    [menuTitle],
+  )
+
+  useEffect(() => {
+    if (!capabilityKey) return
+    return registerPageCapability(capabilityKey, pageCapability)
+  }, [capabilityKey, pageCapability])
 
   const handleColumnSettingsChange = useCallback((fields: ColumnField[]) => {
     const savedKeys = new Set(fields.map((f) => f.key))

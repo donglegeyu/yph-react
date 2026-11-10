@@ -228,7 +228,6 @@ export default function CraftsmanApplication() {
             {
               key: 'delete',
               label: '删除',
-              danger: true,
               onClick: () => confirmDelete(r),
             }
           )

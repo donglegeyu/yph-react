@@ -218,16 +218,34 @@ export async function fetchDynamicQuery(
 }
 
 /**
- * 动态表单页提交：新增 POST {apiPrefix}，编辑 PUT {apiPrefix}/{id}
- * 表单值原样 JSON 序列化（Dayjs 日期会被转成 ISO 字符串）
+ * 动态表单页提交：POST /api/dynamic/save
+ * - id 为空 → 新增（后端返回自增主键）
+ * - id 非空 → 编辑（WHERE id = ?）
+ * 表单值原样 JSON 序列化（Dayjs 日期转 ISO 字符串，后端对日期列做归一化）
  */
 export async function saveDynamicRecord(
-  apiPrefix: string,
+  table: string,
   id: string | null,
   body: unknown,
-): Promise<ApiResult<unknown>> {
-  const url = id ? `${apiPrefix}/${id}` : apiPrefix
-  return apiJson<unknown>(url, id ? 'PUT' : 'POST', body)
+): Promise<ApiResult<number | null>> {
+  return apiJson<number | null>(API_ENDPOINTS.DYNAMIC_SAVE, 'POST', {
+    table,
+    id: id || null,
+    data: body,
+    operator: getCurrentUsername(),
+  })
+}
+
+/**
+ * 动态列表页删除：DELETE /api/dynamic/delete?table=&id=
+ * 表有 deleted 列走逻辑删除，否则物理删除
+ */
+export async function deleteDynamicRecord(
+  table: string,
+  id: string | number,
+): Promise<ApiResult<null>> {
+  const qs = new URLSearchParams({ table, id: String(id) })
+  return apiJson<null>(`${API_ENDPOINTS.DYNAMIC_DELETE}?${qs.toString()}`, 'DELETE')
 }
 
 /**
@@ -237,18 +255,26 @@ export async function saveDynamicRecord(
  * - 字符串 → field:like:value（模糊匹配，最常用场景）
  * - 数字/布尔 → field:eq:value
  * - 数组 → field:in:v1|v2|v3
+ * - 数组且 key 在 rangeFieldKeys 中 → field:between:v1|v2（日期范围）
  *
  * 特殊：以 __eq__ 开头的 key 用等值匹配（约定用法）
+ *
+ * keyMap：fieldKey → dbColumn 映射（表列名与字段 key 不同时必须传，
+ * 后端 filter 按真实列名解析）
  */
 export function buildFilterString(
   values: Record<string, unknown>,
   validFieldKeys: string[] = [],
+  keyMap: Record<string, string> = {},
+  rangeFieldKeys: string[] = [],
 ): string {
   const parts: string[] = []
   for (const [key, val] of Object.entries(values)) {
     if (val === null || val === undefined) continue
     // 字段白名单：只接受已知 fieldKey（防注入绕过）
     if (validFieldKeys.length > 0 && !validFieldKeys.includes(key)) continue
+    // 列名映射：fieldKey → dbColumn（无映射时原样使用）
+    const col = keyMap[key] || key
 
     if (typeof val === 'string') {
       if (val.trim() === '') continue
@@ -256,20 +282,75 @@ export function buildFilterString(
       if (key.startsWith('__eq__')) {
         const realKey = key.slice(5)
         if (validFieldKeys.length === 0 || validFieldKeys.includes(realKey)) {
-          parts.push(`${realKey}:eq:${val.trim()}`)
+          parts.push(`${keyMap[realKey] || realKey}:eq:${val.trim()}`)
         }
       } else {
-        parts.push(`${key}:like:${val.trim()}`)
+        parts.push(`${col}:like:${val.trim()}`)
       }
     } else if (typeof val === 'number' || typeof val === 'boolean') {
-      parts.push(`${key}:eq:${String(val)}`)
+      parts.push(`${col}:eq:${String(val)}`)
     } else if (Array.isArray(val)) {
       const filtered = val.filter((v) => v !== null && v !== undefined && v !== '')
       if (filtered.length === 0) continue
-      parts.push(`${key}:in:${filtered.map(String).join('|')}`)
+      if (rangeFieldKeys.includes(key)) {
+        // 日期范围 → between（后端解析 v1|v2，单边界时退化为 gte/lte）
+        parts.push(`${col}:between:${filtered.map(String).join('|')}`)
+      } else {
+        parts.push(`${col}:in:${filtered.map(String).join('|')}`)
+      }
     }
   }
   return parts.join(',')
+}
+
+// ============= fieldKey ↔ dbColumn 映射（动态页面数据边界） =============
+
+/**
+ * 构建 fieldKey → dbColumn 映射表（跳过操作列；dbColumn 未配置时回退 fieldKey）
+ * 后端业务表的列名是 snake_case（dbColumn），前端字段 key 是 camelCase（fieldKey），
+ * 两者在「查询结果 / 筛选 / 表单提交 / 编辑回填」边界必须做转换。
+ */
+export function buildColumnKeyMap(fields: FieldConfig[]): Record<string, string> {
+  const map: Record<string, string> = {}
+  fields.forEach((f) => {
+    if (!f.fieldKey || f.isAction) return
+    map[f.fieldKey] = f.dbColumn?.trim() || f.fieldKey
+  })
+  return map
+}
+
+/**
+ * 后端记录（dbColumn key）→ 前端记录（fieldKey key）
+ * 未在映射表中的 key（id / create_time 等系统列）原样保留
+ */
+export function mapRecordToFront(
+  record: Record<string, unknown>,
+  keyMap: Record<string, string>,
+): Record<string, unknown> {
+  const reverse: Record<string, string> = {}
+  Object.entries(keyMap).forEach(([fieldKey, dbColumn]) => {
+    reverse[dbColumn] = fieldKey
+  })
+  const out: Record<string, unknown> = {}
+  Object.entries(record).forEach(([k, v]) => {
+    out[reverse[k] ?? k] = v
+  })
+  return out
+}
+
+/**
+ * 前端表单值（fieldKey key）→ 后端保存数据（dbColumn key）
+ * 未在映射表中的 key 原样保留（后端列白名单会做兜底校验）
+ */
+export function mapValuesToDb(
+  values: Record<string, unknown>,
+  keyMap: Record<string, string>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  Object.entries(values).forEach(([k, v]) => {
+    out[keyMap[k] ?? k] = v
+  })
+  return out
 }
 
 export async function getPageSchemaByPageKey(
@@ -290,6 +371,8 @@ export async function getPageSchemaByPageKey(
     actions: found.actions,
     toolbarButtons: found.toolbarButtons || [],
     detailHeader: found.detailHeader,
+    formConfig: found.formConfig,
+    sourceListPageKey: found.sourceListPageKey,
   })
 }
 

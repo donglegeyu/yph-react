@@ -17,6 +17,8 @@ import {
   fetchDynamicQuery,
   buildMockRecords,
   resolveMockOptions,
+  buildColumnKeyMap,
+  mapRecordToFront,
 } from '@/pages/generator/services'
 import PageErrorBoundary from '@/components/PageErrorBoundary'
 
@@ -82,9 +84,17 @@ function DynamicDetailPageInner() {
       .finally(() => setLoading(false))
   }, [pageKey])
 
+  const sortedFields = useMemo(
+    () => [...(schema?.fields || [])].sort((a, b) => a.sortOrder - b.sortOrder),
+    [schema],
+  )
+
+  // fieldKey → dbColumn 映射（后端记录 key 转换用）
+  const columnKeyMap = useMemo(() => buildColumnKeyMap(sortedFields), [sortedFields])
+
   useEffect(() => {
     if (!schema) return
-    const validFields = (schema.fields || []).filter((f) => f.fieldKey && !f.isAction)
+    const validFields = sortedFields.filter((f) => f.fieldKey && !f.isAction)
     // 预览模式（id='preview'）或无 tableName 时直接用 mock 数据
     if (id === 'preview' || !schema.tableName) {
       setRecord(buildMockRecords(validFields, 1)[0] ?? {})
@@ -98,7 +108,8 @@ function DynamicDetailPageInner() {
     })
       .then((res) => {
         if (res.code === 200 && res.data?.records?.length) {
-          setRecord(res.data.records[0])
+          // 后端记录 key 是 dbColumn（snake_case）→ 转成 fieldKey 供详情渲染
+          setRecord(mapRecordToFront(res.data.records[0], columnKeyMap))
         } else {
           setRecord(buildMockRecords(validFields, 1)[0] ?? {})
         }
@@ -106,12 +117,7 @@ function DynamicDetailPageInner() {
       .catch(() => {
         setRecord(buildMockRecords(validFields, 1)[0] ?? {})
       })
-  }, [schema, id])
-
-  const sortedFields = useMemo(
-    () => [...(schema?.fields || [])].sort((a, b) => a.sortOrder - b.sortOrder),
-    [schema],
-  )
+  }, [schema, id, sortedFields, columnKeyMap])
 
   const validFields = useMemo(
     () => sortedFields.filter((f) => f.fieldKey && !f.isAction),

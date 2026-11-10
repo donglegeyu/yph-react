@@ -3,6 +3,11 @@
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox 隐藏滚动条 */
+
+  &::-webkit-scrollbar {
+    display: none; /* Chrome/Safari 隐藏滚动条 */
+  }
 
   .dashboard-toolbar {
     flex-shrink: 0;

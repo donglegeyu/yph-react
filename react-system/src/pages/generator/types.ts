@@ -27,6 +27,8 @@ export interface FieldConfig {
   fixed: FixedSide
   isFilter: boolean
   sortable: boolean
+  /** 表单页该字段是否必填（表单模板使用；旧 schema 无此字段时视为否） */
+  isRequired?: boolean
   options: SelectOption[]
   isStatusTag: boolean
   statusMap: StatusMapItem[]
@@ -357,6 +359,7 @@ export function createEmptyField(sortOrder: number): FieldConfig {
     fixed: null,
     isFilter: true,
     sortable: true,
+    isRequired: false,
     options: [],
     isStatusTag: false,
     statusMap: [],
