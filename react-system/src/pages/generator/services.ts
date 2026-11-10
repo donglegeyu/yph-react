@@ -1,5 +1,5 @@
 import type { PageDefinitionDTO, PageSchemaVO, FieldConfig, SelectOption } from './types'
-import { toSnakeCase } from './types'
+import { toSnakeCase, createEmptyFormPage } from './types'
 import { pinyin } from 'pinyin-pro'
 import { API_ENDPOINTS } from '@/constants/api'
 
@@ -78,6 +78,7 @@ interface BackendPageDef {
   bindMenuId: number | null
   schemaJson: string | null
   status: string
+  migrationStatus?: string | null
   createdBy: string | null
   updatedBy: string | null
   createdTime: string
@@ -108,6 +109,7 @@ function fromBackend(b: BackendPageDef): PageDefinitionDTO {
     tableName: b.tableName ?? '',
     apiPrefix: b.apiPrefix ?? '',
     status: b.status as PageDefinitionDTO['status'],
+    migrationStatus: b.migrationStatus ?? 'not_generated',
     createdBy: b.createdBy ?? '',
     updatedBy: b.updatedBy ?? '',
     createdTime: b.createdTime,
@@ -124,6 +126,7 @@ function fromBackend(b: BackendPageDef): PageDefinitionDTO {
       tabs: [],
       titleActions: [],
     },
+    formConfig: schema.formConfig ?? createEmptyFormPage(),
     treeConfig: schema.treeConfig ?? {
       enabled: false,
       expandColumnKey: 'name',
@@ -215,6 +218,19 @@ export async function fetchDynamicQuery(
 }
 
 /**
+ * 动态表单页提交：新增 POST {apiPrefix}，编辑 PUT {apiPrefix}/{id}
+ * 表单值原样 JSON 序列化（Dayjs 日期会被转成 ISO 字符串）
+ */
+export async function saveDynamicRecord(
+  apiPrefix: string,
+  id: string | null,
+  body: unknown,
+): Promise<ApiResult<unknown>> {
+  const url = id ? `${apiPrefix}/${id}` : apiPrefix
+  return apiJson<unknown>(url, id ? 'PUT' : 'POST', body)
+}
+
+/**
  * 把前端筛选表单的值对象转成后端 filter 字符串
  * 规则：
  * - 空值/空字符串/空数组 → 跳过
@@ -300,16 +316,102 @@ export async function savePageDefinition(
   return success(saved)
 }
 
-export async function publishPageDefinition(id: string, domainId: number | null): Promise<ApiResult<null>> {
+// ============= 建表迁移脚本（发布联动，只生成不执行） =============
+
+/** 发布结果中的迁移脚本信息（与后端 PublishResultDTO 对应） */
+export interface PublishResultData {
+  scriptId: number | null
+  scriptVersion: number | null
+  fileName: string | null
+  scriptType: 'create' | 'alter' | null
+  content: string | null
+  migrationStatus: string
+}
+
+/** 迁移脚本存档列表项（与后端 PageMigrationScript 对应） */
+export interface MigrationScriptItem {
+  id: number
+  pageDefinitionId: number
+  pageKey: string
+  pageName: string
+  version: number
+  fileName: string
+  scriptType: 'create' | 'alter'
+  content: string
+  createdBy: string | null
+  createdTime: string
+  migrationStatus: string | null
+}
+
+/** 就绪检查结果（与后端 ReadyCheckDTO 对应） */
+export interface ReadyCheckData {
+  tableExists: boolean
+  status: string
+  missingColumns: string[]
+}
+
+export async function publishPageDefinition(
+  id: string,
+  domainId: number | null,
+): Promise<ApiResult<PublishResultData | null>> {
   const url = domainId != null
     ? `${API_ENDPOINTS.PAGE_DEFINITIONS}/${id}/publish?domainId=${domainId}`
     : `${API_ENDPOINTS.PAGE_DEFINITIONS}/${id}/publish`
+  const res = await apiJson<PublishResultData | null>(url, 'POST')
+  if (res.code !== 200) return error(res.message)
+  return success(res.data)
+}
+
+export async function unpublishPageDefinition(id: string): Promise<ApiResult<null>> {
   const res = await apiJson<null>(
-    url,
+    `${API_ENDPOINTS.PAGE_DEFINITIONS}/${id}/unpublish`,
     'POST',
   )
   if (res.code !== 200) return error(res.message)
   return success(null)
+}
+
+/** 迁移脚本存档列表（最近 200 条，版本号倒序） */
+export async function listMigrationScripts(): Promise<ApiResult<MigrationScriptItem[]>> {
+  const res = await apiGet<MigrationScriptItem[]>('/api/page-migration-scripts')
+  if (res.code !== 200) return error(res.message)
+  return success(res.data ?? [])
+}
+
+/** 就绪检查：校验目标数据表与配置列是否真实存在 */
+export async function checkMigrationReady(id: string): Promise<ApiResult<ReadyCheckData>> {
+  const res = await apiJson<ReadyCheckData>(
+    `${API_ENDPOINTS.PAGE_DEFINITIONS}/${id}/check-migration-ready`,
+    'POST',
+  )
+  if (res.code !== 200) return error(res.message)
+  return success(res.data)
+}
+
+/**
+ * 下载到项目：把脚本写入本地 db/migration/ 目录
+ * 仅本地开发环境可用（Vite dev 中间件 /__dev/write-migration-file），
+ * 生产环境无此接口，调用会失败。
+ * 项目红线：只写入文件，不执行任何 DDL，由研发评审后 Flyway 启动时执行。
+ */
+export async function saveMigrationFileLocal(
+  fileName: string,
+  content: string,
+): Promise<ApiResult<null>> {
+  try {
+    const res = await fetch('/__dev/write-migration-file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName, content }),
+    })
+    const json = (await res.json()) as { ok?: boolean; message?: string }
+    if (!res.ok || !json.ok) {
+      return error(json.message || `写入失败（HTTP ${res.status}）`)
+    }
+    return success(null)
+  } catch (e) {
+    return error((e as Error).message || '写入失败：仅本地开发环境可用')
+  }
 }
 
 export async function deletePageDefinition(id: string): Promise<ApiResult<null>> {

@@ -38,6 +38,22 @@ export interface FieldConfig {
   sortOrder: number
   dataSource?: FieldDataSource | null
   dataSourceCacheTtl?: number
+  // 表单页字段所属分组 id（对应 formConfig.fieldGroups，留空平铺在未分组区）
+  groupId?: string
+  /** @deprecated 旧版分组字段名，加载/渲染时由 normalizeFormFieldGroups 迁移为 groupId */
+  groupName?: string
+}
+
+// 表单页字段分组（一等结构）：先建组，字段通过 groupId 加入组；渲染时未分组字段平铺在前，组按数组顺序
+export interface FormFieldGroupConfig {
+  id: string
+  name: string
+}
+
+let formGroupSeq = 0
+export function createFormFieldGroupId(): string {
+  formGroupSeq += 1
+  return `fg_${Date.now().toString(36)}_${formGroupSeq}_${Math.random().toString(36).slice(2, 6)}`
 }
 
 // 字段数据源类型族
@@ -140,6 +156,14 @@ export interface TimelineItemConfig {
   sortOrder: number
 }
 
+// 详情页 Tab 字段分组（一个 Tab 下可含多个分组，每组一个标题+字段集合）
+export interface DetailFieldGroupConfig {
+  groupKey: string
+  groupLabel: string
+  fieldKeys: string[]
+  sortOrder: number
+}
+
 // 详情页 Tab 项（对应 DetailPageTemplate 的 tabs）
 export interface DetailTabConfig {
   tabKey: string
@@ -147,8 +171,10 @@ export interface DetailTabConfig {
   sortOrder: number
   // Tab 内容类型：字段网格 / 关联子表 / 时间轴日志
   contentType: DetailTabContentType
-  // contentType='fields' 时：选择展示的字段 key 列表（空则展示全部字段）
+  // contentType='fields' 扁平模式：选择展示的字段 key 列表（空则展示全部字段）
   fieldKeys: string[]
+  // contentType='fields' 时：字段分组配置（详情页支持分组展示，表单页固定扁平）
+  fieldGroups: DetailFieldGroupConfig[]
   // contentType='fields' 时：列数
   fieldColumns: number
   // contentType='subtable' 时：子表列配置
@@ -172,6 +198,65 @@ export interface DetailHeaderConfig {
   titleActions: ToolbarButtonConfig[]
 }
 
+// 表单页底部按钮配置（action 决定点击行为：submit 提交后返回上一页 / save 保存后留在当前页 / cancel 返回上一页；btnType 随 action 派生：submit→primary / 其他→default）
+export interface FormFooterButtonConfig {
+  btnKey: string
+  btnLabel: string
+  btnType: 'primary' | 'default'
+  action: 'submit' | 'save' | 'cancel'
+  sortOrder: number
+}
+
+// 表单页模板配置（footerButtons 为空数组时不渲染底部操作区）
+export interface FormPageConfig {
+  // 底部按钮列表（默认 取消/确定 2 个，可增删改）
+  footerButtons: FormFooterButtonConfig[]
+  // 表单页字段分组（有序）：字段通过 FieldConfig.groupId 归属，未入组字段平铺在前
+  fieldGroups?: FormFieldGroupConfig[]
+}
+
+export interface GroupedConfigLike {
+  fields: FieldConfig[]
+  formConfig?: FormPageConfig
+}
+
+// 将旧 groupName 数据迁移为一等分组结构（formConfig.fieldGroups + field.groupId）；无迁移需求时原对象返回
+export function normalizeFormFieldGroups<T extends GroupedConfigLike>(config: T): T {
+  const groups = config.formConfig?.fieldGroups ?? []
+  const fields = config.fields
+  const hasLegacy = fields.some((f) => !f.groupId && (f.groupName ?? '').trim())
+  const needFix = hasLegacy || groups.some((g) => !g.id)
+  if (!needFix) return config
+  const nextGroups: FormFieldGroupConfig[] = groups.map((g) => ({
+    ...g,
+    id: g.id || createFormFieldGroupId(),
+    name: (g.name || '').trim(),
+  }))
+  const idByName = new Map(nextGroups.filter((g) => g.name).map((g) => [g.name, g.id]))
+  const nextFields = fields.map((f) => {
+    const name = (f.groupName ?? '').trim()
+    if (!f.groupId && name) {
+      let gid = idByName.get(name)
+      if (!gid) {
+        gid = createFormFieldGroupId()
+        nextGroups.push({ id: gid, name })
+        idByName.set(name, gid)
+      }
+      return { ...f, groupId: gid, groupName: undefined }
+    }
+    return f.groupName !== undefined ? { ...f, groupName: undefined } : f
+  })
+  return {
+    ...config,
+    formConfig: { ...(config.formConfig ?? createEmptyFormPage()), fieldGroups: nextGroups },
+    fields: nextFields,
+  }
+}
+
+export function createEmptyFormFieldGroup(): FormFieldGroupConfig {
+  return { id: createFormFieldGroupId(), name: '' }
+}
+
 export interface PageDefinitionDTO {
   id: string
   pageKey: string
@@ -188,11 +273,15 @@ export interface PageDefinitionDTO {
   sourceListPageKey: string
   // 详情页头部配置（仅 templateType='detail' 时使用）
   detailHeader: DetailHeaderConfig
+  // 表单页模板配置（仅 templateType='form' 时使用）
+  formConfig: FormPageConfig
   treeConfig: TreeConfig
   fields: FieldConfig[]
   actions: ActionConfig[]
   toolbarButtons: ToolbarButtonConfig[]
   status: 'draft' | 'published'
+  /** 数据表迁移状态：not_generated-未生成 pending-待入库 ready-已就绪 */
+  migrationStatus?: string
   createdBy: string
   updatedBy: string
   createdTime: string
@@ -212,6 +301,7 @@ export interface PageSchemaVO {
   sourceListPageKey?: string
   generateMenu?: boolean
   detailHeader?: DetailHeaderConfig
+  formConfig?: FormPageConfig
 }
 
 const FIELD_TYPE_OPTIONS: SelectOption[] = [
@@ -311,6 +401,15 @@ export function createEmptyDetailTag(sortOrder: number): DetailTagConfig {
   }
 }
 
+export function createEmptyFieldGroup(sortOrder: number): DetailFieldGroupConfig {
+  return {
+    groupKey: '',
+    groupLabel: '',
+    fieldKeys: [],
+    sortOrder,
+  }
+}
+
 export function createEmptyDetailTab(sortOrder: number): DetailTabConfig {
   return {
     tabKey: '',
@@ -318,6 +417,7 @@ export function createEmptyDetailTab(sortOrder: number): DetailTabConfig {
     sortOrder,
     contentType: 'fields',
     fieldKeys: [],
+    fieldGroups: [],
     fieldColumns: 2,
     subTableColumns: [],
     subTableTitle: '',
@@ -332,6 +432,26 @@ export function createEmptyDetailHeader(): DetailHeaderConfig {
     tags: [],
     tabs: [],
     titleActions: [],
+  }
+}
+
+export function createEmptyFooterButton(sortOrder: number): FormFooterButtonConfig {
+  return {
+    btnKey: '',
+    btnLabel: '',
+    btnType: 'primary',
+    action: 'submit',
+    sortOrder,
+  }
+}
+
+export function createEmptyFormPage(): FormPageConfig {
+  return {
+    // 默认 2 个按钮：保存（保存表单，成功后留在当前页）在前、取消（返回上一页）在后
+    footerButtons: [
+      { btnKey: 'btn-save', btnLabel: '保存', btnType: 'primary', action: 'save', sortOrder: 0 },
+      { btnKey: 'btn-cancel', btnLabel: '取消', btnType: 'default', action: 'cancel', sortOrder: 1 },
+    ],
   }
 }
 
@@ -351,6 +471,7 @@ export function createEmptyPage(): PageDefinitionDTO {
     bindMenuId: null,
     sourceListPageKey: '',
     detailHeader: createEmptyDetailHeader(),
+    formConfig: createEmptyFormPage(),
     treeConfig: {
       enabled: false,
       expandColumnKey: 'name',

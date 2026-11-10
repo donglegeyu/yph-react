@@ -33,6 +33,12 @@ public class PageDefinition {
 
     private String status;
 
+    /** 最新建表脚本版本号（发布时由 MigrationScriptService 生成） */
+    private Integer migrationVersion;
+
+    /** 迁移状态：not_generated-未生成 pending-待入库 ready-已就绪 */
+    private String migrationStatus;
+
     private String createdBy;
 
     private String updatedBy;

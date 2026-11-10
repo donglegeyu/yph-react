@@ -59,6 +59,11 @@
     margin-bottom: 0;
   }
 
+  // 统一 Form.Item 间距为 12px（覆盖 antd 默认 24px）
+  .ant-form-item {
+    margin-bottom: calc(var(--spacing-sm) * 1px);
+  }
+
   .ant-form-item-additional {
     display: none;
   }
@@ -70,6 +75,11 @@
     .pgw-form-item-flex {
       flex: 1;
       margin-bottom: 0;
+    }
+
+    // 仅底部按钮编辑行：左右下 16px 内边距
+    &.pgw-row-inline-footer {
+      padding: 0 16px 16px;
     }
   }
 
@@ -90,6 +100,18 @@
     width: 100%;
   }
 
+  // Form 与后续卡片之间统一间距
+  form + .pgw-field-list {
+    margin-top: calc(var(--spacing-sm) * 1px);
+  }
+
+  // 工具栏统一 16px 上边距（Form / 卡片之后的工具栏）
+  form + .pgw-toolbar,
+  .pgw-field-list + .pgw-toolbar,
+  .pgw-toolbar + .pgw-toolbar {
+    margin-top: 16px;
+  }
+
   .pgw-hint {
     margin-left: calc(var(--spacing-sm) * 1px);
     color: var(--color-text-tertiary);
@@ -102,12 +124,30 @@
 }
 
 .pgw-toolbar {
-  margin-bottom: calc(var(--spacing-sm) * 1px);
+  display: flex;
+  // 反转主轴：按钮显示在左侧，计数显示在右侧
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  margin-bottom: 8px;
 
   .pgw-toolbar-count {
-    margin-left: calc(var(--spacing-sm) * 1px);
     color: var(--color-text-tertiary);
     font-size: calc(var(--font-size-sm) * 1px);
+  }
+
+  // 按钮组（新增字段/新增分组）：作为整体贴左，组内间距固定 16px，不参与 space-between 拉伸
+  .pgw-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  // 工具栏按钮去掉左右内边距（link 型按钮贴合右侧）
+  .ant-btn {
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
@@ -129,11 +169,23 @@
   }
 }
 
+// 默认模式下，field-item 增加左右 16px 内边距
+.pgw-editor--default .pgw-field-item {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+// 高级模式下，field-header 增加左右 16px 内边距（默认模式不受影响）
+.pgw-editor--advanced .pgw-field-header {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
 .pgw-field-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: calc(var(--spacing-xs) * 1px) calc(var(--spacing-md) * 1px);
+  padding: calc(var(--spacing-xs) * 1px) 0;
   background: var(--color-bg-tertiary);
 
   .pgw-field-key {
@@ -154,6 +206,34 @@
     color: var(--color-warning);
     font-size: calc(var(--font-size-sm) * 1px);
   }
+}
+
+// 表单页分组块（先建组、字段入组）：虚线框包裹组头与组内字段卡片
+.pgw-form-group-block {
+  border: 1px dashed var(--color-border);
+  border-radius: calc(var(--border-radius-base) * 1px);
+  padding: calc(var(--spacing-xs) * 1px) 12px 12px;
+  background: var(--color-fill-quaternary);
+
+  & + .pgw-form-group-block {
+    margin-top: calc(var(--spacing-sm) * 1px);
+  }
+}
+
+.pgw-form-group-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-xs) * 1px);
+  margin-bottom: calc(var(--spacing-xs) * 1px);
+
+  .pgw-form-group-count {
+    color: var(--color-text-tertiary);
+    font-size: calc(var(--font-size-sm) * 1px);
+  }
+}
+
+.pgw-form-group-fields {
+  padding: calc(var(--spacing-xs) * 1px) 0 0;
 }
 
 .pgw-field-simple {
@@ -226,6 +306,36 @@
       width: 100%;
     }
   }
+}
+
+// 正文信息「时间轴/日志」类型：灰底铺满整行（与 pgw-action-row 一致），内容左右缩进 16px
+// 注意：必须用 padding 而非 margin——margin 区域不渲染背景；且容器无 padding-top 时
+// 首个子元素的 margin-top 会塌陷到容器外，同样会露出父卡片白底
+.pgw-tab-timeline {
+  background: var(--color-bg-tertiary, #fafafa);
+  padding-top: 8px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 12px;
+}
+
+// 「字段」类型分组明细底部：新增分组按钮行（灰底与上方行连续，按钮左缩进 16px、下留 12px）
+.pgw-group-add-row {
+  background: var(--color-bg-tertiary, #fafafa);
+  padding-left: 16px;
+  padding-bottom: 12px;
+}
+
+// 默认模式下「新增分组」按钮行不带灰底、去左缩进（默认模式整体为白底表单风格，与表单元素左对齐）
+// 按钮自身的左右 padding 由 TSX 行内样式清零（antd 运行时样式后注入，类选择器打平会输）
+.pgw-editor--default .pgw-group-add-row {
+  background: transparent;
+  padding-left: 0;
+}
+
+// 分组明细「分组字段」行去掉上内边距（与上方「分组名称」行贴紧，间距由上一行的下内边距提供）
+.pgw-action-row--fields {
+  padding-top: 0;
 }
 
 .pgw-action-simple {

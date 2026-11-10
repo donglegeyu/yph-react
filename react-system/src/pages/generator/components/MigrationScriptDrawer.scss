@@ -1,0 +1,48 @@
+// 脚本详情抽屉的信息卡片
+// 视觉规范照抄组件库 DetailPageTemplate 的 dpt-info-card（白底圆角卡片 + 灰标签/黑值字段流式布局），
+// 类名用 msd- 前缀避免与组件库样式冲突（组件库样式嵌套在 .detail-page-template 下，抽屉里无法直接借用）。
+
+.msd-info-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  // 只保留下方内边距，上/左/右贴抽屉边缘
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  background: var(--color-bg-container);
+  border-radius: 6px;
+
+  // 脚本文件名：纯文本一行，不带标签
+  .msd-file-name {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+    color: rgba(0, 0, 0, 0.88);
+    word-break: break-all;
+  }
+
+  .msd-info-fields {
+    display: flex;
+    flex-flow: row wrap;
+    gap: 8px calc(16px + 24px);
+
+    .msd-field-item {
+      display: flex;
+      align-items: center;
+      line-height: 22px;
+
+      .msd-field-label {
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.45);
+        white-space: nowrap;
+      }
+
+      .msd-field-value {
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.88);
+        word-break: break-all;
+      }
+    }
+  }
+}

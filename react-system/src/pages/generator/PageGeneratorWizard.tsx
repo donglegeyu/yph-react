@@ -1,11 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Form, Input, Select, TreeSelect, Button, Space, App, Radio, Splitter, InputNumber } from 'antd'
+import { Form, Input, Select, TreeSelect, Button, Space, App, Radio, Splitter } from 'antd'
 import { CompanyButton, CompanyMessage, SectionTitle, FormPageTemplate } from '@donglegeyu/company-ui'
-import { DeleteOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons'
 import type { DataNode } from 'antd/es/tree'
-import type { PageDefinitionDTO, FieldConfig, ActionConfig, ActionType, ToolbarButtonConfig, ToolbarButtonType, DetailTagVariant, DetailTabContentType } from './types'
+import type { PageDefinitionDTO, FieldConfig, ActionConfig, ActionType, ToolbarButtonConfig, ToolbarButtonType, DetailTagVariant, DetailTabContentType, FormFieldGroupConfig } from './types'
 import {
   createEmptyField,
   createEmptyAction,
@@ -14,13 +14,16 @@ import {
   createEmptyDetailHeader,
   createEmptyDetailTag,
   createEmptyDetailTab,
+  createEmptyFieldGroup,
+  createEmptyFooterButton,
+  createEmptyFormFieldGroup,
+  normalizeFormFieldGroups,
   toSnakeCase,
   ACTION_TYPE_OPTIONS,
-  FIELD_TYPE_OPTIONS,
 } from './types'
 import { savePageDefinition, publishPageDefinition, suggestTableName, suggestApiPrefix, suggestFromChinese, suggestFieldKey, deriveKeyFromLabel, fetchPublishedListPages, listPageDefinitions } from './services'
 import { API_ENDPOINTS } from '@/constants/api'
-import FieldEditor from './components/FieldEditor'
+import { FieldCard } from './components/FieldEditor'
 import PreviewPanel from './components/PreviewPanel'
 import './PageGeneratorWizard.scss'
 
@@ -40,6 +43,7 @@ const TEMPLATE_OPTIONS = [
   { label: '列表页（基础）', value: 'list_basic' },
   { label: '列表页（树形）', value: 'list_tree' },
   { label: '详情页', value: 'detail' },
+  { label: '表单页', value: 'form' },
 ]
 
 interface Props {
@@ -57,10 +61,48 @@ function migrateLegacyStatusFields(cfg: PageDefinitionDTO): PageDefinitionDTO {
     }
     return f
   })
-  // 兜底 detailHeader（早期数据可能缺失）
+  // 兜底 detailHeader / formConfig（早期数据可能缺失）
   const detailHeader = cfg.detailHeader ?? createEmptyDetailHeader()
   if (!cfg.detailHeader) changed = true
-  return changed ? { ...cfg, fields, detailHeader } : cfg
+  // formConfig 老结构（showFooter/submitText/cancelText/topContent）→ footerButtons（后端此前未存 formConfig，存量数据基本走兜底分支）
+  let formConfig = cfg.formConfig
+  if (!formConfig || !Array.isArray(formConfig.footerButtons)) {
+    changed = true
+    const legacy = (formConfig ?? {}) as { showFooter?: boolean; submitText?: string; cancelText?: string }
+    formConfig =
+      legacy.showFooter === false
+        ? { footerButtons: [] }
+        : {
+            footerButtons: [
+              { btnKey: 'btn-save', btnLabel: (legacy.submitText || '').trim() || '保存', btnType: 'primary', action: 'submit', sortOrder: 0 },
+              { btnKey: 'btn-cancel', btnLabel: (legacy.cancelText || '').trim() || '取消', btnType: 'default', action: 'cancel', sortOrder: 1 },
+            ],
+          }
+  }
+  // 老数据兼容：补齐缺失的 fieldGroups；表单页固定扁平——分组中的字段拍平回 tab.fieldKeys
+  const isFormPage = cfg.templateType === 'form'
+  const tabs = detailHeader.tabs.map((t) => {
+    const legacyGroups = (t as { fieldGroups?: { fieldKeys?: string[] }[] | null }).fieldGroups
+    if (!legacyGroups || legacyGroups.length === 0) {
+      if (Array.isArray(legacyGroups)) return t // 已是空数组，形态正确
+      changed = true
+      return { ...t, fieldGroups: [] } // null/undefined（老数据）：补齐
+    }
+    if (!isFormPage) return t // 详情页保留分组
+    changed = true
+    const merged = [...t.fieldKeys]
+    legacyGroups.forEach((g) => {
+      ;(g.fieldKeys || []).forEach((k) => {
+        if (k && !merged.includes(k)) merged.push(k)
+      })
+    })
+    const next = { ...t, fieldKeys: merged, fieldGroups: [] }
+    return next
+  })
+  if (changed) {
+    return { ...cfg, fields, detailHeader: { ...detailHeader, tabs }, formConfig }
+  }
+  return cfg
 }
 
 // 默认模式文本域 → 完整 FieldConfig[]
@@ -139,12 +181,28 @@ export default function PageGeneratorWizard({ initial }: Props) {
   const navigate = useNavigate()
   const { modal } = App.useApp()
   const [config, setConfig] = useState<PageDefinitionDTO>(
-    migrateLegacyStatusFields(initial ?? createEmptyPage()),
+    normalizeFormFieldGroups(migrateLegacyStatusFields(initial ?? createEmptyPage())),
   )
   const isDetail = config.templateType === 'detail'
+  const isForm = config.templateType === 'form'
   const [saving, setSaving] = useState(false)
   const [keyTouched, setKeyTouched] = useState(false)
-  const [mode, setMode] = useState<'default' | 'advanced'>('default')
+  // 编辑已有配置时：若字段带有文本域无法表达的配置（控件类型/选项/状态映射/数据源/表单分组），初始进入高级模式，
+  // 否则默认模式的 previewConfig 会用 parseFieldsText 重建字段，导致 fieldType 等配置丢失（预览全变输入框）
+  const [mode, setMode] = useState<'default' | 'advanced'>(() => {
+    const fields = (initial?.fields ?? []).filter((f) => !f.isAction)
+    const hasRichConfig =
+      fields.some(
+        (f) =>
+          f.fieldType !== 'input' ||
+          (f.options?.length ?? 0) > 0 ||
+          (f.statusMap?.length ?? 0) > 0 ||
+          !!f.dataSource,
+      ) ||
+      !!initial?.formConfig?.fieldGroups?.length ||
+      fields.some((f) => f.groupId)
+    return hasRichConfig ? 'advanced' : 'default'
+  })
   // 从后端拉取的 nav_menu 列表（带数字 id，用于菜单关联选择）
   const [navMenus, setNavMenus] = useState<NavMenuWithId[]>([])
   // 已发布的列表页（供详情页「关联列表页」下拉选择）
@@ -394,9 +452,56 @@ export default function PageGeneratorWizard({ initial }: Props) {
     patchConfig({ apiPrefix: val })
   }
 
-  const addField = () => {
-    const next = createEmptyField(config.fields.length)
+  const addField = (groupId?: string) => {
+    const next = { ...createEmptyField(config.fields.length) }
+    if (groupId) next.groupId = groupId
     setConfig((prev) => ({ ...prev, fields: [...prev.fields, next] }))
+  }
+
+  // ===== 表单页分组管理（先建组，字段入组）=====
+  const patchFormGroups = (groups: FormFieldGroupConfig[]) => {
+    setConfig((prev) => ({
+      ...prev,
+      formConfig: { ...prev.formConfig, fieldGroups: groups },
+    }))
+  }
+
+  const addGroup = () => {
+    patchFormGroups([...(config.formConfig?.fieldGroups ?? []), createEmptyFormFieldGroup()])
+  }
+
+  const renameGroup = (gid: string, name: string) => {
+    patchFormGroups(
+      (config.formConfig?.fieldGroups ?? []).map((g) => (g.id === gid ? { ...g, name } : g)),
+    )
+  }
+
+  const moveGroup = (idx: number, delta: -1 | 1) => {
+    const groups = [...(config.formConfig?.fieldGroups ?? [])]
+    const target = idx + delta
+    if (target < 0 || target >= groups.length) return
+    ;[groups[idx], groups[target]] = [groups[target], groups[idx]]
+    patchFormGroups(groups)
+  }
+
+  const removeGroup = (g: FormFieldGroupConfig) => {
+    const count = config.fields.filter((f) => f.groupId === g.id).length
+    modal.confirm({
+      title: '删除分组',
+      content: count
+        ? `组内 ${count} 个字段将变为未分组字段，字段本身不会被删除。`
+        : '确定删除该分组吗？',
+      onOk: () => {
+        setConfig((prev) => ({
+          ...prev,
+          formConfig: {
+            ...prev.formConfig,
+            fieldGroups: (prev.formConfig?.fieldGroups ?? []).filter((x) => x.id !== g.id),
+          },
+          fields: prev.fields.map((f) => (f.groupId === g.id ? { ...f, groupId: undefined } : f)),
+        }))
+      },
+    })
   }
 
   const updateField = (idx: number, field: FieldConfig) => {
@@ -405,6 +510,28 @@ export default function PageGeneratorWizard({ initial }: Props) {
       fields: prev.fields.map((f, i) => (i === idx ? field : f)),
     }))
   }
+
+  // 字段卡片渲染（详情页平铺 / 表单页分组视图共用；用引用定位原始下标，分组视图不改变 fields 顺序）
+  const renderFieldCard = (field: FieldConfig) => {
+    const idx = config.fields.indexOf(field)
+    return (
+      <FieldCard
+        key={idx}
+        value={field}
+        onChange={(f) => updateField(idx, f)}
+        mode={isForm ? 'form' : 'detail'}
+        groups={isForm ? config.formConfig?.fieldGroups : undefined}
+        index={idx}
+        onDelete={() => handleDeleteFieldConfirm(idx, field.fieldLabel)}
+      />
+    )
+  }
+
+  // 表单页未入组字段（groupId 为空或指向已删除的组），平铺显示在前
+  const formGroupIds = new Set((config.formConfig?.fieldGroups ?? []).map((g) => g.id))
+  const formUngroupedFields = isForm
+    ? config.fields.filter((f) => !f.groupId || !formGroupIds.has(f.groupId))
+    : []
 
   const removeField = (idx: number) => {
     setConfig((prev) => ({
@@ -520,8 +647,11 @@ export default function PageGeneratorWizard({ initial }: Props) {
       const payload: PageDefinitionDTO = {
         ...savingConfig,
         status: 'draft',
-        // 详情页入口来自列表页跳转，不挂载菜单，跳过后端菜单联动校验
-        generateMenu: savingConfig.templateType === 'detail' ? false : savingConfig.generateMenu,
+        // 详情页/表单页入口来自列表页跳转，不挂载菜单，跳过后端菜单联动校验
+        generateMenu:
+          savingConfig.templateType === 'detail' || savingConfig.templateType === 'form'
+            ? false
+            : savingConfig.generateMenu,
         fields: savingConfig.fields
           .filter((f) => f.fieldKey.trim())
           .map((f) => ({ ...f, dbColumn: f.dbColumn || toSnakeCase(f.fieldKey) })),
@@ -637,7 +767,7 @@ export default function PageGeneratorWizard({ initial }: Props) {
     >
       <Splitter className="pgw-splitter">
         <Splitter.Panel defaultSize="50%" min="30%" max="70%">
-          <div className="pgw-editor">
+          <div className={`pgw-editor pgw-editor--${mode}`}>
             <div className="pgw-mode-switch">
               <Radio.Group
                 value={mode}
@@ -668,14 +798,14 @@ export default function PageGeneratorWizard({ initial }: Props) {
                 placeholder="如 设备管理"
               />
             </Form.Item>
-            {isDetail && (
+            {(isDetail || isForm) && (
               <Form.Item
                 label="关联列表页"
                 required
                 extra={
                   mode === 'default'
-                    ? '详情页的数据来自关联列表页同一张表，点击同步会把列表页字段名填入下方文本域'
-                    : '详情页的数据来自关联列表页同一张表，可一键同步字段配置'
+                    ? `${isForm ? '表单页' : '详情页'}的数据来自关联列表页同一张表，点击同步会把列表页字段名填入下方文本域`
+                    : `${isForm ? '表单页' : '详情页'}的数据来自关联列表页同一张表，可一键同步字段配置`
                 }
               >
                 <div className="pgw-row-inline">
@@ -751,7 +881,7 @@ export default function PageGeneratorWizard({ initial }: Props) {
           </Form>
             </div>
 
-            {!isDetail && (
+            {!isDetail && !isForm && (
               <div className="pgw-section-block">
                 <SectionTitle title="菜单关联" />
                 <Form layout="vertical" requiredMark={requiredMark}>
@@ -811,11 +941,166 @@ export default function PageGeneratorWizard({ initial }: Props) {
               </div>
             )}
 
-            {isDetail && (
+            {isForm && (
               <div className="pgw-section-block">
-                <SectionTitle title="头部信息" />
+                <SectionTitle title="底部按钮设置" />
+                <Form layout="vertical" requiredMark={requiredMark}>
+                  <div className="pgw-toolbar">
+                    <span className="pgw-toolbar-count">
+                      {config.formConfig.footerButtons.length > 0
+                        ? `共 ${config.formConfig.footerButtons.length} 个底部按钮`
+                        : '无底部按钮（页面不显示底部操作区）'}
+                    </span>
+                    <CompanyButton
+                      type="link"
+                      icon={<PlusOutlined />}
+                      onClick={() =>
+                        patchConfig({
+                          formConfig: {
+                            ...config.formConfig,
+                            footerButtons: [
+                              ...config.formConfig.footerButtons,
+                              createEmptyFooterButton(config.formConfig.footerButtons.length),
+                            ],
+                          },
+                        })
+                      }
+                    >
+                      添加按钮
+                    </CompanyButton>
+                  </div>
+                  {config.formConfig.footerButtons.map((btn, idx) => (
+                    <div key={idx} className="pgw-field-item">
+                      <div className="pgw-field-header">
+                        <Space size={12}>
+                          <span className="pgw-field-key">{btn.btnLabel || `按钮 ${idx + 1}`}</span>
+                          <span className="pgw-field-label">
+                            {btn.action === 'submit' ? '提交表单' : btn.action === 'save' ? '保存表单' : '返回上一页'}
+                          </span>
+                        </Space>
+                        <Space size={4}>
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<ArrowUpOutlined />}
+                            disabled={idx === 0}
+                            onClick={() => {
+                              const next = [...config.formConfig.footerButtons]
+                              ;[next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]
+                              patchConfig({
+                                formConfig: {
+                                  ...config.formConfig,
+                                  footerButtons: next.map((b, i) => ({ ...b, sortOrder: i })),
+                                },
+                              })
+                            }}
+                          />
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<ArrowDownOutlined />}
+                            disabled={idx === config.formConfig.footerButtons.length - 1}
+                            onClick={() => {
+                              const next = [...config.formConfig.footerButtons]
+                              ;[next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]
+                              patchConfig({
+                                formConfig: {
+                                  ...config.formConfig,
+                                  footerButtons: next.map((b, i) => ({ ...b, sortOrder: i })),
+                                },
+                              })
+                            }}
+                          />
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() =>
+                              patchConfig({
+                                formConfig: {
+                                  ...config.formConfig,
+                                  footerButtons: config.formConfig.footerButtons
+                                    .filter((_, i) => i !== idx)
+                                    .map((b, i) => ({ ...b, sortOrder: i })),
+                                },
+                              })
+                            }
+                          />
+                        </Space>
+                      </div>
+                      <div className="pgw-row-inline pgw-row-inline-footer">
+                        <Form.Item label="按钮文案" className="pgw-form-item-flex">
+                          <Input
+                            value={btn.btnLabel}
+                            onChange={(e) =>
+                              patchConfig({
+                                formConfig: {
+                                  ...config.formConfig,
+                                  footerButtons: config.formConfig.footerButtons.map((b, i) =>
+                                    i === idx ? { ...b, btnLabel: e.target.value } : b
+                                  ),
+                                },
+                              })
+                            }
+                            placeholder={btn.action === 'submit' ? '提交' : btn.action === 'save' ? '保存' : '取消'}
+                          />
+                        </Form.Item>
+                        <Form.Item label="按钮样式" className="pgw-form-item-flex">
+                          <Select
+                            value={btn.btnType}
+                            onChange={(v) =>
+                              patchConfig({
+                                formConfig: {
+                                  ...config.formConfig,
+                                  footerButtons: config.formConfig.footerButtons.map((b, i) =>
+                                    i === idx ? { ...b, btnType: v } : b
+                                  ),
+                                },
+                              })
+                            }
+                            options={[
+                              { value: 'primary', label: '主按钮' },
+                              { value: 'default', label: '次按钮' },
+                            ]}
+                          />
+                        </Form.Item>
+                        <Form.Item label="点击行为" className="pgw-form-item-flex pgw-form-item-last">
+                          <Select
+                            value={btn.action}
+                            onChange={(v) =>
+                              patchConfig({
+                                formConfig: {
+                                  ...config.formConfig,
+                                  footerButtons: config.formConfig.footerButtons.map((b, i) =>
+                                    i === idx
+                                      ? { ...b, action: v, btnType: v === 'submit' ? 'primary' : 'default' }
+                                      : b
+                                  ),
+                                },
+                              })
+                            }
+                            options={[
+                              { value: 'submit', label: '提交表单' },
+                              { value: 'save', label: '保存表单' },
+                              { value: 'cancel', label: '返回上一页' },
+                            ]}
+                          />
+                        </Form.Item>
+                      </div>
+                    </div>
+                  ))}
+                </Form>
+              </div>
+            )}
+
+            {(isDetail || isForm) && (
+              <div className="pgw-section-block">
+                <SectionTitle title="正文信息" />
                 {mode === 'default' ? (
                   <Form layout="vertical" requiredMark={requiredMark}>
+                    {isDetail && (
+                    <>
                     <Form.Item
                       label="主名称字段名（中文名，作为详情页大标题展示）"
                     >
@@ -855,30 +1140,13 @@ export default function PageGeneratorWizard({ initial }: Props) {
                         autoSize={{ minRows: 3 }}
                       />
                     </Form.Item>
-                    <Form.Item label="标题栏操作按钮（每行一个按钮名，显示在标题右侧）">
-                      <Input.TextArea
-                        value={config.detailHeader.titleActions.map((b) => b.btnLabel).join('\n')}
-                        onChange={(e) => {
-                          const lines = e.target.value.split('\n').map((s) => s.trim()).filter(Boolean)
-                          patchConfig({
-                            detailHeader: {
-                              ...config.detailHeader,
-                              titleActions: lines.map((text, i) => ({
-                                btnKey: deriveKeyFromLabel(text, i, 'action'),
-                                btnLabel: text,
-                                btnType: (i === 0 ? 'primary' : 'default') as ToolbarButtonType,
-                                sortOrder: i,
-                              })),
-                            },
-                          })
-                        }}
-                        placeholder={'每行一个按钮，例如：\n编辑\n删除'}
-                        autoSize={{ minRows: 2 }}
-                      />
-                    </Form.Item>
+                    </>
+                    )}
                   </Form>
                 ) : (
                   <>
+                    {isDetail && (
+                    <>
                     <Form layout="vertical" requiredMark={requiredMark}>
                       <Form.Item label="主名称字段（从已配置字段中选择）">
                         <Select
@@ -895,7 +1163,7 @@ export default function PageGeneratorWizard({ initial }: Props) {
                           allowClear
                           showSearch
                           optionFilterProp="label"
-                          options={config.fields
+                          options={previewConfig.fields
                             .filter((f) => f.fieldKey && !f.isAction)
                             .map((f) => ({
                               label: f.fieldLabel || f.fieldKey,
@@ -921,8 +1189,12 @@ export default function PageGeneratorWizard({ initial }: Props) {
                       </Form.Item>
                     </Form>
                     <div className="pgw-toolbar">
+                      <span className="pgw-toolbar-count">
+                        共 {config.detailHeader.tags.length} 个标签
+                      </span>
                       <CompanyButton
-                        type="primary"
+                        type="link"
+                        icon={<PlusOutlined />}
                         onClick={() =>
                           patchConfig({
                             detailHeader: {
@@ -937,10 +1209,8 @@ export default function PageGeneratorWizard({ initial }: Props) {
                       >
                         新增标签
                       </CompanyButton>
-                      <span className="pgw-toolbar-count">
-                        共 {config.detailHeader.tags.length} 个标签
-                      </span>
                     </div>
+                    <div className="pgw-field-list">
                     {config.detailHeader.tags.map((tag, idx) => (
                       <div key={idx} className="pgw-field-item">
                         <div className="pgw-field-header">
@@ -1015,106 +1285,18 @@ export default function PageGeneratorWizard({ initial }: Props) {
                     {config.detailHeader.tags.length === 0 && (
                       <div className="pgw-empty">暂无标签，点击上方「新增标签」配置</div>
                     )}
-
-                    <div className="pgw-toolbar">
-                      <CompanyButton
-                        type="primary"
-                        onClick={() =>
-                          patchConfig({
-                            detailHeader: {
-                              ...config.detailHeader,
-                              titleActions: [
-                                ...config.detailHeader.titleActions,
-                                createEmptyToolbarButton(config.detailHeader.titleActions.length),
-                              ],
-                            },
-                          })
-                        }
-                      >
-                        新增操作按钮
-                      </CompanyButton>
-                      <span className="pgw-toolbar-count">
-                        共 {config.detailHeader.titleActions.length} 个按钮
-                      </span>
                     </div>
-                    {config.detailHeader.titleActions.map((btn, idx) => (
-                      <div key={idx} className="pgw-field-item">
-                        <div className="pgw-field-header">
-                          <Space size={12}>
-                            <span className="pgw-field-key">
-                              {btn.btnLabel || `按钮 ${idx + 1}`}
-                            </span>
-                            <span className="pgw-field-label">{btn.btnType}</span>
-                          </Space>
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() =>
-                              patchConfig({
-                                detailHeader: {
-                                  ...config.detailHeader,
-                                  titleActions: config.detailHeader.titleActions
-                                    .filter((_, i) => i !== idx)
-                                    .map((t, i) => ({ ...t, sortOrder: i })),
-                                },
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="pgw-action-row">
-                          <div className="pgw-action-cell">
-                            <div className="pgw-action-label">按钮文案</div>
-                            <Input
-                              value={btn.btnLabel}
-                              onChange={(e) => {
-                                const next = [...config.detailHeader.titleActions]
-                                next[idx] = { ...btn, btnLabel: e.target.value }
-                                patchConfig({
-                                  detailHeader: {
-                                    ...config.detailHeader,
-                                    titleActions: next,
-                                  },
-                                })
-                              }}
-                              placeholder="如 编辑"
-                              size="small"
-                            />
-                          </div>
-                          <div className="pgw-action-cell">
-                            <div className="pgw-action-label">类型</div>
-                            <Select
-                              value={btn.btnType}
-                              onChange={(v: ToolbarButtonType) => {
-                                const next = [...config.detailHeader.titleActions]
-                                next[idx] = { ...btn, btnType: v }
-                                patchConfig({
-                                  detailHeader: {
-                                    ...config.detailHeader,
-                                    titleActions: next,
-                                  },
-                                })
-                              }}
-                              size="small"
-                              options={[
-                                { label: '主按钮', value: 'primary' },
-                                { label: '次按钮', value: 'default' },
-                              ]}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                    </>
+                    )}
                   </>
                 )}
 
-                {isDetail && (
+                {(isDetail || isForm) && (
                   <>
                     {mode === 'default' ? (
                       <Form layout="vertical" requiredMark={requiredMark}>
                         <Form.Item
-                          label="字段列表（每行一个字段，中文名，将作为详情页展示项）"
+                          label={`字段列表（每行一个字段，中文名，将作为${isForm ? '表单录入项' : '详情页展示项'}）`}
                           className="pgw-form-item-none"
                         >
                           <Input.TextArea
@@ -1128,35 +1310,57 @@ export default function PageGeneratorWizard({ initial }: Props) {
                     ) : (
                       <>
                         <div className="pgw-toolbar">
-                          <CompanyButton type="primary" onClick={addField}>新增字段</CompanyButton>
                           <span className="pgw-toolbar-count">共 {config.fields.length} 个字段</span>
+                          <div className="pgw-toolbar-actions">
+                            <CompanyButton type="link" icon={<PlusOutlined />} onClick={() => addField()}>新增字段</CompanyButton>
+                            {isForm && (
+                              <CompanyButton type="link" icon={<PlusOutlined />} onClick={addGroup}>新增分组</CompanyButton>
+                            )}
+                          </div>
                         </div>
                         <div className="pgw-field-list">
-                          {config.fields.map((field, idx) => (
-                            <div key={idx} className="pgw-field-item">
-                              <div className="pgw-field-header">
-                                <Space size={12}>
-                                  <span className="pgw-field-key">
-                                    {field.fieldLabel || `字段 ${idx + 1}`}
-                                  </span>
-                                  <span className="pgw-field-label">
-                                    {FIELD_TYPE_OPTIONS.find((o) => o.value === field.fieldType)?.label || field.fieldType}
-                                  </span>
-                                  {field.isAction && <span className="pgw-tag-action">操作列</span>}
-                                  {field.isStatusTag && <span className="pgw-tag-status">状态列</span>}
-                                </Space>
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  onClick={() => handleDeleteFieldConfirm(idx, field.fieldLabel)}
-                                />
-                              </div>
-                              <FieldEditor value={field} onChange={(f) => updateField(idx, f)} />
-                            </div>
-                          ))}
-                          {config.fields.length === 0 && (
+                          {isForm ? (
+                            <>
+                              {/* 未分组字段平铺在前（与运行时渲染顺序一致） */}
+                              {formUngroupedFields.map(renderFieldCard)}
+                              {config.formConfig?.fieldGroups?.map((group, gi) => {
+                                const children = config.fields.filter((f) => f.groupId === group.id)
+                                const groupCount = config.formConfig?.fieldGroups?.length ?? 0
+                                return (
+                                  <div key={group.id} className="pgw-form-group-block">
+                                    <div className="pgw-form-group-head">
+                                      <Input
+                                        value={group.name}
+                                        onChange={(e) => renameGroup(group.id, e.target.value)}
+                                        placeholder="分组名称"
+                                        size="small"
+                                        style={{ width: 200 }}
+                                      />
+                                      <span className="pgw-form-group-count">{children.length} 个字段</span>
+                                      <Space size={0}>
+                                        <Button type="text" size="small" icon={<ArrowUpOutlined />} disabled={gi === 0} onClick={() => moveGroup(gi, -1)} />
+                                        <Button type="text" size="small" icon={<ArrowDownOutlined />} disabled={gi === groupCount - 1} onClick={() => moveGroup(gi, 1)} />
+                                        <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => removeGroup(group)} />
+                                      </Space>
+                                    </div>
+                                    <div className="pgw-field-list pgw-form-group-fields">
+                                      {children.map(renderFieldCard)}
+                                      {children.length === 0 && (
+                                        <div className="pgw-empty">暂无字段，点击下方「添加字段」放入该分组</div>
+                                      )}
+                                      <CompanyButton type="link" icon={<PlusOutlined />} onClick={() => addField(group.id)}>添加字段</CompanyButton>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                              {config.fields.length === 0 && !config.formConfig?.fieldGroups?.length && (
+                                <div className="pgw-empty">暂无字段；可先「新增分组」，再往分组里添加字段</div>
+                              )}
+                            </>
+                          ) : (
+                            config.fields.map(renderFieldCard)
+                          )}
+                          {!isForm && config.fields.length === 0 && (
                             <div className="pgw-empty">暂无字段，点击上方「新增字段」开始配置</div>
                           )}
                         </div>
@@ -1167,19 +1371,30 @@ export default function PageGeneratorWizard({ initial }: Props) {
               </div>
             )}
 
-            {/* 详情页：正文信息（正文 Tab 配置） */}
+            {/* 详情页：正文信息（正文 Tab 配置；表单页正文固定为全部字段，无需配置 */}
             {isDetail && (
               <div className="pgw-section-block">
                 <SectionTitle title="正文信息" />
                 {mode === 'default' ? (
                   <Form layout="vertical" requiredMark={requiredMark}>
-                    <Form.Item label="正文 Tab（每行一个 Tab 名，用于多区域切换）">
+                    <Form.Item label="正文 Tab（每行一个 Tab 名，留空则作为单一正文区域）">
                       <Input.TextArea
                         value={config.detailHeader.tabs
                           .map((t) => t.tabLabel)
                           .join('\n')}
                         onChange={(e) => {
                           const lines = e.target.value.split('\n').map((s) => s.trim()).filter(Boolean)
+                          if (lines.length === 0) {
+                            // 清空时保留一个默认正文 tab（tabLabel 为空）
+                            const existing = config.detailHeader.tabs[0]
+                            patchConfig({
+                              detailHeader: {
+                                ...config.detailHeader,
+                                tabs: [existing ?? createEmptyDetailTab(0)],
+                              },
+                            })
+                            return
+                          }
                           patchConfig({
                             detailHeader: {
                               ...config.detailHeader,
@@ -1191,7 +1406,7 @@ export default function PageGeneratorWizard({ initial }: Props) {
                             },
                           })
                         }}
-                        placeholder={'每行一个 Tab，例如：\n详情\n变更记录\n操作日志'}
+                        placeholder={'留空 = 单一正文区域（内容较少时推荐）\n或每行一个 Tab，例如：\n详情\n变更记录\n操作日志'}
                         autoSize={{ minRows: 3 }}
                       />
                     </Form.Item>
@@ -1207,10 +1422,10 @@ export default function PageGeneratorWizard({ initial }: Props) {
                         <div key={idx} className="pgw-field-item">
                           <div className="pgw-field-header">
                             <span className="pgw-field-key">
-                              {tab.tabLabel || `Tab ${idx + 1}`}
+                              {tab.tabLabel || `默认正文`}
                             </span>
                             <span className="pgw-field-label">
-                              {tab.contentType === 'fields' ? '字段网格' : tab.contentType === 'subtable' ? '关联子表' : '时间轴/日志'}
+                              {tab.contentType === 'fields' ? '字段' : tab.contentType === 'subtable' ? '关联子表' : '时间轴/日志'}
                             </span>
                           </div>
                           <Form.Item label="内容类型" className="pgw-form-item-compact">
@@ -1218,26 +1433,139 @@ export default function PageGeneratorWizard({ initial }: Props) {
                               value={tab.contentType}
                               onChange={(e) => updateTab({ contentType: e.target.value as DetailTabContentType })}
                             >
-                              <Radio value="fields">字段网格</Radio>
-                              <Radio value="subtable">关联子表</Radio>
-                              <Radio value="timeline">时间轴/日志</Radio>
+                              <Radio value="fields">字段</Radio>
+                              {!isForm && <Radio value="subtable">关联子表</Radio>}
+                              {!isForm && <Radio value="timeline">时间轴/日志</Radio>}
                             </Radio.Group>
                           </Form.Item>
                           {tab.contentType === 'fields' && (
-                            <Form.Item
-                              label="信息项标签（每行一个，将作为正文网格的展示项）"
-                              className="pgw-form-item-compact"
-                            >
-                              <Input.TextArea
-                                value={tab.fieldKeys.join('\n')}
-                                onChange={(e) => {
-                                  const lines = e.target.value.split('\n').map((s) => s.trim()).filter(Boolean)
-                                  updateTab({ fieldKeys: lines })
-                                }}
-                                placeholder={'每行一个标签，例如：\n规格型号\n生产厂商\n保修期限\n备注说明'}
-                                autoSize={{ minRows: 3 }}
-                              />
-                            </Form.Item>
+                            <>
+                              {!isForm && (
+                                <Form.Item label="字段分组" className="pgw-form-item-compact">
+                                  <Radio.Group
+                                    value={tab.fieldGroups.length > 0 ? 'grouped' : 'flat'}
+                                    onChange={(e) => {
+                                      if (e.target.value === 'grouped') {
+                                        updateTab({ fieldGroups: [createEmptyFieldGroup(0)] })
+                                      } else {
+                                        // 退回扁平：分组中的字段合并回 fieldKeys
+                                        const merged = [...tab.fieldKeys]
+                                        tab.fieldGroups.forEach((g) => {
+                                          ;(g.fieldKeys || []).forEach((k) => {
+                                            if (k && !merged.includes(k)) merged.push(k)
+                                          })
+                                        })
+                                        updateTab({ fieldKeys: merged, fieldGroups: [] })
+                                      }
+                                    }}
+                                  >
+                                    <Radio.Button value="flat">不分组</Radio.Button>
+                                    <Radio.Button value="grouped">启用分组</Radio.Button>
+                                  </Radio.Group>
+                                </Form.Item>
+                              )}
+                              {tab.fieldGroups.length === 0 && (
+                                <Form.Item label="信息项字段（从已配置字段中选择，展示在正文网格）" className="pgw-form-item-compact">
+                                  <Select
+                                    mode="multiple"
+                                    value={tab.fieldKeys}
+                                    onChange={(vals: string[]) => updateTab({ fieldKeys: vals })}
+                                    placeholder="选择要展示的字段"
+                                    allowClear
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={previewConfig.fields
+                                      .filter((f) => f.fieldKey && !f.isAction)
+                                      .map((f) => ({
+                                        label: f.fieldLabel || f.fieldKey,
+                                        value: f.fieldKey,
+                                      }))}
+                                    notFoundContent={
+                                      previewConfig.fields.filter((f) => f.fieldKey && !f.isAction).length === 0
+                                        ? '请先在「字段配置」中添加字段'
+                                        : undefined
+                                    }
+                                  />
+                                </Form.Item>
+                              )}
+                              {tab.fieldGroups.length > 0 && (
+                                <>
+                                  {tab.fieldGroups.map((group, gi) => {
+                                    const usedElsewhere = new Set<string>()
+                                    tab.fieldGroups.forEach((g, i) => {
+                                      if (i !== gi) (g.fieldKeys || []).forEach((k) => usedElsewhere.add(k))
+                                    })
+                                    return (
+                                      <div key={gi} className="pgw-nested-item">
+                                        <Form.Item label="分组名称" className="pgw-form-item-compact">
+                                          <Space.Compact style={{ width: '100%' }}>
+                                            <Input
+                                              value={group.groupLabel}
+                                              onChange={(e) => {
+                                                const groups = [...tab.fieldGroups]
+                                                groups[gi] = { ...group, groupLabel: e.target.value }
+                                                updateTab({ fieldGroups: groups })
+                                              }}
+                                              placeholder="如 基本信息"
+                                            />
+                                            <Button
+                                              type="text"
+                                              danger
+                                              icon={<DeleteOutlined />}
+                                              onClick={() =>
+                                                updateTab({
+                                                  fieldGroups: tab.fieldGroups
+                                                    .filter((_, i) => i !== gi)
+                                                    .map((g, i) => ({ ...g, sortOrder: i })),
+                                                })
+                                              }
+                                            />
+                                          </Space.Compact>
+                                        </Form.Item>
+                                        <Form.Item label="分组字段" className="pgw-form-item-compact">
+                                          <Select
+                                            mode="multiple"
+                                            value={group.fieldKeys}
+                                            onChange={(vals: string[]) => {
+                                              const groups = [...tab.fieldGroups]
+                                              groups[gi] = { ...group, fieldKeys: vals }
+                                              updateTab({ fieldGroups: groups })
+                                            }}
+                                            placeholder="选择该分组下要展示的字段"
+                                            allowClear
+                                            showSearch
+                                            optionFilterProp="label"
+                                            options={previewConfig.fields
+                                              .filter((f) => f.fieldKey && !f.isAction)
+                                              .map((f) => ({
+                                                label: f.fieldLabel || f.fieldKey,
+                                                value: f.fieldKey,
+                                                disabled: usedElsewhere.has(f.fieldKey),
+                                              }))}
+                                            notFoundContent="没有可选字段（可能已被其他分组选中）"
+                                          />
+                                        </Form.Item>
+                                      </div>
+                                    )
+                                  })}
+                                  <CompanyButton
+                                    type="link"
+                                    size="small"
+                                    icon={<PlusOutlined />}
+                                    onClick={() =>
+                                      updateTab({
+                                        fieldGroups: [
+                                          ...tab.fieldGroups,
+                                          createEmptyFieldGroup(tab.fieldGroups.length),
+                                        ],
+                                      })
+                                    }
+                                  >
+                                    新增分组
+                                  </CompanyButton>
+                                </>
+                              )}
+                            </>
                           )}
                           {tab.contentType === 'subtable' && (
                             <>
@@ -1307,8 +1635,12 @@ export default function PageGeneratorWizard({ initial }: Props) {
                 ) : (
                   <>
                     <div className="pgw-toolbar">
+                      <span className="pgw-toolbar-count">
+                        共 {config.detailHeader.tabs.length} 个 Tab
+                      </span>
                       <CompanyButton
-                        type="primary"
+                        type="link"
+                        icon={<PlusOutlined />}
                         onClick={() =>
                           patchConfig({
                             detailHeader: {
@@ -1323,9 +1655,6 @@ export default function PageGeneratorWizard({ initial }: Props) {
                       >
                         新增 Tab
                       </CompanyButton>
-                      <span className="pgw-toolbar-count">
-                        共 {config.detailHeader.tabs.length} 个 Tab
-                      </span>
                     </div>
                     {config.detailHeader.tabs.map((tab, idx) => {
                       const updateTab = (patch: Partial<typeof tab>) => {
@@ -1340,10 +1669,10 @@ export default function PageGeneratorWizard({ initial }: Props) {
                         <div className="pgw-field-header">
                           <Space size={12}>
                             <span className="pgw-field-key">
-                              {tab.tabLabel || `Tab ${idx + 1}`}
+                              {tab.tabLabel || `默认正文`}
                             </span>
                             <span className="pgw-field-label">
-                              {tab.contentType === 'fields' ? '字段网格' : tab.contentType === 'subtable' ? '关联子表' : '时间轴/日志'}
+                              {tab.contentType === 'fields' ? '字段' : tab.contentType === 'subtable' ? '关联子表' : '时间轴/日志'}
                             </span>
                           </Space>
                           <Button
@@ -1380,9 +1709,11 @@ export default function PageGeneratorWizard({ initial }: Props) {
                               onChange={(v: DetailTabContentType) => updateTab({ contentType: v })}
                               size="small"
                               options={[
-                                { label: '字段网格', value: 'fields' },
-                                { label: '关联子表', value: 'subtable' },
-                                { label: '时间轴/日志', value: 'timeline' },
+                                { label: '字段', value: 'fields' },
+                                ...(!isForm ? [
+                                  { label: '关联子表', value: 'subtable' },
+                                  { label: '时间轴/日志', value: 'timeline' },
+                                ] : []),
                               ]}
                             />
                           </div>
@@ -1390,36 +1721,156 @@ export default function PageGeneratorWizard({ initial }: Props) {
 
                         {tab.contentType === 'fields' && (
                           <>
-                            <div className="pgw-action-label" style={{ marginTop: 8 }}>信息项标签（每行一个）</div>
-                            <Input.TextArea
-                              value={tab.fieldKeys.join('\n')}
-                              onChange={(e) => {
-                                const lines = e.target.value.split('\n').map((s) => s.trim()).filter(Boolean)
-                                updateTab({ fieldKeys: lines })
-                              }}
-                              placeholder={'每行一个标签，例如：\n规格型号\n生产厂商\n保修期限'}
-                              autoSize={{ minRows: 3 }}
-                              size="small"
-                            />
-                            <div className="pgw-action-row" style={{ marginTop: 8 }}>
-                              <div className="pgw-action-cell" style={{ maxWidth: 160 }}>
-                                <div className="pgw-action-label">列数</div>
-                                <InputNumber
-                                  value={tab.fieldColumns}
-                                  min={1}
-                                  max={6}
-                                  onChange={(v) => updateTab({ fieldColumns: v ?? 2 })}
-                                  size="small"
-                                  style={{ width: '100%' }}
-                                />
+                            {!isForm && (
+                              <div className="pgw-action-row">
+                                <div className="pgw-action-cell" style={{ width: '100%' }}>
+                                  <div className="pgw-action-label">字段分组</div>
+                                  <Radio.Group
+                                    value={tab.fieldGroups.length > 0 ? 'grouped' : 'flat'}
+                                    onChange={(e) => {
+                                      if (e.target.value === 'grouped') {
+                                        updateTab({ fieldGroups: [createEmptyFieldGroup(0)] })
+                                      } else {
+                                        // 退回扁平：分组中的字段合并回 fieldKeys
+                                        const merged = [...tab.fieldKeys]
+                                        tab.fieldGroups.forEach((g) => {
+                                          ;(g.fieldKeys || []).forEach((k) => {
+                                            if (k && !merged.includes(k)) merged.push(k)
+                                          })
+                                        })
+                                        updateTab({ fieldKeys: merged, fieldGroups: [] })
+                                      }
+                                    }}
+                                    size="small"
+                                  >
+                                    <Radio.Button value="flat">不分组</Radio.Button>
+                                    <Radio.Button value="grouped">启用分组</Radio.Button>
+                                  </Radio.Group>
+                                </div>
                               </div>
-                            </div>
+                            )}
+                            {tab.fieldGroups.length === 0 && (
+                              <div className="pgw-action-row">
+                                <div className="pgw-action-cell" style={{ width: '100%' }}>
+                                  <div className="pgw-action-label">信息项字段</div>
+                                  <Select
+                                    mode="multiple"
+                                    value={tab.fieldKeys}
+                                    onChange={(vals: string[]) => updateTab({ fieldKeys: vals })}
+                                    placeholder="选择要展示的字段"
+                                    allowClear
+                                    showSearch
+                                    optionFilterProp="label"
+                                    size="small"
+                                    style={{ width: '100%' }}
+                                    options={config.fields
+                                      .filter((f) => f.fieldKey && !f.isAction)
+                                      .map((f) => ({
+                                        label: f.fieldLabel || f.fieldKey,
+                                        value: f.fieldKey,
+                                      }))}
+                                    notFoundContent={
+                                      config.fields.filter((f) => f.fieldKey && !f.isAction).length === 0
+                                        ? '请先添加字段'
+                                        : undefined
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            {tab.fieldGroups.length > 0 && (
+                              <>
+                                {tab.fieldGroups.map((group, gi) => {
+                                  const usedElsewhere = new Set<string>()
+                                  tab.fieldGroups.forEach((g, i) => {
+                                    if (i !== gi) (g.fieldKeys || []).forEach((k) => usedElsewhere.add(k))
+                                  })
+                                  return (
+                                    <div key={gi} className="pgw-nested-item">
+                                      <div className="pgw-action-row">
+                                        <div className="pgw-action-cell">
+                                          <div className="pgw-action-label">分组名称</div>
+                                          <Input
+                                            value={group.groupLabel}
+                                            onChange={(e) => {
+                                              const groups = [...tab.fieldGroups]
+                                              groups[gi] = { ...group, groupLabel: e.target.value }
+                                              updateTab({ fieldGroups: groups })
+                                            }}
+                                            placeholder="如 基本信息"
+                                            size="small"
+                                          />
+                                        </div>
+                                        <Button
+                                          type="text"
+                                          size="small"
+                                          danger
+                                          icon={<DeleteOutlined />}
+                                          onClick={() =>
+                                            updateTab({
+                                              fieldGroups: tab.fieldGroups
+                                                .filter((_, i) => i !== gi)
+                                                .map((g, i) => ({ ...g, sortOrder: i })),
+                                            })
+                                          }
+                                        />
+                                      </div>
+                                      <div className="pgw-action-row pgw-action-row--fields">
+                                        <div className="pgw-action-cell" style={{ width: '100%' }}>
+                                          <div className="pgw-action-label">分组字段</div>
+                                          <Select
+                                            mode="multiple"
+                                            value={group.fieldKeys}
+                                            onChange={(vals: string[]) => {
+                                              const groups = [...tab.fieldGroups]
+                                              groups[gi] = { ...group, fieldKeys: vals }
+                                              updateTab({ fieldGroups: groups })
+                                            }}
+                                            placeholder="选择该分组下要展示的字段"
+                                            allowClear
+                                            showSearch
+                                            optionFilterProp="label"
+                                            size="small"
+                                            style={{ width: '100%' }}
+                                            options={config.fields
+                                              .filter((f) => f.fieldKey && !f.isAction)
+                                              .map((f) => ({
+                                                label: f.fieldLabel || f.fieldKey,
+                                                value: f.fieldKey,
+                                                disabled: usedElsewhere.has(f.fieldKey),
+                                              }))}
+                                            notFoundContent="没有可选字段（可能已被其他分组选中）"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                                <div className="pgw-group-add-row">
+                                  <CompanyButton
+                                    type="link"
+                                    size="small"
+                                    icon={<PlusOutlined />}
+                                    onClick={() =>
+                                      updateTab({
+                                        fieldGroups: [
+                                          ...tab.fieldGroups,
+                                          createEmptyFieldGroup(tab.fieldGroups.length),
+                                        ],
+                                      })
+                                    }
+                                  >
+                                    新增分组
+                                  </CompanyButton>
+                                </div>
+                              </>
+                            )}
                           </>
                         )}
 
                         {tab.contentType === 'subtable' && (
                           <>
-                            <div className="pgw-action-row" style={{ marginTop: 8 }}>
+                            <div className="pgw-action-row">
                               <div className="pgw-action-cell">
                                 <div className="pgw-action-label">子表标题</div>
                                 <Input
@@ -1447,7 +1898,7 @@ export default function PageGeneratorWizard({ initial }: Props) {
                               </div>
                             </div>
                             {tab.subTableColumns.map((col, ci) => (
-                              <div key={ci} className="pgw-action-row" style={{ marginTop: 4 }}>
+                              <div key={ci} className="pgw-action-row">
                                 <div className="pgw-action-cell">
                                   <Input
                                     value={col.colLabel}
@@ -1479,8 +1930,8 @@ export default function PageGeneratorWizard({ initial }: Props) {
                         )}
 
                         {tab.contentType === 'timeline' && (
-                          <>
-                            <div style={{ marginTop: 8, marginBottom: 4 }} className="pgw-action-label">日志示例条目（运行时从接口取真实数据）</div>
+                          <div className="pgw-tab-timeline">
+                            <div style={{ marginBottom: 4 }} className="pgw-action-label">日志示例条目（运行时从接口取真实数据）</div>
                             <Input.TextArea
                               value={tab.timelineItems.map((it) => `${it.time} ${it.content}`).join('\n')}
                               onChange={(e) => {
@@ -1495,13 +1946,49 @@ export default function PageGeneratorWizard({ initial }: Props) {
                               placeholder={'每行一条，格式：时间 内容\n2026-07-27 创建\n2026-07-28 更新状态'}
                               autoSize={{ minRows: 3 }}
                             />
-                          </>
+                          </div>
                         )}
                       </div>
                       )
                     })}
                     {config.detailHeader.tabs.length === 0 && (
-                      <div className="pgw-empty">暂无 Tab，点击上方「新增 Tab」配置</div>
+                      <div className="pgw-empty">
+                        <div style={{ marginBottom: 8 }}>暂无正文配置</div>
+                        <Space size={8}>
+                          <CompanyButton
+                            size="small"
+                            onClick={() =>
+                              patchConfig({
+                                detailHeader: {
+                                  ...config.detailHeader,
+                                  tabs: [
+                                    ...config.detailHeader.tabs,
+                                    createEmptyDetailTab(config.detailHeader.tabs.length),
+                                  ],
+                                },
+                              })
+                            }
+                          >
+                            配置默认正文
+                          </CompanyButton>
+                          <CompanyButton
+                            size="small"
+                            onClick={() =>
+                              patchConfig({
+                                detailHeader: {
+                                  ...config.detailHeader,
+                                  tabs: [
+                                    ...config.detailHeader.tabs,
+                                    { ...createEmptyDetailTab(config.detailHeader.tabs.length), tabLabel: '详情' },
+                                  ],
+                                },
+                              })
+                            }
+                          >
+                            添加 Tab
+                          </CompanyButton>
+                        </Space>
+                      </div>
                     )}
                   </>
                 )}
@@ -1509,7 +1996,7 @@ export default function PageGeneratorWizard({ initial }: Props) {
             )}
 
             {/* 列表页：独立的字段配置 section */}
-            {!isDetail && (
+            {!isDetail && !isForm && (
             <div className="pgw-section-block">
               <SectionTitle title="字段配置" />
               {mode === 'default' ? (
@@ -1529,33 +2016,18 @@ export default function PageGeneratorWizard({ initial }: Props) {
               ) : (
                 <>
                   <div className="pgw-toolbar">
-                    <CompanyButton type="primary" onClick={addField}>新增</CompanyButton>
                     <span className="pgw-toolbar-count">共 {config.fields.length} 个字段</span>
+                    <CompanyButton type="primary" onClick={() => addField()}>新增</CompanyButton>
                   </div>
                   <div className="pgw-field-list">
                     {config.fields.map((field, idx) => (
-                      <div key={idx} className="pgw-field-item">
-                        <div className="pgw-field-header">
-                          <Space size={12}>
-                            <span className="pgw-field-key">
-                              {field.fieldLabel || `字段 ${idx + 1}`}
-                            </span>
-                            <span className="pgw-field-label">
-                              {FIELD_TYPE_OPTIONS.find((o) => o.value === field.fieldType)?.label || field.fieldType}
-                            </span>
-                            {field.isAction && <span className="pgw-tag-action">操作列</span>}
-                            {field.isStatusTag && <span className="pgw-tag-status">状态列</span>}
-                          </Space>
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => handleDeleteFieldConfirm(idx, field.fieldLabel)}
-                          />
-                        </div>
-                        <FieldEditor value={field} onChange={(f) => updateField(idx, f)} />
-                      </div>
+                      <FieldCard
+                        key={idx}
+                        value={field}
+                        onChange={(f) => updateField(idx, f)}
+                        index={idx}
+                        onDelete={() => handleDeleteFieldConfirm(idx, field.fieldLabel)}
+                      />
                     ))}
                     {config.fields.length === 0 && (
                       <div className="pgw-empty">暂无字段，点击上方「新增字段」开始配置</div>
@@ -1566,7 +2038,7 @@ export default function PageGeneratorWizard({ initial }: Props) {
             </div>
             )}
 
-            {!isDetail && (
+            {!isDetail && !isForm && (
             <>
             <div className="pgw-section-block">
               <SectionTitle title="操作列按钮" />
@@ -1587,12 +2059,12 @@ export default function PageGeneratorWizard({ initial }: Props) {
               ) : (
                 <>
               <div className="pgw-toolbar">
-                <CompanyButton type="primary" onClick={addAction}>
-                  新增
-                </CompanyButton>
                 <span className="pgw-toolbar-count">
                   共 {config.actions.length} 个操作列按钮
                 </span>
+                <CompanyButton type="primary" onClick={addAction}>
+                  新增
+                </CompanyButton>
             </div>
             {config.actions.map((action, idx) => (
               <div key={idx} className="pgw-field-item">
@@ -1688,12 +2160,12 @@ export default function PageGeneratorWizard({ initial }: Props) {
               ) : (
                 <>
               <div className="pgw-toolbar">
-                <CompanyButton type="primary" onClick={addToolbarButton}>
-                  新增
-                </CompanyButton>
                 <span className="pgw-toolbar-count">
                   共 {config.toolbarButtons?.length || 0} 个工具栏按钮
                 </span>
+                <CompanyButton type="primary" onClick={addToolbarButton}>
+                  新增
+                </CompanyButton>
               </div>
               {(config.toolbarButtons || []).map((btn, idx) => (
                 <div key={idx} className="pgw-field-item">

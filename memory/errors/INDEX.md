@@ -13,3 +13,5 @@
 | portal 样式丢失 | Drawer/Modal 内 antd 组件样式异常，ConfigProvider theme 链断裂 | [portal-configprovider-theme.md](./portal-configprovider-theme.md) |
 | Flyway 与 MySQL 5.7 不兼容 | 服务器 MySQL 5.7 跑不动 Flyway 9.x，必须降级到 7.15.0 | [flyway-mysql57-incompatible.md](./flyway-mysql57-incompatible.md) |
 | Flyway 版本号冲突 | db/migration 下出现重复版本号，后端启动失败 | [flyway-version-conflict.md](./flyway-version-conflict.md) |
+| antd 原生组件混用 | 公司组件 API 与 antd 兼容、混用不报错；已加 ESLint 强制规则拦截 | [antd-company-ui-mixed-use.md](./antd-company-ui-mixed-use.md) |
+| 表单页/详情页范围误伤 | 共用配置 UI 删功能必须用 isForm 区分，不能连带删除另一方的功能 | [form-detail-page-scope.md](./form-detail-page-scope.md) |
