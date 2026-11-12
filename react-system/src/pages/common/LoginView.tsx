@@ -41,6 +41,7 @@ export default function LoginView() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const setUserInfo = useAppStore((s) => s.setUserInfo)
+  const setPermissions = useAppStore((s) => s.setPermissions)
   const [messageApi, contextHolder] = messageStatic.useMessage({ top: 80 })
   const [activeTab, setActiveTab] = useState<LoginTab>('password')
   const [loading, setLoading] = useState(false)
@@ -93,7 +94,7 @@ export default function LoginView() {
         throw new Error(res.message || '登录失败，请稍后重试')
       }
 
-      const { token, id, nickname, realName, username: uname } = res.data
+      const { token, id, nickname, realName, username: uname, perms, expiresAt } = res.data
 
       if (values.remember) {
         localStorage.setItem(STORAGE_KEYS.REMEMBER_ME, 'true')
@@ -104,8 +105,12 @@ export default function LoginView() {
       }
 
       localStorage.setItem('token', token)
+      if (expiresAt) {
+        localStorage.setItem('token:expiresAt', String(expiresAt))
+      }
       localStorage.removeItem('login:user')
       setUserInfo({ id, username: uname, nickname, realName })
+      setPermissions(perms ?? [])
       messageApi.success('登录成功')
       const redirect = searchParams.get('redirect')
       navigate(redirect ? decodeURIComponent(redirect) : '/home', {

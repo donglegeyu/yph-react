@@ -2,9 +2,14 @@ package com.material.server.dto;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class LoginResult {
     private String token;
+    private Long expiresAt;
+    private List<String> roles;
+    private List<String> perms;
     private Long id;
     private String username;
     private String nickname;

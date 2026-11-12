@@ -27,6 +27,7 @@ interface AppState {
   secondMenusMap: Record<string, MenuItem[]>
   favorites: Favorite[]
   userInfo: UserInfo
+  permissions: string[]
   tabs: TabItem[]
   activeTabKey: string
   secondSidebarHovered: boolean
@@ -43,6 +44,7 @@ interface AppState {
   toggleExpandedKey: (key: string) => void
   clearExpandedKeys: () => void
   setUserInfo: (info: UserInfo) => void
+  setPermissions: (permissions: string[]) => void
   setFavorites: (favorites: Favorite[]) => void
   addFavorite: (menu: MenuItem) => Promise<boolean>
   removeFavorite: (menuKey: string) => Promise<boolean>
@@ -85,6 +87,7 @@ const STORAGE_KEYS = {
   FAVORITES: 'app:favorites',
   CUSTOM_NAV_MENUS: 'app:customNavMenus',
   USER_INFO: 'app:userInfo',
+  PERMISSIONS: 'app:permissions',
 }
 
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -106,6 +109,7 @@ const uniqueTabs = savedTabs.filter(
 const savedActiveTabKey = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB_KEY) || ''
 const savedFirstMenu = localStorage.getItem(STORAGE_KEYS.ACTIVE_FIRST_MENU) || 'home'
 const savedUserInfo = loadFromStorage<UserInfo>(STORAGE_KEYS.USER_INFO, { username: 'admin' })
+const savedPermissions = loadFromStorage<string[]>(STORAGE_KEYS.PERMISSIONS, [])
 const savedSecondSidebarFixed = localStorage.getItem('app:secondSidebarFixed')
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -119,6 +123,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   secondMenusMap: {},
   favorites: [],
   userInfo: savedUserInfo,
+  permissions: savedPermissions,
   tabs: uniqueTabs,
   activeTabKey: savedActiveTabKey,
   secondSidebarHovered: false,
@@ -163,6 +168,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setUserInfo: (info) => {
     set({ userInfo: info })
     localStorage.setItem(STORAGE_KEYS.USER_INFO, JSON.stringify(info))
+  },
+
+  setPermissions: (permissions) => {
+    set({ permissions })
+    localStorage.setItem(STORAGE_KEYS.PERMISSIONS, JSON.stringify(permissions))
   },
 
   setFavorites: (favorites) => set({ favorites }),
@@ -392,6 +402,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const businessMenus = menus
         .filter(
           (m: NavMenu) =>
+            m.menuCategory !== 'F' &&
             m.key !== 'home' &&
             m.key !== 'favorites' &&
             !m.menuType?.startsWith('系统菜单') &&
@@ -403,16 +414,17 @@ export const useAppStore = create<AppState>((set, get) => ({
           key: m.key,
           label: m.label,
           icon: m.icon || 'id-card-v-klbe0a04',
-          hasChildren: !!(m.children && m.children.length > 0),
-          children: m.children || [],
+          hasChildren: !!(m.children && m.children.filter((c) => c.menuCategory !== 'F').length > 0),
+          children: (m.children || []).filter((c) => c.menuCategory !== 'F'),
         }))
         .filter((m, i, arr) => !m.key || arr.findIndex((x) => x.key === m.key) === i)
 
       const secondMenusMap: Record<string, MenuItem[]> = {}
       for (const menu of menus) {
+        if (menu.menuCategory === 'F') continue
         if (menu.children && menu.children.length > 0 && menu.status === 1) {
           const children = [...menu.children]
-            .filter((child: NavMenu) => child.status === 1)
+            .filter((child: NavMenu) => child.status === 1 && child.menuCategory !== 'F')
             .sort((a: NavMenu, b: NavMenu) => (a.sort ?? 0) - (b.sort ?? 0))
             .map((child: NavMenu) => ({
               key: child.key || `_group_${child.label}`,
@@ -420,7 +432,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               path: child.path,
               icon: child.icon || 'id-card-v-klbe0a04',
               children: (child.children || [])
-                .filter((gc: NavMenu) => gc.status === 1)
+                .filter((gc: NavMenu) => gc.status === 1 && gc.menuCategory !== 'F')
                 .sort((a: NavMenu, b: NavMenu) => (a.sort ?? 0) - (b.sort ?? 0))
                 .map((gc: NavMenu) => ({
                   key: gc.key || `_child_${gc.label}`,
@@ -454,10 +466,15 @@ export const useAppStore = create<AppState>((set, get) => ({
         localStorage.setItem(cacheKey, JSON.stringify(newCustomNav))
         get().saveCustomNavMenus(newCustomNav)
       } else {
-        const customKeys = new Set(currentCustomNav.map((m) => m.key))
-        const newMenus = latestBusinessMenus.filter((m) => !customKeys.has(m.key))
-        if (newMenus.length > 0) {
-          const merged = [...currentCustomNav, ...newMenus.map((m) => ({ ...m, icon: m.icon || 'id-card-v-klbe0a04' }))]
+        // 仅保留仍是业务菜单的缓存项，剔除已改为系统菜单/已删除的残留（如审批中心）
+        const bizKeySet = new Set(latestBusinessMenus.map((m) => m.key))
+        const baseline = currentCustomNav.filter((m) => bizKeySet.has(m.key))
+        // 补齐尚未加入缓存的业务菜单（保持原有行为）
+        const baselineKeys = new Set(baseline.map((m) => m.key))
+        const newMenus = latestBusinessMenus.filter((m) => !baselineKeys.has(m.key))
+        // 有残留被剔除或存在新业务菜单时，刷新导航缓存
+        if (baseline.length !== currentCustomNav.length || newMenus.length > 0) {
+          const merged = [...baseline, ...newMenus.map((m) => ({ ...m, icon: m.icon || 'id-card-v-klbe0a04' }))]
           set({ customNavMenus: merged })
           localStorage.setItem(cacheKey, JSON.stringify(merged))
         }

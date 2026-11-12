@@ -76,11 +76,20 @@ const QuestionBankList = lazy(() => import('@/pages/common/QuestionBankList'))
 const CourseManage = lazy(() => import('@/pages/common/CourseManage'))
 const TrainingTaskList = lazy(() => import('@/pages/common/TrainingTaskList'))
 const QualityFeedbackList = lazy(() => import('@/pages/common/QualityFeedbackList'))
+const BackendDataManagement = lazy(() => import('@/pages/common/BackendDataManagement'))
 const PageGenerator = lazy(() => import('@/pages/generator/PageGenerator'))
 const PageGeneratorEdit = lazy(() => import('@/pages/generator/PageGeneratorEdit'))
 const DynamicListPage = lazy(() => import('@/pages/common/DynamicListPage'))
 const DynamicDetailPage = lazy(() => import('@/pages/common/DynamicDetailPage'))
 const DynamicFormPage = lazy(() => import('@/pages/common/DynamicFormPage'))
+
+const ApprovalTodo = lazy(() => import('@/pages/approval/ApprovalTodo'))
+const ApprovalMine = lazy(() => import('@/pages/approval/ApprovalMine'))
+const ApprovalDone = lazy(() => import('@/pages/approval/ApprovalDone'))
+const ApprovalCc = lazy(() => import('@/pages/approval/ApprovalCc'))
+const ApprovalStart = lazy(() => import('@/pages/approval/ApprovalStart'))
+const ApprovalProcessAdmin = lazy(() => import('@/pages/approval/ApprovalProcessAdmin'))
+const ApprovalStats = lazy(() => import('@/pages/approval/ApprovalStats'))
 const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
 const StockInDetail = lazy(() => import('@/pages/purchase/StockInDetail'))
 
@@ -128,6 +137,7 @@ const routes: RouteObject[] = [
       { path: 'department-management', element: <DepartmentManagement /> },
       { path: 'role-management', element: <RoleManagement /> },
       { path: 'permission-query', element: <PermissionQuery /> },
+      { path: 'db-meta', element: <BackendDataManagement /> },
       { path: 'dao-hang', element: <JiuHaoHang /> },
       { path: 'purchase-demand/create', element: <PurchaseDemandCreate /> },
       { path: 'purchase-demand/:id', element: <PurchaseDemandDetail /> },
@@ -173,6 +183,13 @@ const routes: RouteObject[] = [
       { path: 'dynamic/detail/:pageKey/:id', element: <DynamicDetailPage /> },
       { path: 'dynamic/form/:pageKey', element: <DynamicFormPage /> },
       { path: 'dynamic/form/:pageKey/:id', element: <DynamicFormPage /> },
+      { path: 'approval/todo', element: <ApprovalTodo /> },
+      { path: 'approval/mine', element: <ApprovalMine /> },
+      { path: 'approval/done', element: <ApprovalDone /> },
+      { path: 'approval/cc', element: <ApprovalCc /> },
+      { path: 'approval/start', element: <ApprovalStart /> },
+      { path: 'approval/admin/process', element: <ApprovalProcessAdmin /> },
+      { path: 'approval/admin/stats', element: <ApprovalStats /> },
       { path: '*', element: <BuildingView /> },
     ],
   },

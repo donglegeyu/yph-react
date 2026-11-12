@@ -1,18 +1,22 @@
 package com.material.server.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.material.server.auth.JwtUtils;
 import com.material.server.common.BusinessException;
 import com.material.server.dto.LoginResult;
+import com.material.server.dto.UserPermissionVO;
 import com.material.server.entity.SysDept;
 import com.material.server.entity.SysUser;
 import com.material.server.mapper.SysDeptMapper;
 import com.material.server.mapper.SysUserMapper;
 import com.material.server.service.AuthService;
+import com.material.server.service.SysPermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Base64;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +24,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final SysUserMapper sysUserMapper;
     private final SysDeptMapper sysDeptMapper;
+    private final SysPermissionService sysPermissionService;
+    private final JwtUtils jwtUtils;
 
     @Override
     public LoginResult login(String username, String password, String loginIp) {
@@ -52,8 +58,28 @@ public class AuthServiceImpl implements AuthService {
         sysUserMapper.updateById(update);
 
         LoginResult result = new LoginResult();
-        String raw = user.getId() + ":" + user.getUsername() + ":" + System.currentTimeMillis();
-        result.setToken(Base64.getEncoder().encodeToString(raw.getBytes()));
+
+        List<String> roles = new ArrayList<>();
+        List<String> perms = new ArrayList<>();
+        UserPermissionVO permission = sysPermissionService.getUserPermissions(user.getId());
+        if (permission != null) {
+            if (permission.getRoles() != null) {
+                permission.getRoles().forEach(role -> roles.add(role.getRoleCode()));
+            }
+            if (roles.contains("ROLE_ADMIN")) {
+                perms.add("*");
+            } else if (permission.getPermissions() != null) {
+                perms.addAll(permission.getPermissions());
+            }
+        }
+
+        JwtUtils.TokenResult token = jwtUtils.createToken(
+                user.getId(), user.getUsername(), user.getDeptId(), roles, perms);
+        result.setToken(token.token());
+        result.setExpiresAt(token.expiresAt());
+        result.setRoles(roles);
+        result.setPerms(perms);
+
         result.setId(user.getId());
         result.setUsername(user.getUsername());
         result.setNickname(user.getNickname());

@@ -63,6 +63,9 @@ export interface UserInfo {
 
 export interface LoginResult {
   token: string
+  expiresAt?: number
+  roles?: string[]
+  perms?: string[]
   id: number
   username: string
   nickname?: string

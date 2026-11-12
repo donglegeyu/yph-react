@@ -68,6 +68,12 @@ export const API_ENDPOINTS = {
   // 角色管理
   SYS_ROLES: `${API_BASE}/sys/roles`,
 
+  // 后端数据管理（只读查看表结构与表间关系）
+  DB_META_SUMMARY: `${API_BASE}/sys/db-meta/summary`,
+  DB_META_TABLES: `${API_BASE}/sys/db-meta/tables`,
+  DB_META_RELATIONS: `${API_BASE}/sys/db-meta/relations`,
+  DB_META_REFRESH: `${API_BASE}/sys/db-meta/refresh`,
+
   // 技能管理
   SKILLS: `${API_BASE}/skills`,
 

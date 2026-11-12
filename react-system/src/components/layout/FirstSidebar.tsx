@@ -298,7 +298,9 @@ export default function FirstSidebar() {
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('token')
+    localStorage.removeItem('token:expiresAt')
     localStorage.removeItem('app:userInfo')
+    localStorage.removeItem('app:permissions')
     navigate('/login')
   }, [navigate])
 

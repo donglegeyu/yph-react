@@ -1,0 +1,250 @@
+.backend-data-management {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 0 12px;
+  gap: var(--company-padding);
+  background: var(--company-color-bg-layout);
+  box-sizing: border-box;
+
+  .db-meta-summary {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--company-padding);
+    color: var(--company-color-text-tertiary);
+    font-size: var(--company-font-size);
+
+    b {
+      color: var(--company-color-text);
+      font-weight: var(--company-font-weight-strong);
+    }
+  }
+
+  .db-meta-body {
+    flex: 1;
+    display: flex;
+    gap: var(--company-padding);
+    min-height: 0;
+  }
+
+  .db-meta-sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--company-color-bg-container);
+    border-radius: var(--company-radius-lg) var(--company-radius-lg) 0 0;
+    overflow: hidden;
+
+    .db-meta-sidebar-head {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--company-padding-xs);
+      padding: var(--company-padding) 12px;
+    }
+
+    .db-meta-hidden-switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--company-color-text-tertiary);
+      font-size: var(--company-font-size);
+    }
+
+    .db-meta-tree {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      // 默认把 6px 宽的滚动条推出容器右缘（父级 overflow:hidden 裁掉）：不可见、不占位；
+      // padding-right 8px 是文字到可见右缘的留白，hover 态减去滑入的 6px 滚动条宽度，
+      // 保证两种状态下内容位置完全一致（零位移、零挤压）
+      padding: var(--company-padding-xs) 8px var(--company-padding-xs) var(--company-padding-sm);
+      margin-right: -6px;
+
+      // 子节点（表）与父节点（分组标题）文字左对齐：取消 antd 每层 24px 的缩进占位
+      // 缩进为 0 后，各层展开箭头同列、标题文字同列，不会挤压换行
+      .ant-tree-indent-unit {
+        width: 0;
+      }
+
+      // 滚动条样式化：轨道/thumb 默认全透明，悬停本区域时 thumb 才浮现
+      &::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+        background: transparent;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        border-radius: 3px;
+        background: transparent;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      &:hover {
+        // 滚动条滑入容器：padding-right 同步减去 6px 滚动条宽度（8 - 6 = 2），内容右缘不动
+        margin-right: 0;
+        padding-right: 2px;
+
+        &::-webkit-scrollbar-thumb {
+          background: var(--company-color-border-secondary);
+
+          &:hover {
+            background: var(--company-color-text-quaternary);
+          }
+        }
+      }
+
+      // Firefox：webkit 私有方案不可用，仅 Firefox 隐藏原生滚动条（滚轮/触摸板仍可滚动）。
+      // 注意：Chrome 121+ 会优先采用标准 scrollbar-width 并使 ::-webkit-scrollbar 失效，
+      // 所以必须用 -moz-document 限定到 Firefox，不能无条件写 scrollbar-width: none
+      @-moz-document url-prefix() {
+        scrollbar-width: none;
+      }
+    }
+  }
+
+  .db-meta-content {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--company-color-bg-container);
+    border-radius: var(--company-radius-lg) var(--company-radius-lg) 0 0;
+    overflow: hidden;
+  }
+
+  .db-meta-tree-item {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.35;
+    padding: 2px 0;
+
+    .db-meta-tree-label {
+      color: var(--company-color-text);
+      font-size: var(--company-font-size);
+    }
+
+    .db-meta-tree-name {
+      color: var(--company-color-text-quaternary);
+      font-size: var(--company-font-size-sm);
+    }
+  }
+
+  .db-meta-detail {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+
+    .db-meta-detail-head {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--company-padding-xs);
+      padding: var(--company-padding) var(--company-padding-lg);
+    }
+
+    .db-meta-detail-title {
+      display: flex;
+      align-items: center;
+      gap: var(--company-padding-xs);
+      color: var(--company-color-text);
+      font-size: var(--company-font-size-lg);
+      font-weight: var(--company-font-weight-strong);
+
+      code {
+        padding: 0 var(--company-padding-xs);
+        border-radius: var(--company-radius-sm);
+        background: var(--company-color-fill-tertiary);
+        color: var(--company-color-text-secondary);
+        font-size: var(--company-font-size-sm);
+        font-weight: var(--company-font-weight-regular);
+      }
+    }
+
+    .db-meta-detail-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--company-padding);
+      color: var(--company-color-text-tertiary);
+      font-size: var(--company-font-size-sm);
+    }
+
+    .db-meta-tabs {
+      flex: 1;
+      min-height: 0;
+      padding: 0 var(--company-padding-lg) var(--company-padding-lg);
+      overflow: auto;
+    }
+  }
+
+  .db-meta-column-name {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--company-padding-xs);
+    font-family: Menlo, Consolas, monospace;
+    word-break: break-all;
+  }
+
+  .db-meta-relation-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--company-padding-xs);
+  }
+
+  .db-meta-relation-target {
+    font-family: Menlo, Consolas, monospace;
+    color: var(--company-color-primary);
+    word-break: break-all;
+  }
+
+  .db-meta-muted {
+    color: var(--company-color-text-quaternary);
+  }
+
+  .db-meta-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--company-padding-xl);
+  }
+
+  .db-meta-graph-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: var(--company-padding-lg);
+    overflow: hidden;
+  }
+
+  .db-meta-graph-toolbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--company-padding);
+    margin-bottom: var(--company-padding);
+  }
+
+  .db-meta-graph-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .db-meta-hidden-switch {
+    display: flex;
+    align-items: center;
+    gap: var(--company-padding-xs);
+    color: var(--company-color-text-tertiary);
+    font-size: var(--company-font-size);
+  }
+}

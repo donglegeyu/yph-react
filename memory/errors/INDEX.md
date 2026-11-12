@@ -15,3 +15,6 @@
 | Flyway 版本号冲突 | db/migration 下出现重复版本号，后端启动失败 | [flyway-version-conflict.md](./flyway-version-conflict.md) |
 | antd 原生组件混用 | 公司组件 API 与 antd 兼容、混用不报错；已加 ESLint 强制规则拦截 | [antd-company-ui-mixed-use.md](./antd-company-ui-mixed-use.md) |
 | 表单页/详情页范围误伤 | 共用配置 UI 删功能必须用 isForm 区分，不能连带删除另一方的功能 | [form-detail-page-scope.md](./form-detail-page-scope.md) |
+| type:'item' 仍进筛选区 | SmartListTemplate 的 item 字段必须显式 hideInFilter:true，否则筛选区出现裸标签无控件 | [smartlist-item-type-still-in-filter.md](./smartlist-item-type-still-in-filter.md) |
+| Lombok 构建随机跳类 | approval-server 本机 mvn 构建时 Lombok 跳过第一个用注解的类且错误随修复转移；已彻底去 Lombok | [lombok-skip-class-on-build.md](./lombok-skip-class-on-build.md) |
+| Flyway 建表 collation 不一致 | 新建表未显式 COLLATE 用了 MySQL8 默认值，跨表 join 报 Illegal mix of collations | [flyway-table-collation-mismatch.md](./flyway-table-collation-mismatch.md) |

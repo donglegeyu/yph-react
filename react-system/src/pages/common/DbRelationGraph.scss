@@ -1,0 +1,138 @@
+.db-relation-graph {
+  --graph-node-bg: var(--company-color-bg-container);
+  --graph-node-border: var(--company-color-border-secondary);
+  --graph-node-text: var(--company-color-text);
+  --graph-node-sub: var(--company-color-text-quaternary);
+  --graph-edge: var(--company-color-text-quaternary);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--company-padding-sm);
+  min-height: 0;
+
+  .db-relation-graph-canvas {
+    overflow: auto;
+    max-height: calc(100vh - 260px);
+    border-radius: var(--company-radius-lg);
+    background:
+      linear-gradient(90deg, var(--company-color-fill-quaternary) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(0deg, var(--company-color-fill-quaternary) 1px, transparent 1px) 0 0 / 24px 24px;
+  }
+
+  svg {
+    display: block;
+  }
+
+  .db-relation-graph-group {
+    fill: var(--company-color-text-tertiary);
+    font-size: 12px;
+    font-weight: var(--company-font-weight-strong);
+  }
+
+  .db-relation-graph-edge {
+    stroke: var(--graph-edge);
+    stroke-width: 1.2;
+    opacity: 0.55;
+    transition: opacity 0.15s ease, stroke-width 0.15s ease;
+
+    &.is-fk {
+      stroke-dasharray: none;
+      opacity: 0.85;
+    }
+
+    &.is-convention {
+      stroke-dasharray: 4 3;
+    }
+
+    &.is-manual {
+      stroke: var(--company-color-primary);
+      stroke-dasharray: 6 3;
+    }
+
+    &.is-active {
+      stroke: var(--company-color-primary);
+      stroke-width: 2;
+      opacity: 1;
+    }
+
+    &.is-dimmed {
+      opacity: 0.12;
+    }
+  }
+
+  .db-relation-graph-node {
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+
+    rect {
+      fill: var(--graph-node-bg);
+      stroke: var(--graph-node-border);
+      stroke-width: 1;
+    }
+
+    .db-relation-graph-node-label {
+      fill: var(--graph-node-text);
+      font-size: 12px;
+    }
+
+    .db-relation-graph-node-name {
+      fill: var(--graph-node-sub);
+      font-size: 10px;
+      font-family: Menlo, Consolas, monospace;
+    }
+
+    &.group-0 rect { stroke: #2f54eb; }
+    &.group-1 rect { stroke: #f95914; }
+    &.group-2 rect { stroke: #13c2c2; }
+    &.group-3 rect { stroke: #722ed1; }
+    &.group-4 rect { stroke: #fa8c16; }
+    &.group-5 rect { stroke: #8c8c8c; }
+
+    &.is-related rect {
+      fill: var(--company-color-primary-bg);
+    }
+
+    &.is-active rect {
+      stroke-width: 2;
+      fill: var(--company-color-primary-bg);
+    }
+
+    &.is-dimmed {
+      opacity: 0.35;
+    }
+
+    &:hover rect {
+      stroke-width: 2;
+    }
+  }
+
+  .db-relation-graph-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--company-padding-lg);
+    color: var(--company-color-text-tertiary);
+    font-size: var(--company-font-size-sm);
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--company-padding-xs);
+    }
+
+    .line {
+      width: 18px;
+      height: 0;
+      border-top-width: 2px;
+      border-top-style: solid;
+      border-color: var(--graph-edge);
+
+      &.is-fk { border-color: var(--company-color-text-tertiary); }
+      &.is-convention { border-top-style: dashed; border-color: var(--company-color-text-tertiary); }
+      &.is-manual { border-top-style: dashed; border-color: var(--company-color-primary); }
+    }
+
+    .legend-hint {
+      color: var(--company-color-text-quaternary);
+    }
+  }
+}

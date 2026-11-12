@@ -75,6 +75,21 @@ INSERT INTO nav_menu (icon) VALUES ('folder');
 INSERT INTO nav_menu (icon) VALUES (NULL);
 ```
 
+**⚠️ 图标名称必须是前端已存在的名字（踩坑：V34 配 `mail` 导致图标空白）**
+
+前端渲染链路（2026-11-12 确认）：
+1. `getIconName`（FirstSidebar / SecondSidebar / MoreMenuDrawer / CustomNavPanel 四处各有一份 iconMap 副本）：
+   `icon ? iconMap[icon] || icon : 'id-card-v-klbe0a04'`
+   —— **兜底只覆盖 icon 为空的情况；icon 有值但无效时原样透传，没有兜底**
+2. 透传后渲染 `<use href="#{icon}">`，引用来自 iconpark sprite（`public/iconpark/sprite_nav.svg`）或 index.html CDN 脚本
+
+因此 icon 值必须满足其一：
+- ✅ 在四处 `iconMap` 映射表的键里（如 `list`/`file-text`/`edit`/`setting`/`clipboard`/`read`/`check-square`/`check-circle`）
+- ✅ 或直接是 sprite 中存在的 symbol id（如 `bookmark`/`comments`/`list`）
+
+否则 `<use>` 引用悬空 → 菜单图标渲染为空白，且不报错。可用名字先查：
+`grep -o 'symbol id="[^"]*"' react-system/public/iconpark/sprite_nav.svg`
+
 ### 3. parent_id 字段（父菜单ID）
 **必须指向正确的父菜单**
 

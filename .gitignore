@@ -17,6 +17,7 @@ storybook-static/
 
 # Build outputs
 material-system-server/target/
+approval-server/target/
 material-system/dist/
 
 # Database backups & runtime data (never commit to git)

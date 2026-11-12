@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://material.com/approval">
+
+  <process id="materialApplication" name="材料申请" isExecutable="true">
+    <startEvent id="start" name="提交申请"/>
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="adminApprove"/>
+
+    <!-- P0 试点：首节点候选组固定 ROLE_ADMIN（组织负责人解析属于 T5 范围） -->
+    <userTask id="adminApprove" name="管理员审批" flowable:candidateGroups="ROLE_ADMIN"/>
+    <sequenceFlow id="flow2" sourceRef="adminApprove" targetRef="decide"/>
+
+    <exclusiveGateway id="decide" name="审批结果"/>
+    <sequenceFlow id="flowApproved" sourceRef="decide" targetRef="endApproved">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved == true}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flowRejected" sourceRef="decide" targetRef="endRejected">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approved != true}]]></conditionExpression>
+    </sequenceFlow>
+
+    <endEvent id="endApproved" name="审批通过"/>
+    <endEvent id="endRejected" name="审批驳回"/>
+  </process>
+</definitions>

@@ -36,6 +36,8 @@ request.interceptors.response.use(
     const res = response.data
     if (res.code === 401 && !response.config.skipAuthRedirect) {
       localStorage.removeItem('token')
+      localStorage.removeItem('token:expiresAt')
+      localStorage.removeItem('app:permissions')
       window.location.href = '/login'
       return Promise.reject(new Error(res.message || '未授权'))
     }

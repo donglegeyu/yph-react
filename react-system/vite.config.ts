@@ -72,6 +72,11 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3001,
     proxy: {
+      // 审批中心独立服务（approval-server），必须放在 /api 之前
+      '/api/approval': {
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:8081',
         changeOrigin: true,

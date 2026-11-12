@@ -1,0 +1,44 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: approval-server
+  datasource:
+    url: ${APPROVAL_DB_URL:jdbc:mysql://localhost:3307/material_approval?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    username: ${APPROVAL_DB_USERNAME:root}
+    password: ${APPROVAL_DB_PASSWORD:root123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    # Boot 3.5 的 Flyway 自动配置与 Flyway 7.15 不兼容（NoSuchMethodError: placeholderSeparator），
+    # 关闭自动配置，由 ManualFlywayConfig 用 7.15 Java API 手动迁移
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+flowable:
+  database-schema-update: true
+  async-executor-activate: false
+  history-level: full
+  check-process-definitions: false
+  idm:
+    enabled: false
+
+app:
+  jwt:
+    # 与主服务共用；生产必须由环境变量 YPH_JWT_SECRET 覆盖（>=32 字节）
+    secret: ${YPH_JWT_SECRET:yph-dev-secret-change-me-please-32bytes-min}
+
+appr:
+  verify:
+    # 仅用于版本/引擎验证，默认关闭
+    enabled: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/approval
+    table: flyway_schema_history_approval
+    baseline-version: 0
