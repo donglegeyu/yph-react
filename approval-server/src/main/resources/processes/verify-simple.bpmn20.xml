@@ -10,4 +10,29 @@
         <sequenceFlow id="flow2" sourceRef="approveTask" targetRef="endEvent"/>
         <endEvent id="endEvent"/>
     </process>
+
+    <bpmndi:BPMNDiagram xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                        xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+                        xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+                        id="BPMNDiagram_verifySimple">
+        <bpmndi:BPMNPlane id="BPMNPlane_verifySimple" bpmnElement="verifySimple">
+            <bpmndi:BPMNShape id="startEvent_sh" bpmnElement="startEvent">
+                <omgdc:Bounds x="155" y="161" width="36" height="36"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="approveTask_sh" bpmnElement="approveTask" isHorizontal="true">
+                <omgdc:Bounds x="250" y="139" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="endEvent_sh" bpmnElement="endEvent">
+                <omgdc:Bounds x="410" y="161" width="36" height="36"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNEdge id="flow1_eg" bpmnElement="flow1">
+                <omgdi:waypoint x="191" y="179"/>
+                <omgdi:waypoint x="250" y="179"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="flow2_eg" bpmnElement="flow2">
+                <omgdi:waypoint x="350" y="179"/>
+                <omgdi:waypoint x="410" y="179"/>
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
 </definitions>

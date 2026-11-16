@@ -195,42 +195,6 @@
   z-index: 900;
 }
 
-.theme-drawer-overlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.45);
-  display: flex; justify-content: flex-end;
-  z-index: 2000;
-}
-
-.theme-drawer {
-  width: 320px; height: 100%;
-  background: #fff;
-  box-shadow: -2px 0 8px rgba(0,0,0,0.15);
-  display: flex; flex-direction: column;
-}
-
-.theme-drawer-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
-}
-
-.theme-drawer-title { font-size: 16px; font-weight: 500; color: rgba(0,0,0,0.88); }
-.theme-drawer-close { width: 20px; height: 20px; cursor: pointer; color: rgba(0,0,0,0.45); transition: color 0.2s; }
-.theme-drawer-close:hover { color: rgba(0,0,0,0.88); }
-.theme-drawer-content { flex: 1; padding: 20px; overflow-y: auto; }
-.theme-option-group { margin-bottom: 24px; }
-.theme-option-label { font-size: 14px; color: rgba(0,0,0,0.88); margin-bottom: 12px; }
-
-.theme-colors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-
-.theme-color-item {
-  width: 48px; height: 32px; border-radius: 4px; cursor: pointer;
-  transition: all 0.2s; border: 2px solid transparent;
-
-  &:hover { transform: scale(1.1); }
-  &.active { border-color: rgba(0,0,0,0.88); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-}
-
 .domain-popover-content {
   width: 180px;
   max-height: 300px;

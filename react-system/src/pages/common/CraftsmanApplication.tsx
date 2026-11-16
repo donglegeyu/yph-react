@@ -122,8 +122,8 @@ export default function CraftsmanApplication() {
     navigate(`/craftsman-application/${record.id}`, { state: { from: '/craftsman-application' } })
   }, [navigate])
 
-  const handleStatusChange = useCallback(async (record: CraftsmanApplicationRecord, action: 'submit' | 'revoke' | 'approve') => {
-    const actionText = { submit: '提交审批', revoke: '撤回', approve: '审批通过' }[action]
+  const handleStatusChange = useCallback(async (record: CraftsmanApplicationRecord, action: 'submit' | 'revoke') => {
+    const actionText = { submit: '提交审批', revoke: '撤回' }[action]
     try {
       const res = await fetch(`${API_ENDPOINTS.CRAFTSMAN_APPLICATIONS}/${record.id}/${action}`, { method: 'PUT' })
       const json = await res.json()
@@ -138,11 +138,11 @@ export default function CraftsmanApplication() {
     }
   }, [refresh])
 
-  const confirmStatusChange = useCallback((record: CraftsmanApplicationRecord, action: 'submit' | 'revoke' | 'approve') => {
-    const actionText = { submit: '提交审批', revoke: '撤回', approve: '审批通过' }[action]
+  const confirmStatusChange = useCallback((record: CraftsmanApplicationRecord, action: 'submit' | 'revoke') => {
+    const actionText = { submit: '提交审批', revoke: '撤回' }[action]
     modal.confirm({
       title: `确认要${actionText}吗？`,
-      content: action === 'approve' ? '审批通过后该工匠将进入工匠列表。' : `是否确定${actionText}？`,
+      content: `是否确定${actionText}？`,
       okText: '确定',
       cancelText: '取消',
       centered: true,
@@ -242,14 +242,9 @@ export default function CraftsmanApplication() {
             }
           )
         }
-        // 审批中状态：审批通过、撤回
+        // 审批中状态：撤回（审批动作统一走审批中心待办）
         if (r.status === 'pending') {
           buttons.push(
-            {
-              key: 'approve',
-              label: '审批通过',
-              onClick: () => confirmStatusChange(r, 'approve'),
-            },
             {
               key: 'revoke',
               label: '撤回',

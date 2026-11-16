@@ -1,0 +1,351 @@
+/** 流程设计器样式（宜搭式纵向卡片画布 + 节点配置抽屉）——颜色统一取组件库 antd 令牌 */
+
+// ---------- 抽屉内配置表单（Drawer 内容 Portal 到 body，需独立根类作用域） ----------
+.pd-config-form {
+  .pd-branch-editor {
+    border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background: var(--ant-color-fill-quaternary, rgba(0, 0, 0, 0.04));
+
+    .pd-branch-editor-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .pd-branch-editor-cond {
+      display: flex;
+      gap: 10px;
+
+      .ant-form-item {
+        flex: 1;
+        margin-bottom: 0;
+      }
+    }
+
+    .pd-branch-editor-tip {
+      font-size: 12px;
+      color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+      margin-top: 6px;
+    }
+  }
+
+  .pd-drawer-tip {
+    background: var(--ant-color-fill-quaternary, rgba(0, 0, 0, 0.04));
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+  }
+}
+
+// ---------- 插入按钮下拉菜单（Menu Portal 到 body，需独立作用域） ----------
+.pd-insert-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd-insert-menu-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+// ---------- 标题栏（FormPageTemplate PageTitle 区域） ----------
+.form-page-title {
+  .pd-name-input {
+    flex: 0 1 320px;
+
+    .ant-input {
+      font-size: 16px;
+      font-weight: 600;
+    }
+  }
+
+  .pd-topbar-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+    font-size: 13px;
+  }
+}
+
+// ---------- 底部操作栏（FormPageTemplate footer 插槽，样式对齐 FormFooterActions 规范） ----------
+.pd-footer {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 16px;
+  background: var(--ant-color-bg-container, #ffffff);
+  border-top: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+// ---------- 画布主体（通过 FormPageTemplate contentClassName 挂载） ----------
+.process-designer {
+  .pd-loading {
+    min-height: 400px;
+  }
+
+  .pd-canvas {
+    padding: 8px 0 16px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .pd-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  // 节点间的「+」插入按钮
+  .pd-insert {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .pd-insert-line {
+      width: 2px;
+      height: 14px;
+      background: var(--ant-color-border, #d9d9d9);
+    }
+
+    .pd-insert-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--color-text-secondary);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+
+      &:hover {
+        transform: scale(1.12);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+    }
+  }
+
+  // 普通节点卡片
+  .pd-node {
+    width: 260px;
+    background: var(--ant-color-bg-container, #ffffff);
+    border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 1px 4px rgba(31, 35, 41, 0.06);
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+
+    &:hover {
+      border-color: var(--ant-color-primary, #f95914);
+      box-shadow: 0 2px 10px rgba(249, 89, 20, 0.15);
+
+      .pd-node-del {
+        opacity: 1;
+      }
+    }
+
+    .pd-node-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    .pd-node-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .pd-node-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pd-node-desc {
+      font-size: 12px;
+      color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  // 悬停出现的删除角标（节点 / 条件容器 / 分支共用）
+  .pd-node-del,
+  .pd-branch-del {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+    color: #fff;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease, background 0.12s ease;
+
+    &:hover {
+      background: var(--ant-color-error, #f53f3f);
+    }
+  }
+
+  // 条件分支容器
+  .pd-condition {
+    background: var(--ant-color-bg-container, #ffffff);
+    border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 1px 4px rgba(31, 35, 41, 0.06);
+    position: relative;
+    max-width: 900px;
+    transition: border-color 0.12s ease;
+
+    &:hover {
+      border-color: var(--ant-color-primary, #f95914);
+
+      .pd-node-del {
+        opacity: 1;
+      }
+    }
+
+    .pd-condition-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+
+      .pd-node-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+      }
+    }
+
+    .pd-condition-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+    }
+
+    .pd-branches {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+  }
+
+  // 单个分支列
+  .pd-branch {
+    width: 230px;
+    background: var(--ant-color-fill-quaternary, rgba(0, 0, 0, 0.04));
+    border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+
+    .pd-branch-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .pd-branch-priority {
+      font-size: 11px;
+      color: #fff;
+      background: var(--ant-gold-6, #faad14);
+      border-radius: 4px;
+      padding: 1px 6px;
+      flex-shrink: 0;
+    }
+
+    .pd-branch-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pd-branch-cond {
+      font-size: 12px;
+      color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
+      margin: 6px 0 8px;
+      background: var(--ant-color-bg-container, #ffffff);
+      border-radius: 4px;
+      padding: 2px 8px;
+      align-self: flex-start;
+    }
+
+    .pd-branch-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      .pd-node {
+        width: 100%;
+      }
+    }
+  }
+
+  .pd-branch-add {
+    align-self: center;
+    font-size: 13px;
+    color: var(--ant-color-primary, #f95914);
+    cursor: pointer;
+    padding: 4px 10px;
+    border: 1px dashed var(--ant-color-primary, #f95914);
+    border-radius: 6px;
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--ant-color-primary-bg, #fff1e6);
+    }
+  }
+}

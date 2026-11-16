@@ -1,4 +1,4 @@
-import { get, post } from '@/utils/request'
+import request, { get, post, put, del } from '@/utils/request'
 
 const BASE = '/api/approval'
 
@@ -68,11 +68,13 @@ export interface DoneItem {
 }
 
 export interface ProcessDefItem {
+  id: string
   key: string
   name: string | null
   version: number
   deploymentId: string
   deployTime: string | null
+  suspended: boolean
 }
 
 export interface CurrentNode {
@@ -183,6 +185,67 @@ export async function fetchProcessDefinitions() {
   return get<ProcessDefItem[]>(`${BASE}/process-definitions`)
 }
 
+/** 流程图：PNG 裸字节（非 ApiResult 包装），以 blob 返回 */
+export async function fetchProcessDefinitionDiagram(definitionId: string): Promise<Blob> {
+  const res = await request.get<Blob>(`${BASE}/process-definitions/${definitionId}/diagram`, {
+    responseType: 'blob',
+  })
+  return res.data
+}
+
+export function fetchProcessDefinitionXml(definitionId: string) {
+  return get<string>(`${BASE}/process-definitions/${definitionId}/xml`)
+}
+
+export async function suspendProcessDefinition(definitionId: string) {
+  return put<null>(`${BASE}/process-definitions/${definitionId}/suspend`, {})
+}
+
+export async function activateProcessDefinition(definitionId: string) {
+  return put<null>(`${BASE}/process-definitions/${definitionId}/activate`, {})
+}
+
+export async function deleteProcessDeployment(deploymentId: string, cascade = false) {
+  return del<null>(`${BASE}/process-definitions/deployments/${deploymentId}?cascade=${cascade}`)
+}
+
+export interface DeployResult {
+  id: string
+  key: string
+  name: string
+  version: number
+}
+
+export interface ProcessDesignItem {
+  id: number
+  processKey: string
+  name: string
+  designJson: string | null
+  publishedVersion: number
+  updateTime: string | null
+}
+
+export async function fetchProcessDesigns() {
+  return get<ProcessDesignItem[]>(`${BASE}/process-designs`)
+}
+
+export async function fetchProcessDesign(id: number) {
+  return get<ProcessDesignItem>(`${BASE}/process-designs/${id}`)
+}
+
+export async function createProcessDesign(name: string, processKey?: string) {
+  return post<ProcessDesignItem>(`${BASE}/process-designs`, { name, processKey: processKey || undefined })
+}
+
+export async function saveProcessDesign(id: number, data: { name?: string; designJson?: string }) {
+  return put<ProcessDesignItem>(`${BASE}/process-designs/${id}`, data)
+}
+
+export async function publishProcessDesign(id: number) {
+  return post<DeployResult>(`${BASE}/process-designs/${id}/publish`, {})
+}
+
+
 export async function fetchInstanceDetail(instanceId: string) {
   return get<InstanceDetail>(`${BASE}/instances/${instanceId}`)
 }
@@ -253,4 +316,43 @@ export async function fetchStatsByProcess() {
 
 export async function fetchStatsTrend(days = 14) {
   return get<TrendPoint[]>(`${BASE}/stats/trend`, { days })
+}
+
+// ---------------- 业务流程配置（审批绑定管理） ----------------
+
+export interface BusinessBindingItem {
+  id: number
+  businessType: string
+  businessName: string
+  processKey: string | null
+  approvalMode: 'required' | 'optional'
+  enabled: boolean
+  remark: string | null
+  updateTime: string | null
+}
+
+/** 绑定列表 */
+export async function fetchBusinessBindings() {
+  return get<BusinessBindingItem[]>(`${BASE}/business-bindings`)
+}
+
+/** 保存绑定：有 id/匹配 businessType 时更新，否则新增 */
+export async function saveBusinessBinding(data: {
+  businessType: string
+  businessName: string
+  processKey?: string | null
+  approvalMode: 'required' | 'optional'
+  enabled: boolean
+  remark?: string | null
+}) {
+  return post<BusinessBindingItem>(`${BASE}/business-bindings`, data)
+}
+
+export async function toggleBusinessBinding(id: number, enabled: boolean) {
+  return put<null>(`${BASE}/business-bindings/${id}/enabled`, { enabled })
+}
+
+/** 主服务已注册回调处理器的业务类型白名单（新增绑定下拉用） */
+export async function fetchRegisteredBusinessTypes() {
+  return get<{ value: string; label: string }[]>('/api/internal/approval-business-types')
 }

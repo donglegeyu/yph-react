@@ -14,7 +14,6 @@ import {
   CompanyTag,
   CompanyMenu,
   FilterForm,
-  FilterOptionsDrawer,
   ActionCell,
   SvgIcon,
   IconSelect,
@@ -23,6 +22,7 @@ import {
 import { useAppStore } from '@/store/app'
 import { API_ENDPOINTS } from '@/constants/api'
 import PageErrorBoundary from '@/components/PageErrorBoundary'
+import FilterOptionsDrawer from '@/components/FilterOptionsDrawer'
 import type { FilterItem } from '@/types'
 
 interface ColumnField {
@@ -101,7 +101,7 @@ interface FilterOptionItem {
   key: string
   label: string
   checked: boolean
-  defaultValue: unknown
+  defaultValue?: unknown
   options?: { label: string; value: string | number }[]
   type?: string
   placeholder?: string

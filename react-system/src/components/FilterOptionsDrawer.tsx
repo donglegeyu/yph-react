@@ -8,8 +8,8 @@ export interface FilterOption {
   key: string
   label: string
   checked: boolean
-  options?: Array<{ label: string; value: string }>
   defaultValue?: unknown
+  options?: Array<{ label: string; value: string | number }>
 }
 
 interface FilterOptionsDrawerProps {

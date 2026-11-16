@@ -1,0 +1,119 @@
+// 消息铃铛（NotifyBell）：触发器复用 FirstSidebar 的 .system-bottom-item 条目样式
+// （图标/文字与审批中心同源，见 FirstSidebar.scss），此处只补充条目定位与未读徽标
+.notify-bell-trigger {
+  position: relative;
+}
+
+// 未读徽标：垂直居中对齐"消息通知"条目文字，靠右定位；独立 sup 实现，
+// 不用 antd Badge 包裹图标（Badge 容器自带黑色 color 会把 currentColor 图标染黑）
+.notify-bell-badge {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ff4d4f;
+  color: #fff;
+  font-family: PingFang SC;
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+  z-index: 2;
+}
+
+// 弹出面板内容排版：卡片外观（白底/圆角/三层投影/内边距/箭头）全部由 CompanyPopover 容器提供，
+// 与左下角"退出登录"弹层（FirstSidebar 的 CompanyPopover）同组件同款，此处不再自带卡片样式
+.notify-bell-panel {
+  width: 320px;
+}
+
+.notify-bell-header {
+  padding: 0 4px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.notify-bell-empty {
+  padding: 24px 4px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.notify-bell-item {
+  padding: 8px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  & + .notify-bell-item {
+    margin-top: 2px;
+  }
+
+  // 条目 hover 高亮块：与 antd 弹层菜单条目同款（圆角 4 + 浅灰底）
+  &:hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .notify-bell-item-title {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.65);
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .notify-bell-item-content {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.45);
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .notify-bell-item-time {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.35);
+  }
+
+  // 未读消息：标题加粗高亮 + 左侧品牌色圆点
+  &.unread {
+    .notify-bell-item-title {
+      color: rgba(0, 0, 0, 0.88);
+      font-weight: 600;
+
+      &::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #f95914;
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+    }
+  }
+}
+
+.notify-bell-footer {
+  margin-top: 4px;
+  padding: 8px 4px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  text-align: center;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+
+  &:hover {
+    color: #f95914;
+  }
+}

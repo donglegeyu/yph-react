@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '@/store/app'
 import { CompanyPopover, SvgIcon } from '@donglegeyu/company-ui'
 import MoreMenuDrawer from './MoreMenuDrawer'
 import CustomNavPanel from './CustomNavPanel'
+import NotifyBell from './NotifyBell'
 import type { Domain } from '@/types'
 import { useDomains, useSysUsers } from '@/hooks'
 import './FirstSidebar.scss'
@@ -83,17 +83,6 @@ export default function FirstSidebar() {
   const [moreDrawerOpen, setMoreDrawerOpen] = useState(false)
   const [customNavVisible, setCustomNavVisible] = useState(false)
   const [adminPopoverOpen, setAdminPopoverOpen] = useState(false)
-  const [themeDrawerVisible, setThemeDrawerVisible] = useState(false)
-  const [selectedThemeColor, setSelectedThemeColor] = useState(() => localStorage.getItem('theme:color') || '#F95914')
-
-  const themeColors = [
-    { label: '橙色', value: '#F95914' },
-    { label: '蓝色', value: '#1890ff' },
-    { label: '绿色', value: '#52c41a' },
-    { label: '紫色', value: '#722ed1' },
-    { label: '红色', value: '#f5222d' },
-    { label: '金黄色', value: '#faad14' },
-  ]
 
   const currentDomain = useMemo(
     () => domains.find((d) => d.id === currentDomainId),
@@ -285,17 +274,6 @@ export default function FirstSidebar() {
     useAppStore.getState().saveCustomNavMenus(selected)
   }, [])
 
-  const handleThemeSettings = useCallback(() => {
-    setAdminPopoverOpen(false)
-    setThemeDrawerVisible(true)
-  }, [])
-
-  const handleThemeColorChange = useCallback((color: string) => {
-    setSelectedThemeColor(color)
-    localStorage.setItem('theme:color', color)
-    window.dispatchEvent(new CustomEvent('theme-color-change', { detail: { color } }))
-  }, [])
-
   const handleLogout = useCallback(() => {
     localStorage.removeItem('token')
     localStorage.removeItem('token:expiresAt')
@@ -403,6 +381,7 @@ export default function FirstSidebar() {
 
         <div className="system-menu-bottom">
           {systemBottomMenus.length > 0 && <div className="nav-divider" />}
+          <NotifyBell />
           {systemBottomMenus.map((menu) => (
             <div key={menu.key} className="system-bottom-item" onClick={() => handleClick(menu)}>
               <SvgIcon href={getIconName(menu.icon)} className="menu-icon" />
@@ -416,22 +395,6 @@ export default function FirstSidebar() {
             placement="rightBottom"
             content={
               <div style={{ width: 160 }}>
-                <div
-                  style={{
-                    height: 38,
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '4px 12px',
-                    gap: 6,
-                    cursor: 'pointer',
-                    borderRadius: 4,
-                  }}
-                  onClick={handleThemeSettings}
-                >
-                  <SvgIcon href="theme" size={20} />
-                  <span style={{ fontSize: 14 }}>主题设置</span>
-                </div>
-                <div style={{ height: 1, background: '#f0f0f0', margin: '8px 0' }} />
                 <div
                   style={{
                     height: 38,
@@ -485,34 +448,6 @@ export default function FirstSidebar() {
         </>
       )}
 
-      {themeDrawerVisible && createPortal(
-        <div className="theme-drawer-overlay" onClick={(e) => { if (e.target === e.currentTarget) setThemeDrawerVisible(false) }}>
-          <div className="theme-drawer">
-            <div className="theme-drawer-header">
-              <span className="theme-drawer-title">主题设置</span>
-              <svg className="theme-drawer-close" viewBox="0 0 48 48" onClick={() => setThemeDrawerVisible(false)}>
-                <use href="#close" />
-              </svg>
-            </div>
-            <div className="theme-drawer-content">
-              <div className="theme-option-group">
-                <div className="theme-option-label">主题色</div>
-                <div className="theme-colors">
-                  {themeColors.map((color) => (
-                    <div
-                      key={color.value}
-                      className={`theme-color-item${selectedThemeColor === color.value ? ' active' : ''}`}
-                      style={{ backgroundColor: color.value }}
-                      onClick={() => handleThemeColorChange(color.value)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
     </>
   )
 }

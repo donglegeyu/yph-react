@@ -115,6 +115,14 @@ export const API_ENDPOINTS = {
   DYNAMIC_SAVE: `${API_BASE}/dynamic/save`,
   // 动态数据删除（逻辑删除，DELETE ?table=&id=）
   DYNAMIC_DELETE: `${API_BASE}/dynamic/delete`,
+
+  // 消息通知（站内信）
+  NOTIFY_TEMPLATES: `${API_BASE}/notify-templates`,
+  NOTIFY_MESSAGES: `${API_BASE}/notify-messages`,
+  NOTIFY_MESSAGES_MY: `${API_BASE}/notify-messages/my`,
+  NOTIFY_MESSAGES_UNREAD_COUNT: `${API_BASE}/notify-messages/unread-count`,
+  NOTIFY_MESSAGES_READ_ALL: `${API_BASE}/notify-messages/read-all`,
+  NOTIFY_MESSAGES_SEND: `${API_BASE}/notify-messages/send`,
 } as const
 
 // 图标服务 API

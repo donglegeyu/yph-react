@@ -89,9 +89,13 @@ const ApprovalDone = lazy(() => import('@/pages/approval/ApprovalDone'))
 const ApprovalCc = lazy(() => import('@/pages/approval/ApprovalCc'))
 const ApprovalStart = lazy(() => import('@/pages/approval/ApprovalStart'))
 const ApprovalProcessAdmin = lazy(() => import('@/pages/approval/ApprovalProcessAdmin'))
+const ProcessDesigner = lazy(() => import('@/pages/approval/designer/ProcessDesigner'))
+const BusinessBindingAdmin = lazy(() => import('@/pages/approval/BusinessBindingAdmin'))
 const ApprovalStats = lazy(() => import('@/pages/approval/ApprovalStats'))
 const SalesDashboard = lazy(() => import('@/pages/home/SalesDashboard'))
 const StockInDetail = lazy(() => import('@/pages/purchase/StockInDetail'))
+const MessageCenter = lazy(() => import('@/pages/common/MessageCenter'))
+const NotifyTemplateManagement = lazy(() => import('@/pages/common/NotifyTemplateManagement'))
 
 const routes: RouteObject[] = [
   {
@@ -189,7 +193,11 @@ const routes: RouteObject[] = [
       { path: 'approval/cc', element: <ApprovalCc /> },
       { path: 'approval/start', element: <ApprovalStart /> },
       { path: 'approval/admin/process', element: <ApprovalProcessAdmin /> },
+      { path: 'approval/admin/process/design/:id', element: <ProcessDesigner /> },
+      { path: 'approval/admin/business-binding', element: <BusinessBindingAdmin /> },
       { path: 'approval/admin/stats', element: <ApprovalStats /> },
+      { path: 'message-center', element: <MessageCenter /> },
+      { path: 'notify-template', element: <NotifyTemplateManagement /> },
       { path: '*', element: <BuildingView /> },
     ],
   },

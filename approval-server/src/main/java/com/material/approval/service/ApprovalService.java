@@ -2,6 +2,7 @@ package com.material.approval.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.material.approval.auth.CurrentUser;
+import com.material.approval.client.BusinessCallbackClient;
 import com.material.approval.common.BizException;
 import com.material.approval.common.PageData;
 import com.material.approval.dto.ActionRequest;
@@ -9,11 +10,16 @@ import com.material.approval.dto.CcVO;
 import com.material.approval.dto.DoneTaskVO;
 import com.material.approval.dto.InstanceDetailVO;
 import com.material.approval.dto.InstanceVO;
+import com.material.approval.dto.DeployResultVO;
 import com.material.approval.dto.ProcessDefVO;
+import com.material.approval.dto.ProcessTemplateVO;
+import com.material.approval.dto.StartInternalRequest;
 import com.material.approval.dto.StartRequest;
 import com.material.approval.dto.TaskDetailVO;
 import com.material.approval.dto.TaskVO;
 import com.material.approval.dto.TransferRequest;
+import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.impl.identity.Authentication;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
@@ -24,14 +30,21 @@ import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.identitylink.api.IdentityLink;
+import org.flowable.image.impl.DefaultProcessDiagramGenerator;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -51,6 +64,8 @@ import java.util.stream.Collectors;
 @Service
 public class ApprovalService {
 
+    private static final Logger log = LoggerFactory.getLogger(ApprovalService.class);
+
     public static final String PROCESS_KEY = "materialApplication";
 
     private final TaskService taskService;
@@ -59,15 +74,20 @@ public class ApprovalService {
     private final RepositoryService repositoryService;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final BusinessCallbackClient callbackClient;
+    private final BusinessBindingService bindingService;
 
     public ApprovalService(TaskService taskService, RuntimeService runtimeService, HistoryService historyService,
-                           RepositoryService repositoryService, JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+                           RepositoryService repositoryService, JdbcTemplate jdbcTemplate, ObjectMapper objectMapper,
+                           BusinessCallbackClient callbackClient, BusinessBindingService bindingService) {
         this.taskService = taskService;
         this.runtimeService = runtimeService;
         this.historyService = historyService;
         this.repositoryService = repositoryService;
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
+        this.callbackClient = callbackClient;
+        this.bindingService = bindingService;
     }
 
     // ---------------- 待办任务 ----------------
@@ -156,8 +176,24 @@ public class ApprovalService {
         HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(task.getProcessInstanceId()).singleResult();
         if (instance != null && instance.getEndTime() != null) {
+            String status = approved ? "approved" : "rejected";
             jdbcTemplate.update("update appr_business_link set status = ? where process_instance_id = ?",
-                    approved ? "approved" : "rejected", task.getProcessInstanceId());
+                    status, task.getProcessInstanceId());
+            notifyBusinessFinished(task.getProcessInstanceId(), status, request == null ? null : request.comment(),
+                    user.username());
+        }
+    }
+
+    /**
+     * 审批终态（通过/驳回）回调业务服务。回调失败仅记日志，不影响审批事务。
+     */
+    private void notifyBusinessFinished(String instanceId, String status, String comment, String operatorName) {
+        try {
+            LinkRow link = requireLink(instanceId);
+            callbackClient.onFinished(instanceId, link.businessType(), link.businessId(), link.businessNo(),
+                    status, comment, operatorName);
+        } catch (Exception e) {
+            log.error("查询审批绑定信息失败，跳过业务回调 instanceId={}", instanceId, e);
         }
     }
 
@@ -303,40 +339,133 @@ public class ApprovalService {
 
     // ---------------- 发起审批 ----------------
 
+    /**
+     * 演示表单发起（发起审批页）：businessType 固定 material_application，business_id=0。
+     */
     @Transactional
     public Map<String, String> start(CurrentUser user, StartRequest request) {
         if (request == null || !StringUtils.hasText(request.title())) {
             throw new BizException(400, "申请标题不能为空");
         }
-        ProcessDefinition definition = repositoryService.createProcessDefinitionQuery()
-                .processDefinitionKey(PROCESS_KEY).latestVersion().singleResult();
-        if (definition == null) {
-            throw new BizException(500, "流程未部署：" + PROCESS_KEY);
-        }
-
-        String businessNo = "MA" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
-                + ThreadLocalRandom.current().nextInt(100, 999);
-
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("applicantId", user.userId());
-        variables.put("applicantName", user.username());
-        variables.put("applicantDeptId", user.deptId());
-        variables.put("title", request.title());
-        variables.put("reason", request.reason());
-        variables.put("amount", request.amount() == null ? BigDecimal.ZERO : request.amount());
-
-        ProcessInstance instance;
-        Authentication.setAuthenticatedUserId(String.valueOf(user.userId()));
-        try {
-            instance = runtimeService.startProcessInstanceByKey(PROCESS_KEY, businessNo, variables);
-        } finally {
-            Authentication.setAuthenticatedUserId(null);
-        }
-
         Map<String, Object> form = new HashMap<>();
         form.put("title", request.title());
         form.put("reason", request.reason());
         form.put("amount", request.amount());
+        return doStart(PROCESS_KEY, "material_application", 0L, null,
+                request.title(), form, user.userId(), user.username(), user.deptId(),
+                request.ccUserIds(), request.ccUserNames());
+    }
+
+    /**
+     * 业务服务内部发起（服务间调用）：按绑定表（审批绑定管理）显式判定，不再静默回退演示流程。
+     * 三态返回：
+     * - started：绑定启用且流程已发布未停用，正常走审批（返回 instanceId/processKey）；
+     * - passedThrough：optional 模式下未绑定 key / 绑定停用 / 流程未发布或停用，提交即通过；
+     * - 抛 BizException：required 模式下上述任一未就绪，文案明确到具体层（绑定/流程）。
+     */
+    @Transactional
+    public Map<String, String> startInternal(StartInternalRequest request) {
+        if (request == null || !StringUtils.hasText(request.businessType())) {
+            throw new BizException(400, "businessType 不能为空");
+        }
+        if (request.businessId() == null) {
+            throw new BizException(400, "businessId 不能为空");
+        }
+        if (!StringUtils.hasText(request.title())) {
+            throw new BizException(400, "申请标题不能为空");
+        }
+        String businessType = request.businessType();
+
+        BusinessBindingService.BindingRow binding = bindingService.getByType(businessType);
+        if (binding == null) {
+            // 业务类型未注册绑定：视为该功能未纳入审批管理
+            throw new BizException(500, "审批流未配置：业务类型「" + businessType + "」未在业务流程配置中登记，"
+                    + "请联系管理员在审批中心的业务流程配置中添加绑定");
+        }
+        if (!binding.enabled()) {
+            return passedThrough(businessType, "业务流程绑定已停用（" + binding.businessName() + "）");
+        }
+        if (!StringUtils.hasText(binding.processKey())) {
+            return passedThrough(businessType, "业务流程绑定未配置流程标识（" + binding.businessName() + "）");
+        }
+
+        String processKey = binding.processKey();
+        ProcessDefinition definition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionKey(processKey).latestVersion().singleResult();
+        if (definition == null) {
+            return optionalOrError(binding, "绑定的流程「" + processKey + "」尚未发布");
+        }
+        if (definition.isSuspended()) {
+            return optionalOrError(binding, "绑定的流程「" + (definition.getName() == null ? processKey : definition.getName())
+                    + "」已停用，请先在流程定义中启用");
+        }
+
+        Map<String, String> result = doStart(processKey, businessType, request.businessId(), request.businessNo(),
+                request.title(), request.formData() == null ? Map.of() : request.formData(),
+                request.applicantId(), request.applicantName(), request.deptId(),
+                request.ccUserIds(), request.ccUserNames());
+        result.put("result", "started");
+        return result;
+    }
+
+    /** optional 模式的三态兜底：未就绪时返回 passedThrough，required 模式抛明确错误 */
+    private Map<String, String> optionalOrError(BusinessBindingService.BindingRow binding, String reason) {
+        if ("optional".equals(binding.approvalMode())) {
+            return passedThrough(binding.businessType(), reason);
+        }
+        throw new BizException(500, "发起审批失败：" + reason + "（业务「" + binding.businessName() + "」为必审模式，"
+                + "流程就绪前无法提交）");
+    }
+
+    /** 免审直通响应：业务方按 approved 直通落终态 */
+    private Map<String, String> passedThrough(String businessType, String reason) {
+        log.info("审批绑定未就绪，免审直通 businessType={} reason={}", businessType, reason);
+        Map<String, String> result = new HashMap<>();
+        result.put("result", "passedThrough");
+        result.put("reason", reason);
+        return result;
+    }
+
+    private Map<String, String> doStart(String processKey, String businessType, Long businessId, String businessNo,
+                                        String title, Map<String, Object> form, Long applicantId,
+                                        String applicantName, Long deptId, List<Long> ccUserIds,
+                                        List<String> ccUserNames) {
+        ProcessDefinition definition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionKey(processKey).latestVersion().singleResult();
+        if (definition == null) {
+            throw new BizException(500, "流程未部署：" + processKey);
+        }
+        // 兜底校验：流程没有审批节点时会 start→end 秒完结且不产生任何待办/回调，
+        // 业务单据将永远卡在审批中，必须在发起前拦截
+        BpmnModel model = repositoryService.getBpmnModel(definition.getId());
+        boolean hasUserTask = model != null && model.getMainProcess() != null
+                && model.getMainProcess().getFlowElements().stream()
+                        .anyMatch(el -> el instanceof org.flowable.bpmn.model.UserTask);
+        if (!hasUserTask) {
+            throw new BizException(400, "流程「" + processKey + "」未配置审批节点（仅发起和结束），"
+                    + "无法发起审批，请先在流程设计中添加审批节点并重新发布");
+        }
+
+        if (!StringUtils.hasText(businessNo)) {
+            businessNo = "MA" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                    + ThreadLocalRandom.current().nextInt(100, 999);
+        }
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("applicantId", applicantId);
+        variables.put("applicantName", applicantName);
+        variables.put("applicantDeptId", deptId);
+        variables.put("title", title);
+        variables.put("amount", BigDecimal.ZERO);
+
+        ProcessInstance instance;
+        Authentication.setAuthenticatedUserId(String.valueOf(applicantId));
+        try {
+            instance = runtimeService.startProcessInstanceByKey(processKey, businessNo, variables);
+        } finally {
+            Authentication.setAuthenticatedUserId(null);
+        }
+
         String formJson;
         try {
             formJson = objectMapper.writeValueAsString(form);
@@ -348,15 +477,15 @@ public class ApprovalService {
                 "insert into appr_business_link(process_instance_id, process_def_key, business_type, business_id, "
                         + "business_no, title, applicant_id, applicant_name, applicant_dept_id, status, form_key, "
                         + "form_version, form_data) values (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                instance.getId(), PROCESS_KEY, "material_application", 0L, businessNo, request.title(),
-                user.userId(), user.username(), user.deptId(), "running", "material_application", 1, formJson);
+                instance.getId(), processKey, businessType, businessId, businessNo, title,
+                applicantId, applicantName, deptId, "running", businessType, 1, formJson);
 
-        if (request.ccUserIds() != null && !request.ccUserIds().isEmpty()) {
-            List<String> ccNames = request.ccUserNames() == null ? Collections.emptyList() : request.ccUserNames();
+        if (ccUserIds != null && !ccUserIds.isEmpty()) {
+            List<String> ccNames = ccUserNames == null ? Collections.emptyList() : ccUserNames;
             Timestamp now = new Timestamp(System.currentTimeMillis());
-            for (int i = 0; i < request.ccUserIds().size(); i++) {
-                Long ccUserId = request.ccUserIds().get(i);
-                if (ccUserId == null || ccUserId.equals(user.userId())) {
+            for (int i = 0; i < ccUserIds.size(); i++) {
+                Long ccUserId = ccUserIds.get(i);
+                if (ccUserId == null || ccUserId.equals(applicantId)) {
                     continue;
                 }
                 String ccUserName = i < ccNames.size() ? ccNames.get(i) : null;
@@ -370,6 +499,7 @@ public class ApprovalService {
         Map<String, String> result = new HashMap<>();
         result.put("instanceId", instance.getId());
         result.put("businessNo", businessNo);
+        result.put("processKey", processKey);
         return result;
     }
 
@@ -383,13 +513,173 @@ public class ApprovalService {
             Deployment deployment = repositoryService.createDeploymentQuery()
                     .deploymentId(definition.getDeploymentId()).singleResult();
             result.add(new ProcessDefVO(
+                    definition.getId(),
                     definition.getKey(),
                     definition.getName(),
                     definition.getVersion(),
                     definition.getDeploymentId(),
-                    deployment == null ? null : toLocal(deployment.getDeploymentTime())));
+                    deployment == null ? null : toLocal(deployment.getDeploymentTime()),
+                    definition.isSuspended()));
         }
         return result;
+    }
+
+    public String processDefinitionXml(String definitionId) {
+        ProcessDefinition definition = requireDefinition(definitionId);
+        try (InputStream in = repositoryService.getResourceAsStream(
+                definition.getDeploymentId(), definition.getResourceName())) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new BizException(500, "读取流程 XML 失败");
+        }
+    }
+
+    public byte[] processDefinitionDiagram(String definitionId) {
+        ProcessDefinition definition = requireDefinition(definitionId);
+        BpmnModel model = repositoryService.getBpmnModel(definition.getId());
+        if (model.getLocationMap().isEmpty()) {
+            throw new BizException(400, "流程文件缺少图形信息（DI 节点），无法生成流程图");
+        }
+        try (InputStream in = new DefaultProcessDiagramGenerator().generateDiagram(
+                model, "png", Collections.emptyList(), Collections.emptyList(),
+                "SansSerif", "SansSerif", "SansSerif", null, 1.0, true)) {
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new BizException(500, "生成流程图失败");
+        }
+    }
+
+    @Transactional
+    public void suspendDefinition(String definitionId) {
+        ProcessDefinition definition = requireDefinition(definitionId);
+        repositoryService.suspendProcessDefinitionById(definition.getId(), false, null);
+    }
+
+    @Transactional
+    public void activateDefinition(String definitionId) {
+        ProcessDefinition definition = requireDefinition(definitionId);
+        repositoryService.activateProcessDefinitionById(definition.getId(), false, null);
+    }
+
+    @Transactional
+    public void deleteDeployment(String deploymentId, boolean cascade) {
+        Deployment deployment = repositoryService.createDeploymentQuery()
+                .deploymentId(deploymentId).singleResult();
+        if (deployment == null) {
+            throw new BizException(404, "部署不存在");
+        }
+        if (!cascade) {
+            long running = runtimeService.createProcessInstanceQuery()
+                    .deploymentId(deploymentId).count();
+            if (running > 0) {
+                throw new BizException(409, "该部署下有 " + running + " 个进行中的流程实例，不能直接删除");
+            }
+        }
+        repositoryService.deleteDeployment(deploymentId, cascade);
+    }
+
+    @Transactional
+    public void deployProcess(String fileName, InputStream inputStream) {
+        if (!StringUtils.hasText(fileName) || !(fileName.endsWith(".bpmn")
+                || fileName.endsWith(".bpmn20.xml") || fileName.endsWith(".xml"))) {
+            throw new BizException(400, "仅支持 .bpmn / .bpmn20.xml / .xml 流程文件");
+        }
+        try {
+            repositoryService.createDeployment()
+                    .name(fileName)
+                    .addInputStream(fileName, inputStream)
+                    .deploy();
+        } catch (FlowableException e) {
+            throw new BizException(400, "流程文件无效：" + e.getMessage());
+        }
+    }
+
+    // ---------------- 流程模板 ----------------
+
+    /** 内置流程模板元数据（模板文件位于 classpath: process-templates/{key}.bpmn20.xml） */
+    private static final List<ProcessTemplateVO> PROCESS_TEMPLATES = List.of(
+            new ProcessTemplateVO("sequential-approval", "串行审批",
+                    "逐级审批：两级审批依次处理，全部同意后流程结束"),
+            new ProcessTemplateVO("conditional-approval", "条件审批（驳回重提）",
+                    "支持驳回：审批不同意时退回申请人修改重提，重提后再次进入审批，直至通过"),
+            new ProcessTemplateVO("countersign-approval", "会签审批",
+                    "并行会签：多实例会签节点，发起时传入 approverList，全部审批人同意（全票）后流程结束"));
+
+    public List<ProcessTemplateVO> processTemplates() {
+        return PROCESS_TEMPLATES;
+    }
+
+    @Transactional
+    public DeployResultVO deployFromTemplate(String templateKey, String name, String processKey) {
+        String templateId = requireTemplate(templateKey);
+        if (!StringUtils.hasText(name)) {
+            throw new BizException(400, "流程名称不能为空");
+        }
+        String trimmedName = name.trim();
+        String key = StringUtils.hasText(processKey) ? processKey.trim()
+                : "proc" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                        + ThreadLocalRandom.current().nextInt(100, 1000);
+        if (!key.matches("^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$")) {
+            throw new BizException(400, "流程标识无效：需以字母或下划线开头，仅含字母、数字、下划线、中划线，长度不超过 64");
+        }
+
+        String xml = loadTemplateXml(templateKey);
+        xml = xml.replace(templateId, key);
+        xml = xml.replace("name=\"模板中文名\"", "name=\"" + escapeXmlAttribute(trimmedName) + "\"");
+
+        Deployment deployment;
+        try {
+            deployment = repositoryService.createDeployment()
+                    .name(trimmedName)
+                    .addInputStream(key + ".bpmn20.xml", new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)))
+                    .deploy();
+        } catch (FlowableException e) {
+            throw new BizException(400, "流程部署失败：" + e.getMessage());
+        }
+        ProcessDefinition definition = repositoryService.createProcessDefinitionQuery()
+                .deploymentId(deployment.getId()).singleResult();
+        if (definition == null) {
+            throw new BizException(500, "部署成功但未查询到流程定义");
+        }
+        return new DeployResultVO(definition.getId(), definition.getKey(), definition.getName(), definition.getVersion());
+    }
+
+    /** 模板白名单校验，返回模板对应的流程 process id（同时防路径穿越） */
+    private String requireTemplate(String templateKey) {
+        return switch (templateKey == null ? "" : templateKey) {
+            case "sequential-approval" -> "sequentialApproval";
+            case "conditional-approval" -> "conditionalApproval";
+            case "countersign-approval" -> "countersignApproval";
+            default -> throw new BizException(404, "流程模板不存在：" + templateKey);
+        };
+    }
+
+    private String loadTemplateXml(String templateKey) {
+        try (InputStream in = getClass().getClassLoader()
+                .getResourceAsStream("process-templates/" + templateKey + ".bpmn20.xml")) {
+            if (in == null) {
+                throw new BizException(404, "流程模板文件缺失：" + templateKey);
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new BizException(500, "读取流程模板失败");
+        }
+    }
+
+    private String escapeXmlAttribute(String value) {
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
+    }
+
+    private ProcessDefinition requireDefinition(String definitionId) {
+        ProcessDefinition definition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionId(definitionId).singleResult();
+        if (definition == null) {
+            throw new BizException(404, "流程定义不存在");
+        }
+        return definition;
     }
 
     // ---------------- 内部工具 ----------------
@@ -408,7 +698,10 @@ public class ApprovalService {
         jdbcTemplate.update(
                 "insert ignore into appr_task_action(process_instance_id, task_id, task_def_key, action, operator_id, "
                         + "operator_name, comment, create_time) values (?,?,?,?,?,?,?,?)",
-                instanceId, taskId, taskDefKey, action, operator.userId(), operator.username(), comment,
+                instanceId, taskId, taskDefKey, action,
+                operator == null ? null : operator.userId(),
+                operator == null ? null : operator.username(),
+                comment,
                 new Timestamp(System.currentTimeMillis()));
     }
 
@@ -436,7 +729,8 @@ public class ApprovalService {
         String placeholders = ids.stream().map(id -> "?").collect(Collectors.joining(","));
         Map<String, LinkRow> result = new HashMap<>();
         jdbcTemplate.query(
-                "select process_instance_id, title, business_no, applicant_id, applicant_name, status, form_data "
+                "select process_instance_id, title, business_no, applicant_id, applicant_name, status, form_data, "
+                        + "business_type, business_id "
                         + "from appr_business_link where process_instance_id in (" + placeholders + ")",
                 rs -> {
                     String instanceId = rs.getString("process_instance_id");
@@ -446,7 +740,9 @@ public class ApprovalService {
                             rs.getObject("applicant_id", Long.class),
                             rs.getString("applicant_name"),
                             rs.getString("status"),
-                            rs.getString("form_data")));
+                            rs.getString("form_data"),
+                            rs.getString("business_type"),
+                            rs.getObject("business_id", Long.class)));
                 },
                 ids.toArray());
         return result;
@@ -491,6 +787,33 @@ public class ApprovalService {
         runtimeService.deleteProcessInstance(instanceId, "申请人撤回");
         jdbcTemplate.update("update appr_business_link set status = 'withdrawn' where process_instance_id = ?", instanceId);
         insertAction(instanceId, activeTaskId, activeDefKey, "withdraw", user, comment);
+        callbackClient.onFinished(instanceId, link.businessType(), link.businessId(), link.businessNo(),
+                "withdrawn", comment, user.username());
+    }
+
+    /**
+     * 业务服务内部撤回（服务间调用，密钥头校验）。绕过申请人校验，但同样要求审批人未处理。
+     */
+    @Transactional
+    public void internalWithdraw(String instanceId, String comment) {
+        LinkRow link = requireLink(instanceId);
+        if (!"running".equals(link.status())) {
+            throw new BizException(400, "流程已结束（" + link.status() + "），无法撤回；请刷新业务单据状态");
+        }
+        Long acted = jdbcTemplate.queryForObject(
+                "select count(*) from appr_task_action where process_instance_id = ? and action in ('approve', 'reject')",
+                Long.class, instanceId);
+        if (acted != null && acted > 0) {
+            throw new BizException(400, "审批人已处理，无法撤回");
+        }
+        List<Task> activeTasks = taskService.createTaskQuery().processInstanceId(instanceId).list();
+        String activeTaskId = activeTasks.isEmpty() ? null : activeTasks.get(0).getId();
+        String activeDefKey = activeTasks.isEmpty() ? null : activeTasks.get(0).getTaskDefinitionKey();
+        runtimeService.deleteProcessInstance(instanceId, "业务单据撤回");
+        jdbcTemplate.update("update appr_business_link set status = 'withdrawn' where process_instance_id = ?", instanceId);
+        insertAction(instanceId, activeTaskId, activeDefKey, "withdraw", null, comment);
+        callbackClient.onFinished(instanceId, link.businessType(), link.businessId(), link.businessNo(),
+                "withdrawn", comment, null);
     }
 
     @Transactional
@@ -644,6 +967,6 @@ public class ApprovalService {
     }
 
     private record LinkRow(String title, String businessNo, Long applicantId, String applicantName,
-                           String status, String formData) {
+                           String status, String formData, String businessType, Long businessId) {
     }
 }

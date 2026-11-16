@@ -31,6 +31,9 @@ services:
       DB_PASSWORD: root123456
       # 迁移脚本直接读挂载目录：页面生成器「一键放入」新脚本后，重启容器即生效，无需重新构建镜像
       SPRING_FLYWAY_LOCATIONS: filesystem:/app/migration
+      # 审批中心（approval-server 跑在宿主机 8082），容器内通过 host.docker.internal 访问
+      APP_APPROVAL_BASE_URL: http://host.docker.internal:8082
+      APP_APPROVAL_CALLBACK_KEY: internal-callback-key
     depends_on:
       mysql:
         condition: service_started

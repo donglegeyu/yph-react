@@ -35,6 +35,8 @@ interface AppState {
   isFirstMenuHovering: boolean
   /** AI 助手面板开合（全局唯一真相源，与页签/路由解耦；刷新后默认关闭） */
   aiPanelOpen: boolean
+  /** 站内信未读数（全局共享：铃铛 TabBar 与收件箱页共用，已读操作后即时联动） */
+  unreadCount: number
 
   setActiveFirstMenu: (key: string) => void
   setActiveKey: (key: string) => void
@@ -55,6 +57,7 @@ interface AppState {
   closeTab: (key: string) => TabItem | null
   setActiveTabKey: (key: string) => void
   setAiPanelOpen: (open: boolean) => void
+  setUnreadCount: (count: number) => void
 
   fetchMenus: (options?: { resetActive?: boolean }) => Promise<void>
   fetchFavorites: () => Promise<void>
@@ -130,6 +133,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   secondSidebarFixed: savedSecondSidebarFixed !== 'false',
   isFirstMenuHovering: false,
   aiPanelOpen: false,
+  unreadCount: 0,
   menusLoaded: false,
 
   setActiveFirstMenu: (key) => {
@@ -308,6 +312,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB_KEY, key)
   },
   setAiPanelOpen: (open) => set({ aiPanelOpen: open }),
+  setUnreadCount: (count) => set({ unreadCount: count }),
 
   selectFirstMenu: (key) => {
     set({ activeFirstMenu: key })

@@ -111,12 +111,6 @@ public class CraftsmanApplicationController {
         return Result.success();
     }
 
-    @PutMapping("/{id}/approve")
-    public Result<Long> approve(@PathVariable Long id) {
-        Long craftsmanId = craftsmanApplicationService.approve(id);
-        return Result.success(craftsmanId);
-    }
-
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         craftsmanApplicationService.delete(id);

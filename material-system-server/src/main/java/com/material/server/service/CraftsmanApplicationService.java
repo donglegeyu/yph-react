@@ -17,5 +17,6 @@ public interface CraftsmanApplicationService extends IService<CraftsmanApplicati
 
     void delete(Long id);
 
-    Long approve(Long id);
+    /** 审批中心终态回调：approved 落工匠主表，rejected 记原因，withdrawn 回草稿 */
+    void onApprovalFinished(Long id, String instanceId, String status, String comment);
 }

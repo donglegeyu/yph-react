@@ -34,6 +34,9 @@ public class CraftsmanApplication {
 
     private String rejectReason;
 
+    /** 审批实例 ID（ appr_business_link.process_instance_id），撤回联动与回调对账用 */
+    private String approvalInstanceId;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

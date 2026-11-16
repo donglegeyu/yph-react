@@ -21,6 +21,7 @@ public class CraftsmanApplicationVO {
     private String applicant;
     private LocalDate applyTime;
     private String rejectReason;
+    private String approvalInstanceId;
     private String formData;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
