@@ -148,7 +148,12 @@ export function toUserOptions(users: SysUserItem[]): SysUserOption[] {
   }))
 }
 
-export async function fetchTodo(params: { current: number; size: number; keyword?: string }) {
+export async function fetchTodo(params: {
+  current: number
+  size: number
+  keyword?: string
+  applicantName?: string
+}) {
   return get<PageData<TaskItem>>(`${BASE}/tasks/todo`, params)
 }
 
@@ -168,7 +173,16 @@ export async function fetchMine(params: { current: number; size: number; status?
   return get<PageData<InstanceItem>>(`${BASE}/instances/mine`, params)
 }
 
-export async function fetchDone(params: { current: number; size: number }) {
+export async function fetchDone(params: {
+  current: number
+  size: number
+  processName?: string
+  title?: string
+  myAction?: string
+  comment?: string
+  handleTimeFrom?: string
+  handleTimeTo?: string
+}) {
   return get<PageData<DoneItem>>(`${BASE}/instances/done`, params)
 }
 
@@ -181,8 +195,13 @@ export async function startInstance(data: {
   return post<{ instanceId: string; businessNo: string }>(`${BASE}/instances`, data)
 }
 
-export async function fetchProcessDefinitions() {
-  return get<ProcessDefItem[]>(`${BASE}/process-definitions`)
+export async function fetchProcessDefinitions(params: {
+  name?: string
+  suspended?: string
+  deployTimeFrom?: string
+  deployTimeTo?: string
+} = {}) {
+  return get<ProcessDefItem[]>(`${BASE}/process-definitions`, params)
 }
 
 /** 流程图：PNG 裸字节（非 ApiResult 包装），以 blob 返回 */
@@ -266,7 +285,16 @@ export async function addSignTask(taskId: string, targetId: number, targetName: 
   return post<null>(`${BASE}/tasks/${taskId}/add-sign`, { targetId, targetName, comment })
 }
 
-export async function fetchCcMine(params: { current: number; size: number }) {
+export async function fetchCcMine(params: {
+  current: number
+  size: number
+  title?: string
+  businessNo?: string
+  status?: string
+  readStatus?: number
+  createTimeFrom?: string
+  createTimeTo?: string
+}) {
   return get<PageData<CcItem>>(`${BASE}/cc/mine`, params)
 }
 
@@ -306,16 +334,43 @@ export interface TrendPoint {
   completed: number
 }
 
-export async function fetchStatsOverview() {
-  return get<StatsOverview>(`${BASE}/stats/overview`)
+/** 统计筛选参数：companyId=公司（部门树顶级节点 id），period=month/quarter/year */
+export interface StatsFilter {
+  companyId?: number
+  period?: 'month' | 'quarter' | 'year'
 }
 
-export async function fetchStatsByProcess() {
-  return get<ProcessStat[]>(`${BASE}/stats/by-process`)
+export async function fetchStatsOverview(filter?: StatsFilter) {
+  return get<StatsOverview>(`${BASE}/stats/overview`, {
+    companyId: filter?.companyId,
+    period: filter?.period,
+  })
 }
 
-export async function fetchStatsTrend(days = 14) {
-  return get<TrendPoint[]>(`${BASE}/stats/trend`, { days })
+export async function fetchStatsByProcess(filter?: StatsFilter) {
+  return get<ProcessStat[]>(`${BASE}/stats/by-process`, {
+    companyId: filter?.companyId,
+    period: filter?.period,
+  })
+}
+
+export async function fetchStatsTrend(days = 14, filter?: StatsFilter) {
+  return get<TrendPoint[]>(`${BASE}/stats/trend`, {
+    days,
+    companyId: filter?.companyId,
+  })
+}
+
+/** 待办任务页统计卡片（当前用户维度，登录即可） */
+export interface MyCards {
+  myTodoCount: number
+  approachingOverdueCount: number
+  overdueCount: number
+  submitFailCount: number
+}
+
+export async function fetchMyCards() {
+  return get<MyCards>(`${BASE}/stats/my-cards`)
 }
 
 // ---------------- 业务流程配置（审批绑定管理） ----------------
@@ -332,8 +387,17 @@ export interface BusinessBindingItem {
 }
 
 /** 绑定列表 */
-export async function fetchBusinessBindings() {
-  return get<BusinessBindingItem[]>(`${BASE}/business-bindings`)
+export async function fetchBusinessBindings(params: {
+  keyword?: string
+  businessName?: string
+  businessType?: string
+  processKey?: string
+  approvalMode?: string
+  enabled?: string
+  updateTimeFrom?: string
+  updateTimeTo?: string
+} = {}) {
+  return get<BusinessBindingItem[]>(`${BASE}/business-bindings`, params)
 }
 
 /** 保存绑定：有 id/匹配 businessType 时更新，否则新增 */

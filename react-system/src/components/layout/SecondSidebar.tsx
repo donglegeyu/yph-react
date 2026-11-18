@@ -3,52 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '@/store/app'
 import { SvgIcon } from '@donglegeyu/company-ui'
 import type { MenuItem } from '@/types'
+import { getMenuIconName as getIconName, DEFAULT_MENU_ICON } from '@/constants/menuIconMap'
 import './SecondSidebar.scss'
 import nullSvg from '@/assets/null.svg'
-
-const iconMap: Record<string, string> = {
-  commodity: 'commodity',
-  shopping: 'shopping-cart-del',
-  buy: 'buy',
-  goods: 'tag',
-  file: 'file-cabinet',
-  search: 'doc-search',
-  user: 'people-top-card',
-  safe: 'message-security',
-  tool: 'setting',
-  app: 'all-application',
-  'work-order': 'order',
-  alert: 'comments',
-  'check-circle': 'list',
-  phone: 'comments',
-  barcode: 'scan-setting',
-  edit: 'edit',
-  warning: 'comments',
-  'info-circle': 'comments',
-  wrench: 'setting',
-  package: 'box',
-  rule: 'config',
-  link: 'database-config',
-  'check-square': 'list',
-  clipboard: 'table',
-  layers: 'category-management',
-  team: 'people-top-card',
-  award: 'bookmark',
-  'file-application': 'doc-search',
-  'search-user': 'user-positioning',
-  list: 'list',
-  star: 'star',
-  home: 'home',
-  setting: 'setting',
-  book: 'doc-search',
-  'file-text': 'file-cabinet',
-  read: 'bookmark',
-  'question-circle': 'list',
-}
-
-function getIconName(icon?: string): string {
-  return icon ? iconMap[icon] || icon : 'id-card-v-klbe0a04'
-}
 
 const hideKeys: string[] = []
 
@@ -101,7 +58,7 @@ export default function SecondSidebar() {
       .filter((menu) => !hideKeys.includes(menu.key))
       .map((menu) => ({
         ...menu,
-        icon: menu.icon || 'id-card-v-klbe0a04',
+        icon: menu.icon || DEFAULT_MENU_ICON,
       }))
   }, [activeFirstMenu, favorites, currentSecondMenus])
 

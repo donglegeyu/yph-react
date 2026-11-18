@@ -4,6 +4,7 @@ import com.material.approval.auth.RequirePerm;
 import com.material.approval.common.ApiResult;
 import com.material.approval.service.BusinessBindingService;
 import com.material.approval.service.BusinessBindingService.BindingRow;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,8 +30,22 @@ public class BusinessBindingController {
 
     @GetMapping
     @RequirePerm("approval:binding:view")
-    public ApiResult<List<BindingRow>> list(@RequestParam(required = false) String keyword) {
-        return ApiResult.ok(bindingService.list(keyword));
+    public ApiResult<List<BindingRow>> list(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String businessName,
+            @RequestParam(required = false) String businessType,
+            @RequestParam(required = false) String processKey,
+            @RequestParam(required = false) String approvalMode,
+            @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) String updateTimeFrom,
+            @RequestParam(required = false) String updateTimeTo) {
+        // keyword 兼容旧用法：未传专属字段时按业务名称模糊匹配
+        if (!StringUtils.hasText(businessName) && !StringUtils.hasText(businessType)
+                && StringUtils.hasText(keyword)) {
+            businessName = keyword;
+        }
+        return ApiResult.ok(bindingService.list(businessName, businessType, processKey,
+                approvalMode, enabled, updateTimeFrom, updateTimeTo));
     }
 
     @PostMapping

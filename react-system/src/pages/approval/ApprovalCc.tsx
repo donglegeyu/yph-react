@@ -5,11 +5,33 @@ import { fetchCcMine, fmtTime, markCcRead, INSTANCE_STATUS_META, type CcItem } f
 import { InstanceDetailDrawer } from './InstanceDetailDrawer'
 
 const fields: FieldDefinition[] = [
-  { key: 'title', label: '申请标题', type: 'item', hideInFilter: true },
-  { key: 'businessNo', label: '业务单号', type: 'item', width: 180, hideInFilter: true },
-  { key: 'status', label: '审批状态', type: 'item', width: 110, hideInFilter: true },
-  { key: 'readStatus', label: '阅读状态', type: 'item', width: 100, hideInFilter: true },
-  { key: 'createTime', label: '抄送时间', type: 'item', width: 180, hideInFilter: true },
+  { key: 'title', label: '申请标题', type: 'input' },
+  { key: 'businessNo', label: '业务单号', type: 'input', width: 180 },
+  {
+    key: 'status',
+    label: '审批状态',
+    type: 'select',
+    width: 110,
+    options: [
+      { label: '全部', value: '' },
+      ...Object.entries(INSTANCE_STATUS_META).map(([value, meta]) => ({
+        label: meta.text,
+        value,
+      })),
+    ],
+  },
+  {
+    key: 'readStatus',
+    label: '阅读状态',
+    type: 'select',
+    width: 100,
+    options: [
+      { label: '全部', value: '' },
+      { label: '未读', value: '0' },
+      { label: '已读', value: '1' },
+    ],
+  },
+  { key: 'createTime', label: '抄送时间', type: 'daterange', width: 180 },
   { key: 'action', label: '操作', type: 'item', width: 130, fixed: 'right', hideInFilter: true },
 ]
 
@@ -37,11 +59,21 @@ export default function ApprovalCc() {
   const [activeInstanceId, setActiveInstanceId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
+  /** 筛选状态：onSearch/onReset 驱动，effect 依赖变化即重新拉取 */
+  const [filters, setFilters] = useState<{
+    title?: string
+    businessNo?: string
+    status?: string
+    readStatus?: number
+    createTimeFrom?: string
+    createTimeTo?: string
+  }>({})
+
   useEffect(() => {
     let ignore = false
     async function run() {
       try {
-        const res = await fetchCcMine({ current, size })
+        const res = await fetchCcMine({ current, size, ...filters })
         if (ignore) return
         if (res.code === 200 && res.data) {
           setRecords(res.data.records)
@@ -59,7 +91,7 @@ export default function ApprovalCc() {
     return () => {
       ignore = true
     }
-  }, [current, size, refreshKey])
+  }, [current, size, filters, refreshKey])
 
   /** 事件路径刷新：亮 loading 并触发 effect 重新拉取 */
   const reload = useCallback(() => {
@@ -100,6 +132,27 @@ export default function ApprovalCc() {
           setLoading(true)
           setCurrent(page)
           setSize(pageSize)
+        }}
+        onSearch={(data) => {
+          setLoading(true)
+          setCurrent(1)
+          const range = data.createTime as string[] | undefined
+          setFilters({
+            title: (data.title as string) || undefined,
+            businessNo: (data.businessNo as string) || undefined,
+            status: (data.status as string) || undefined,
+            readStatus:
+              data.readStatus !== '' && data.readStatus != null
+                ? Number(data.readStatus)
+                : undefined,
+            createTimeFrom: range?.[0],
+            createTimeTo: range?.[1],
+          })
+        }}
+        onReset={() => {
+          setLoading(true)
+          setCurrent(1)
+          setFilters({})
         }}
         onRefresh={() => reload()}
         bodyCell={(column, record) => {

@@ -22,10 +22,20 @@ import ProcessDefDetailDrawer from './ProcessDefDetailDrawer'
 
 /** 业务视角列：隐藏引擎概念（流程标识/部署 ID），只留业务字段 */
 const fields: FieldDefinition[] = [
-  { key: 'name', label: '流程名称', type: 'item', hideInFilter: true },
+  { key: 'name', label: '流程名称', type: 'input' },
   { key: 'version', label: '版本', type: 'item', width: 90, hideInFilter: true },
-  { key: 'suspended', label: '状态', type: 'item', width: 100, hideInFilter: true },
-  { key: 'deployTime', label: '发布时间', type: 'item', width: 180, hideInFilter: true },
+  {
+    key: 'suspended',
+    label: '状态',
+    type: 'select',
+    width: 100,
+    options: [
+      { label: '全部', value: '' },
+      { label: '已启用', value: 'false' },
+      { label: '已停用', value: 'true' },
+    ],
+  },
+  { key: 'deployTime', label: '发布时间', type: 'daterange', width: 180 },
   { key: 'action', label: '操作', type: 'item', width: 220, fixed: 'right', hideInFilter: true },
 ]
 
@@ -49,11 +59,19 @@ export default function ApprovalProcessAdmin() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [detailRecord, setDetailRecord] = useState<ProcessDefItem | null>(null)
 
+  /** 筛选状态：onSearch/onReset 驱动，effect 依赖变化即重新拉取 */
+  const [filters, setFilters] = useState<{
+    name?: string
+    suspended?: string
+    deployTimeFrom?: string
+    deployTimeTo?: string
+  }>({})
+
   useEffect(() => {
     let ignore = false
     async function run() {
       try {
-        const res = await fetchProcessDefinitions()
+        const res = await fetchProcessDefinitions(filters)
         if (ignore) return
         if (res.code === 200 && res.data) {
           setRecords(res.data)
@@ -76,7 +94,7 @@ export default function ApprovalProcessAdmin() {
     return () => {
       ignore = true
     }
-  }, [refreshKey])
+  }, [filters, refreshKey])
 
   /** processKey → 设计草稿，用于行级「设计」按钮显隐 */
   const designByKey = useMemo(
@@ -132,6 +150,20 @@ export default function ApprovalProcessAdmin() {
         loading={loading}
         pagination={false}
         rowKey="id"
+        onSearch={(data) => {
+          setLoading(true)
+          const range = data.deployTime as string[] | undefined
+          setFilters({
+            name: (data.name as string) || undefined,
+            suspended: (data.suspended as string) || undefined,
+            deployTimeFrom: range?.[0],
+            deployTimeTo: range?.[1],
+          })
+        }}
+        onReset={() => {
+          setLoading(true)
+          setFilters({})
+        }}
         onRefresh={() => reload()}
         titleRightActions={
           <CompanyButton type="primary" onClick={() => navigate('/approval/admin/process/design/new')}>

@@ -43,8 +43,15 @@ public class InstanceController {
     @RequirePerm("approval:done:view")
     public ApiResult<PageData<DoneTaskVO>> done(
             @RequestParam(defaultValue = "1") long current,
-            @RequestParam(defaultValue = "10") long size) {
-        return ApiResult.ok(approvalService.done(UserContext.require(), current, size));
+            @RequestParam(defaultValue = "10") long size,
+            @RequestParam(required = false) String processName,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String myAction,
+            @RequestParam(required = false) String comment,
+            @RequestParam(required = false) String handleTimeFrom,
+            @RequestParam(required = false) String handleTimeTo) {
+        return ApiResult.ok(approvalService.done(UserContext.require(), processName, title, myAction,
+                comment, handleTimeFrom, handleTimeTo, current, size));
     }
 
     @PostMapping

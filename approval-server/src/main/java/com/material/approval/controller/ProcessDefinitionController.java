@@ -33,8 +33,12 @@ public class ProcessDefinitionController {
 
     @GetMapping
     @RequirePerm("approval:process:view")
-    public ApiResult<List<ProcessDefVO>> list() {
-        return ApiResult.ok(approvalService.processDefinitions());
+    public ApiResult<List<ProcessDefVO>> list(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String suspended,
+            @RequestParam(required = false) String deployTimeFrom,
+            @RequestParam(required = false) String deployTimeTo) {
+        return ApiResult.ok(approvalService.processDefinitions(name, suspended, deployTimeFrom, deployTimeTo));
     }
 
     @GetMapping("/{definitionId}/xml")

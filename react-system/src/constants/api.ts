@@ -52,6 +52,9 @@ export const API_ENDPOINTS = {
   // 安检结果查询
   SECURITY_CHECKS: `${API_BASE}/security-checks`,
 
+  // 审批中心
+  APPROVAL_VIEWS: `${API_BASE}/approval-views`,
+
   // 域管理
   DOMAINS: `${API_BASE}/sys/domains`,
   DOMAIN_MENUS: `${API_BASE}/sys/domain-menus`,

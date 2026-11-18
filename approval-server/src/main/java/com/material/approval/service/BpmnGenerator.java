@@ -109,6 +109,11 @@ public final class BpmnGenerator {
                     if (!"any".equals(mode) && !"all".equals(mode)) {
                         errors.add("审批节点「" + label + "」审批方式无效");
                     }
+                    JsonNode timeoutHours = node.get("timeoutHours");
+                    if (timeoutHours != null && !timeoutHours.isNull()
+                            && (!timeoutHours.isNumber() || timeoutHours.asDouble() <= 0)) {
+                        errors.add("审批节点「" + label + "」超时时限必须是正数（小时）");
+                    }
                 }
                 case "cc" -> {
                     // 抄送人一期不强制校验

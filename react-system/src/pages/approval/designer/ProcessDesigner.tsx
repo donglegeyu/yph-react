@@ -23,7 +23,7 @@ import {
   publishProcessDesign,
   saveProcessDesign,
 } from '../api'
-import NodeConfigDrawer from './NodeConfigDrawer'
+import { NodeConfigDrawer } from './NodeConfigDrawer'
 import type { ConditionBranch, DesignDoc, DesignNode, EditPath, NodeType } from './types'
 import { genNodeId, normalizeDoc, validateDoc } from './types'
 import './designer.scss'
@@ -174,7 +174,7 @@ function NodeCard({ node, deletable, onDelete, onEdit }: NodeCardProps) {
   )
 }
 
-export default function ProcessDesigner() {
+export function ProcessDesigner() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isNew = id === 'new'

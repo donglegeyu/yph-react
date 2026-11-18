@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -34,14 +35,42 @@ public class BusinessBindingService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public List<BindingRow> list(String keyword) {
-        if (StringUtils.hasText(keyword)) {
-            String like = "%" + keyword.trim() + "%";
-            return jdbcTemplate.query(
-                    "select * from appr_business_binding where business_type like ? or business_name like ? "
-                            + "order by id asc", MAPPER, like, like);
+    public List<BindingRow> list(String businessName, String businessType, String processKey,
+                                 String approvalMode, Boolean enabled,
+                                 String updateTimeFrom, String updateTimeTo) {
+        StringBuilder where = new StringBuilder("1=1");
+        List<Object> args = new ArrayList<>();
+        if (StringUtils.hasText(businessName)) {
+            where.append(" and business_name like ?");
+            args.add("%" + businessName.trim() + "%");
         }
-        return jdbcTemplate.query("select * from appr_business_binding order by id asc", MAPPER);
+        if (StringUtils.hasText(businessType)) {
+            where.append(" and business_type like ?");
+            args.add("%" + businessType.trim() + "%");
+        }
+        if (StringUtils.hasText(processKey)) {
+            where.append(" and process_key like ?");
+            args.add("%" + processKey.trim() + "%");
+        }
+        if (StringUtils.hasText(approvalMode)) {
+            where.append(" and approval_mode = ?");
+            args.add(approvalMode.trim());
+        }
+        if (enabled != null) {
+            where.append(" and enabled = ?");
+            args.add(enabled ? 1 : 0);
+        }
+        if (StringUtils.hasText(updateTimeFrom)) {
+            where.append(" and update_time >= ?");
+            args.add(updateTimeFrom.trim() + " 00:00:00");
+        }
+        if (StringUtils.hasText(updateTimeTo)) {
+            where.append(" and update_time <= ?");
+            args.add(updateTimeTo.trim() + " 23:59:59");
+        }
+        return jdbcTemplate.query(
+                "select * from appr_business_binding where " + where + " order by id asc",
+                MAPPER, args.toArray());
     }
 
     public BindingRow getByType(String businessType) {

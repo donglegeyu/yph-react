@@ -1,0 +1,51 @@
+/* 审批统计筛选条：样式对齐首页销售数据视图（SalesDashboard.scss .dashboard-filters） */
+
+.stats-filters {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+
+  .filters-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* 公司名：对齐首页 .company-name（粗黑文字 + 可点击下拉） */
+  .company-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--color-text, rgba(0, 0, 0, 0.88));
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 4px;
+
+    .anticon-down {
+      font-size: 12px;
+      color: var(--color-text-tertiary, rgba(0, 0, 0, 0.45));
+    }
+  }
+
+  /* 周期等筛选下拉：对齐首页 .filter-dropdown（橙色 + 竖线分隔） */
+  .filter-dropdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 4px;
+    font-size: 14px;
+    color: var(--primary-color, #f95914) !important;
+    cursor: pointer;
+
+    &::after {
+      content: '';
+      display: block;
+      width: 1px;
+      height: 14px;
+      background: var(--color-border-secondary, rgba(0, 0, 0, 0.06));
+      margin: 0 8px;
+    }
+  }
+}

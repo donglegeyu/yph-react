@@ -13,56 +13,81 @@ import {
   CompanyTimeline,
   DrawerDetailTemplate,
   SectionTitle,
-  SmartListTemplate,
+  StatisticsListPage,
+  type PageResponse,
+  type StatisticCardConfig,
+  type StatisticsColumn,
 } from '@donglegeyu/company-ui'
-import type { ColumnField, FieldDefinition } from '@donglegeyu/company-ui'
 import {
   actionText,
   addSignTask,
   approveTask,
+  fetchMyCards,
   fetchTaskDetail,
   fetchTodo,
   fmtTime,
   rejectTask,
   toUserOptions,
   transferTask,
+  type MyCards,
   type TaskDetail,
   type TaskItem,
 } from './api'
 import { useSysUsers } from './useSysUsers'
+import { API_ENDPOINTS } from '@/constants/api'
 
-const fields: FieldDefinition[] = [
-  { key: 'keyword', label: '任务名称', type: 'input', placeholder: '按任务名称筛选' },
-  { key: 'processName', label: '流程', type: 'item', width: 140, hideInFilter: true },
-  { key: 'title', label: '申请标题', type: 'item', hideInFilter: true },
-  { key: 'taskName', label: '当前节点', type: 'item', width: 140, hideInFilter: true },
-  { key: 'applicantName', label: '申请人', type: 'item', width: 120, hideInFilter: true },
-  { key: 'createTime', label: '发起时间', type: 'item', width: 180, hideInFilter: true },
-  { key: 'action', label: '操作', type: 'item', width: 100, fixed: 'right', hideInFilter: true },
+/** 顶部搜索框对应字段：按任务名称/标题模糊匹配 */
+const SEARCH_KEY = 'keyword'
+
+/** 高级筛选抽屉字段：申请人 */
+const filterFields = [
+  { key: 'applicantName', label: '申请人', type: 'input' as const },
 ]
 
-/** 列设置初始列：keyword 仅作筛选项不进列，action 由模板生成为固定操作列 */
-const defaultColumnFields: ColumnField[] = [
-  { key: 'processName', label: '流程', visible: true, width: 140 },
-  { key: 'title', label: '申请标题', visible: true },
-  { key: 'taskName', label: '当前节点', visible: true, width: 140 },
-  { key: 'applicantName', label: '申请人', visible: true, width: 120 },
-  { key: 'createTime', label: '发起时间', visible: true, width: 180 },
-]
+interface TaskRecord extends TaskItem, Record<string, unknown> {}
 
-function renderDash(value: unknown) {
-  return <>{value == null || value === '' ? '-' : value}</>
-}
-
-export default function ApprovalTodo() {
+export function ApprovalTodo() {
   const { token } = theme.useToken()
-  const [loading, setLoading] = useState(true)
-  const [records, setRecords] = useState<TaskItem[]>([])
-  const [total, setTotal] = useState(0)
-  const [current, setCurrent] = useState(1)
-  const [size, setSize] = useState(10)
-  const [keyword, setKeyword] = useState('')
-  const [refreshKey, setRefreshKey] = useState(0)
+
+  /** 表格列配置：render 内使用主题 token，故定义在组件内部 */
+  const columns: StatisticsColumn<TaskRecord>[] = [
+    {
+      key: 'processName',
+      label: '流程',
+      width: 140,
+      render: (_, record) => <>{record.processName || '-'}</>,
+    },
+    {
+      key: 'title',
+      label: '申请标题',
+      render: (_, record) => {
+        if (record.title) return <>{record.title}</>
+        return (
+          <span style={{ color: token.colorTextQuaternary }}>
+            未关联业务单据（{record.processInstanceId.slice(0, 8)}）
+          </span>
+        )
+      },
+    },
+    {
+      key: 'taskName',
+      label: '当前节点',
+      width: 140,
+      render: (_, record) => <>{record.taskName || '-'}</>,
+    },
+    {
+      key: 'applicantName',
+      label: '申请人',
+      width: 120,
+      render: (_, record) => <>{record.applicantName || '-'}</>,
+    },
+    {
+      key: 'createTime',
+      label: '发起时间',
+      width: 180,
+      render: (_, record) => <>{fmtTime(record.createTime)}</>,
+    },
+  ]
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [detail, setDetail] = useState<TaskDetail | null>(null)
@@ -76,35 +101,61 @@ export default function ApprovalTodo() {
   const [pickAction, setPickAction] = useState<'transfer' | 'add-sign'>('transfer')
   const { users, loading: usersLoading } = useSysUsers()
 
-  useEffect(() => {
-    let ignore = false
-    async function run() {
-      try {
-        const res = await fetchTodo({ current, size, keyword: keyword || undefined })
-        if (ignore) return
-        if (res.code === 200 && res.data) {
-          setRecords(res.data.records)
-          setTotal(res.data.total)
-        } else {
-          CompanyMessage.error(res.message || '待办任务加载失败')
-        }
-      } catch {
-        if (!ignore) CompanyMessage.error('待办任务加载失败')
-      } finally {
-        if (!ignore) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      ignore = true
-    }
-  }, [current, size, keyword, refreshKey])
+  /** 操作成功后触发列表重拉（转办/加签后任务会从待办消失） */
+  const [refreshKey, setRefreshKey] = useState(0)
 
-  /** 事件路径刷新：亮 loading 并触发 effect 重新拉取 */
-  const reload = useCallback(() => {
-    setLoading(true)
-    setRefreshKey((key) => key + 1)
-  }, [])
+  /** 统计卡片数据：审批动作成功后随 refreshKey 重拉；加载失败静默降级（不渲染卡片区） */
+  const [cards, setCards] = useState<MyCards | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchMyCards()
+      .then((res) => {
+        if (!cancelled && res.code === 200 && res.data) {
+          setCards(res.data)
+        }
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [refreshKey])
+
+  const statisticCards: StatisticCardConfig[] | undefined = cards
+    ? [
+        { key: 'myTodo', title: '我的待办', value: cards.myTodoCount },
+        { key: 'approachingOverdue', title: '即将超时', value: cards.approachingOverdueCount },
+        { key: 'overdue', title: '超时预警', value: cards.overdueCount },
+        { key: 'submitFail', title: '提交失败', value: cards.submitFailCount },
+      ]
+    : undefined
+
+  const fetchData = useCallback(
+    async (params: Record<string, unknown>): Promise<PageResponse<TaskRecord>> => {
+      const keyword = String(params.keyword ?? '').trim()
+      const applicantName = String(params.applicantName ?? '').trim()
+      const res = await fetchTodo({
+        current: Number(params.pageNum ?? 1),
+        size: Number(params.pageSize ?? 10),
+        keyword: keyword || undefined,
+        applicantName: applicantName || undefined,
+      })
+      if (res.code !== 200 || !res.data) {
+        CompanyMessage.error(res.message || '待办任务加载失败')
+        return { list: [], total: 0, pageNum: 1, pageSize: 10 }
+      }
+      return {
+        // 后端为 MyBatis-Plus IPage 契约（records/current/size），在此处统一转成 PageResponse
+        list: res.data.records as unknown as TaskRecord[],
+        total: res.data.total,
+        pageNum: res.data.current,
+        pageSize: res.data.size,
+      }
+    },
+    // refreshKey 仅用于触发重拉，不参与请求参数
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [refreshKey],
+  )
 
   const openDetail = async (taskId: string) => {
     setDrawerOpen(true)
@@ -136,7 +187,7 @@ export default function ApprovalTodo() {
       if (res.code === 200) {
         CompanyMessage.success(approved ? '已同意' : '已驳回')
         setDrawerOpen(false)
-        reload()
+        setRefreshKey((key) => key + 1)
       } else {
         CompanyMessage.error(res.message || '操作失败')
       }
@@ -161,7 +212,7 @@ export default function ApprovalTodo() {
         CompanyMessage.success(pickAction === 'transfer' ? '已转办' : '已加签')
         setTransferOpen(false)
         setDrawerOpen(false)
-        reload()
+        setRefreshKey((key) => key + 1)
       } else {
         CompanyMessage.error(res.message || (pickAction === 'transfer' ? '转办失败' : '加签失败'))
       }
@@ -174,58 +225,32 @@ export default function ApprovalTodo() {
 
   return (
     <>
-      <SmartListTemplate
+      <StatisticsListPage<TaskRecord>
         title="待办任务"
-        fields={fields}
-        defaultColumnFields={defaultColumnFields}
-        dataSource={records as unknown as Record<string, unknown>[]}
-        loading={loading}
+        statisticCards={statisticCards}
+        searchPlaceholder="搜索任务名称"
+        searchKey={SEARCH_KEY}
+        filterFields={filterFields}
+        columns={columns}
         rowKey="taskId"
-        pagination={{ current, pageSize: size, total }}
-        onPaginationChange={({ current: page, pageSize }) => {
-          setLoading(true)
-          setCurrent(page)
-          setSize(pageSize)
-        }}
-        onSearch={(data) => {
-          setLoading(true)
-          setCurrent(1)
-          setKeyword((data.keyword as string) || '')
-        }}
-        onReset={() => {
-          setLoading(true)
-          setCurrent(1)
-          setKeyword('')
-        }}
-        onRefresh={() => reload()}
-        bodyCell={(column, record) => {
-          if (column.key === 'title') {
-            const v = record.title as string | null
-            if (v) return <>{v}</>
-            return (
-              <span style={{ color: token.colorTextQuaternary }}>
-                未关联业务单据（{(record.processInstanceId as string).slice(0, 8)}）
-              </span>
-            )
-          }
-          if (column.key === 'processName') return renderDash(record.processName)
-          if (column.key === 'taskName') return renderDash(record.taskName)
-          if (column.key === 'applicantName') return renderDash(record.applicantName)
-          if (column.key === 'createTime') return <>{fmtTime(record.createTime as string)}</>
-          if (column.key === 'action') {
-            return (
-              <ActionCell
-                buttons={[
-                  {
-                    key: 'view',
-                    label: '查看',
-                    onClick: () => openDetail(record.taskId as string),
-                  },
-                ]}
-              />
-            )
-          }
-          return null
+        defaultPageSize={10}
+        fetchData={fetchData}
+        viewEndpoint={API_ENDPOINTS.APPROVAL_VIEWS}
+        emptyText="暂无待办任务"
+        actionColumn={{
+          width: 100,
+          title: '操作',
+          render: (record) => (
+            <ActionCell
+              buttons={[
+                {
+                  key: 'view',
+                  label: '查看',
+                  onClick: () => openDetail(record.taskId),
+                },
+              ]}
+            />
+          ),
         }}
       />
 

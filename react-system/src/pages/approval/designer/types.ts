@@ -30,6 +30,8 @@ export interface DesignNode {
   roleCode?: string
   /** approve：或签/会签 */
   mode?: ApproveMode
+  /** approve：超时时限（小时），空=不参与超时统计 */
+  timeoutHours?: number | null
   /** cc：抄送人 */
   ccIds?: number[]
   ccNames?: string[]

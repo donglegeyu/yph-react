@@ -27,8 +27,15 @@ public class CcController {
     @RequirePerm("approval:done:view")
     public ApiResult<PageData<CcVO>> mine(
             @RequestParam(defaultValue = "1") long current,
-            @RequestParam(defaultValue = "10") long size) {
-        return ApiResult.ok(approvalService.ccMine(UserContext.require(), current, size));
+            @RequestParam(defaultValue = "10") long size,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String businessNo,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer readStatus,
+            @RequestParam(required = false) String createTimeFrom,
+            @RequestParam(required = false) String createTimeTo) {
+        return ApiResult.ok(approvalService.ccMine(UserContext.require(), title, businessNo, status,
+                readStatus, createTimeFrom, createTimeTo, current, size));
     }
 
     @PostMapping("/{id}/read")

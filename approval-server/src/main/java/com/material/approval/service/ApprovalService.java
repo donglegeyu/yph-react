@@ -53,6 +53,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -76,10 +77,12 @@ public class ApprovalService {
     private final ObjectMapper objectMapper;
     private final BusinessCallbackClient callbackClient;
     private final BusinessBindingService bindingService;
+    private final SubmitFailLogService submitFailLogService;
 
     public ApprovalService(TaskService taskService, RuntimeService runtimeService, HistoryService historyService,
                            RepositoryService repositoryService, JdbcTemplate jdbcTemplate, ObjectMapper objectMapper,
-                           BusinessCallbackClient callbackClient, BusinessBindingService bindingService) {
+                           BusinessCallbackClient callbackClient, BusinessBindingService bindingService,
+                           SubmitFailLogService submitFailLogService) {
         this.taskService = taskService;
         this.runtimeService = runtimeService;
         this.historyService = historyService;
@@ -88,13 +91,25 @@ public class ApprovalService {
         this.objectMapper = objectMapper;
         this.callbackClient = callbackClient;
         this.bindingService = bindingService;
+        this.submitFailLogService = submitFailLogService;
     }
 
     // ---------------- 待办任务 ----------------
 
-    public PageData<TaskVO> todo(CurrentUser user, String keyword, long current, long size) {
-        long total = todoQuery(user, keyword).count();
-        List<Task> tasks = todoQuery(user, keyword)
+    public PageData<TaskVO> todo(CurrentUser user, String keyword, String applicantName, long current, long size) {
+        TaskQuery query = todoQuery(user, keyword);
+        // 申请人筛选：先查匹配的业务单流程实例，再下推到任务查询，保证 count/分页准确
+        if (StringUtils.hasText(applicantName)) {
+            List<String> matched = jdbcTemplate.queryForList(
+                    "select process_instance_id from appr_business_link where applicant_name like ?",
+                    String.class, "%" + applicantName.trim() + "%");
+            if (matched.isEmpty()) {
+                return new PageData<>(new ArrayList<>(), 0, current, size);
+            }
+            query.processInstanceIdIn(new HashSet<>(matched));
+        }
+        long total = query.count();
+        List<Task> tasks = query
                 .orderByTaskCreateTime().desc()
                 .listPage((int) ((current - 1) * size), (int) size);
 
@@ -300,12 +315,53 @@ public class ApprovalService {
 
     // ---------------- 已办任务 ----------------
 
-    public PageData<DoneTaskVO> done(CurrentUser user, long current, long size) {
+    /**
+     * 已办任务分页 + 筛选。
+     * processName/title 来自 appr_business_link（JOIN 唯一键 uk_process_instance，不产生行放大），
+     * 流程名兜底用 Flowable ACT_RE_PROCDEF；myAction/comment/时间直接作用于 appr_task_action。
+     */
+    public PageData<DoneTaskVO> done(CurrentUser user, String processName, String title, String myAction,
+                                     String comment, String handleTimeFrom, String handleTimeTo,
+                                     long current, long size) {
+        StringBuilder where = new StringBuilder(
+                "from appr_task_action a "
+                        + "left join appr_business_link l on l.process_instance_id = a.process_instance_id "
+                        + "left join ACT_HI_PROCINST h on h.PROC_INST_ID_ = a.process_instance_id "
+                        + "left join ACT_RE_PROCDEF p on p.ID_ = h.PROC_DEF_ID_ "
+                        + "where a.operator_id = ? and a.action <> 'urge'");
+        List<Object> args = new ArrayList<>();
+        args.add(user.userId());
+        if (StringUtils.hasText(myAction)) {
+            where.append(" and a.action = ?");
+            args.add(myAction);
+        }
+        if (StringUtils.hasText(comment)) {
+            where.append(" and a.comment like ?");
+            args.add("%" + comment.trim() + "%");
+        }
+        if (StringUtils.hasText(handleTimeFrom)) {
+            where.append(" and a.create_time >= ?");
+            args.add(handleTimeFrom.trim() + " 00:00:00");
+        }
+        if (StringUtils.hasText(handleTimeTo)) {
+            where.append(" and a.create_time <= ?");
+            args.add(handleTimeTo.trim() + " 23:59:59");
+        }
+        if (StringUtils.hasText(title)) {
+            where.append(" and l.title like ?");
+            args.add("%" + title.trim() + "%");
+        }
+        if (StringUtils.hasText(processName)) {
+            where.append(" and (p.NAME_ like ? or l.process_def_key like ?)");
+            args.add("%" + processName.trim() + "%");
+            args.add("%" + processName.trim() + "%");
+        }
+
         Long total = jdbcTemplate.queryForObject(
-                "select count(*) from appr_task_action where operator_id = ? and action <> 'urge'", Long.class, user.userId());
+                "select count(*) " + where, Long.class, args.toArray());
         List<Map<String, Object>> rows = jdbcTemplate.query(
-                "select process_instance_id, task_id, task_def_key, action, comment, create_time "
-                        + "from appr_task_action where operator_id = ? and action <> 'urge' order by create_time desc limit ?, ?",
+                "select a.process_instance_id, a.task_id, a.action, a.comment, a.create_time "
+                        + where + " order by a.create_time desc limit ?, ?",
                 (rs, i) -> {
                     Map<String, Object> row = new HashMap<>();
                     row.put("process_instance_id", rs.getString("process_instance_id"));
@@ -315,7 +371,7 @@ public class ApprovalService {
                     row.put("create_time", rs.getTimestamp("create_time"));
                     return row;
                 },
-                user.userId(), (current - 1) * size, size);
+                appendPageArgs(args, current, size));
 
         Map<String, LinkRow> links = loadLinks(rows.stream()
                 .map(r -> (String) r.get("process_instance_id")).distinct().toList());
@@ -335,6 +391,13 @@ public class ApprovalService {
                     toLocal((Timestamp) row.get("create_time"))));
         }
         return new PageData<>(records, total == null ? 0 : total, current, size);
+    }
+
+    private Object[] appendPageArgs(List<Object> args, long current, long size) {
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add((current - 1) * size);
+        pageArgs.add(size);
+        return pageArgs.toArray();
     }
 
     // ---------------- 发起审批 ----------------
@@ -365,6 +428,20 @@ public class ApprovalService {
      */
     @Transactional
     public Map<String, String> startInternal(StartInternalRequest request) {
+        try {
+            return doStartInternal(request);
+        } catch (BizException e) {
+            // 失败留痕：REQUIRES_NEW 独立事务落库，主事务回滚不影响该记录；吞掉落库异常不影响原语义
+            try {
+                submitFailLogService.recordFail(request, e.getMessage());
+            } catch (Exception logEx) {
+                log.error("提交失败日志写入失败 businessType={}", request == null ? null : request.businessType(), logEx);
+            }
+            throw e;
+        }
+    }
+
+    private Map<String, String> doStartInternal(StartInternalRequest request) {
         if (request == null || !StringUtils.hasText(request.businessType())) {
             throw new BizException(400, "businessType 不能为空");
         }
@@ -505,23 +582,53 @@ public class ApprovalService {
 
     // ---------------- 流程定义 ----------------
 
-    public List<ProcessDefVO> processDefinitions() {
-        List<ProcessDefinition> definitions = repositoryService.createProcessDefinitionQuery()
-                .latestVersion().orderByProcessDefinitionKey().asc().list();
+    public List<ProcessDefVO> processDefinitions(String name, String suspended,
+                                                 String deployTimeFrom, String deployTimeTo) {
+        var query = repositoryService.createProcessDefinitionQuery()
+                .latestVersion().orderByProcessDefinitionKey().asc();
+        if (StringUtils.hasText(name)) {
+            query.processDefinitionNameLike("%" + name.trim() + "%");
+        }
+        if (StringUtils.hasText(suspended)) {
+            if (Boolean.parseBoolean(suspended.trim())) {
+                query.suspended();
+            } else {
+                query.active();
+            }
+        }
+        List<ProcessDefinition> definitions = query.list();
+
+        java.time.LocalDate fromDate = parseDate(deployTimeFrom);
+        java.time.LocalDate toDate = parseDate(deployTimeTo);
         List<ProcessDefVO> result = new ArrayList<>(definitions.size());
         for (ProcessDefinition definition : definitions) {
             Deployment deployment = repositoryService.createDeploymentQuery()
                     .deploymentId(definition.getDeploymentId()).singleResult();
+            java.time.LocalDateTime deployTime =
+                    deployment == null ? null : toLocal(deployment.getDeploymentTime());
+            if (fromDate != null && (deployTime == null || deployTime.toLocalDate().isBefore(fromDate))) {
+                continue;
+            }
+            if (toDate != null && (deployTime == null || deployTime.toLocalDate().isAfter(toDate))) {
+                continue;
+            }
             result.add(new ProcessDefVO(
                     definition.getId(),
                     definition.getKey(),
                     definition.getName(),
                     definition.getVersion(),
                     definition.getDeploymentId(),
-                    deployment == null ? null : toLocal(deployment.getDeploymentTime()),
+                    deployTime,
                     definition.isSuspended()));
         }
         return result;
+    }
+
+    private java.time.LocalDate parseDate(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return java.time.LocalDate.parse(value.trim(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 
     public String processDefinitionXml(String definitionId) {
@@ -913,14 +1020,43 @@ public class ApprovalService {
 
     // ---------------- 抄送 ----------------
 
-    public PageData<CcVO> ccMine(CurrentUser user, long current, long size) {
-        Long total = jdbcTemplate.queryForObject(
-                "select count(*) from appr_cc where receiver_id = ?", Long.class, user.userId());
+    public PageData<CcVO> ccMine(CurrentUser user, String title, String businessNo, String status,
+                                 Integer readStatus, String createTimeFrom, String createTimeTo,
+                                 long current, long size) {
+        StringBuilder where = new StringBuilder(
+                "from appr_cc c left join appr_business_link l on l.process_instance_id = c.process_instance_id "
+                        + "where c.receiver_id = ?");
+        List<Object> args = new ArrayList<>();
+        args.add(user.userId());
+        if (StringUtils.hasText(title)) {
+            where.append(" and l.title like ?");
+            args.add("%" + title.trim() + "%");
+        }
+        if (StringUtils.hasText(businessNo)) {
+            where.append(" and c.business_no like ?");
+            args.add("%" + businessNo.trim() + "%");
+        }
+        if (StringUtils.hasText(status)) {
+            where.append(" and l.status = ?");
+            args.add(status.trim());
+        }
+        if (readStatus != null) {
+            where.append(" and c.read_status = ?");
+            args.add(readStatus);
+        }
+        if (StringUtils.hasText(createTimeFrom)) {
+            where.append(" and c.create_time >= ?");
+            args.add(createTimeFrom.trim() + " 00:00:00");
+        }
+        if (StringUtils.hasText(createTimeTo)) {
+            where.append(" and c.create_time <= ?");
+            args.add(createTimeTo.trim() + " 23:59:59");
+        }
+
+        Long total = jdbcTemplate.queryForObject("select count(*) " + where, Long.class, args.toArray());
         List<Map<String, Object>> rows = jdbcTemplate.query(
                 "select c.id, c.process_instance_id, c.business_no, c.receiver_name, c.read_status, c.create_time, "
-                        + "l.title, l.status as link_status "
-                        + "from appr_cc c left join appr_business_link l on l.process_instance_id = c.process_instance_id "
-                        + "where c.receiver_id = ? order by c.create_time desc limit ?, ?",
+                        + "l.title, l.status as link_status " + where + " order by c.create_time desc limit ?, ?",
                 (rs, i) -> {
                     Map<String, Object> row = new HashMap<>();
                     row.put("id", rs.getLong("id"));
@@ -933,7 +1069,7 @@ public class ApprovalService {
                     row.put("link_status", rs.getString("link_status"));
                     return row;
                 },
-                user.userId(), (current - 1) * size, size);
+                appendPageArgs(args, current, size));
         List<CcVO> records = new ArrayList<>(rows.size());
         for (Map<String, Object> row : rows) {
             records.add(new CcVO(

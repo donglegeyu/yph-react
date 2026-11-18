@@ -72,6 +72,12 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3001,
     proxy: {
+      // 审批视图配置在主后端（8081）：必须放在 /api/approval 之前，
+      // 否则会被 /api/approval 前缀误匹配转发到 approval-server（8082）导致 404/500
+      '/api/approval-views': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+      },
       // 审批中心独立服务（approval-server），必须放在 /api 之前
       '/api/approval': {
         target: 'http://localhost:8082',

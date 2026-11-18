@@ -20,6 +20,7 @@ type DrawerValues = {
   mode?: 'any' | 'all'
   assigneeIds?: number[]
   roleCode?: string
+  timeoutHours?: number
   ccIds?: number[]
   branches?: { name: string; op: string | null; value: number | null }[]
 }
@@ -39,7 +40,7 @@ interface NodeConfigDrawerProps {
   onSubmit: (node: DesignNode) => void
 }
 
-export default function NodeConfigDrawer({ open, node, onClose, onSubmit }: NodeConfigDrawerProps) {
+export function NodeConfigDrawer({ open, node, onClose, onSubmit }: NodeConfigDrawerProps) {
   const [form] = CompanyForm.useForm()
   const { users, loading: userLoading } = useSysUsers()
   const userOptions: SysUserOption[] = useMemo(() => toUserOptions(users), [users])
@@ -56,6 +57,7 @@ export default function NodeConfigDrawer({ open, node, onClose, onSubmit }: Node
       mode: node.mode ?? 'any',
       assigneeIds: node.assigneeIds ?? [],
       roleCode: node.roleCode,
+      timeoutHours: node.timeoutHours ?? undefined,
       ccIds: node.ccIds ?? [],
       branches: (node.branches ?? []).map((branch) => ({
         name: branch.name,
@@ -81,6 +83,7 @@ export default function NodeConfigDrawer({ open, node, onClose, onSubmit }: Node
             : undefined
           next.mode = values.assigneeType === 'role' ? undefined : values.mode
           next.roleCode = values.assigneeType === 'role' ? (values.roleCode ?? '').trim() : undefined
+          next.timeoutHours = values.timeoutHours && values.timeoutHours > 0 ? values.timeoutHours : null
         } else if (next.type === 'cc') {
           const ccIds: number[] = values.ccIds ?? []
           next.ccIds = ccIds.length ? ccIds : undefined
@@ -171,6 +174,13 @@ export default function NodeConfigDrawer({ open, node, onClose, onSubmit }: Node
                   </>
                 )
               }
+            </CompanyForm.Item>
+            <CompanyForm.Item
+              name="timeoutHours"
+              label="超时时限（小时）"
+              extra="停留达到时限的 50% 计入「即将超时」，达到时限计入「超时预警」；不填则不参与超时统计"
+            >
+              <CompanyInputNumber min={0.5} precision={1} step={1} style={{ width: '100%' }} placeholder="不填则不参与超时统计" />
             </CompanyForm.Item>
           </>
         )}

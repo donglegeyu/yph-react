@@ -24,12 +24,32 @@ import {
 } from './api'
 
 const fields: FieldDefinition[] = [
-  { key: 'businessName', label: '业务名称', type: 'item', hideInFilter: true },
-  { key: 'businessType', label: '业务类型', type: 'item', hideInFilter: true },
-  { key: 'processKey', label: '绑定流程', type: 'item', hideInFilter: true },
-  { key: 'approvalMode', label: '审批模式', type: 'item', width: 110, hideInFilter: true },
-  { key: 'enabled', label: '状态', type: 'item', width: 100, hideInFilter: true },
-  { key: 'updateTime', label: '更新时间', type: 'item', width: 170, hideInFilter: true },
+  { key: 'businessName', label: '业务名称', type: 'input' },
+  { key: 'businessType', label: '业务类型', type: 'input' },
+  { key: 'processKey', label: '绑定流程', type: 'input' },
+  {
+    key: 'approvalMode',
+    label: '审批模式',
+    type: 'select',
+    width: 110,
+    options: [
+      { label: '全部', value: '' },
+      { label: '必审', value: 'required' },
+      { label: '可免审', value: 'optional' },
+    ],
+  },
+  {
+    key: 'enabled',
+    label: '状态',
+    type: 'select',
+    width: 100,
+    options: [
+      { label: '全部', value: '' },
+      { label: '已启用', value: 'true' },
+      { label: '已停用', value: 'false' },
+    ],
+  },
+  { key: 'updateTime', label: '更新时间', type: 'daterange', width: 170 },
   { key: 'action', label: '操作', type: 'item', width: 140, fixed: 'right', hideInFilter: true },
 ]
 
@@ -63,12 +83,23 @@ export default function BusinessBindingAdmin() {
   const [saving, setSaving] = useState(false)
   const [form] = CompanyForm.useForm()
 
+  /** 筛选状态：onSearch/onReset 驱动，effect 依赖变化即重新拉取 */
+  const [filters, setFilters] = useState<{
+    businessName?: string
+    businessType?: string
+    processKey?: string
+    approvalMode?: string
+    enabled?: string
+    updateTimeFrom?: string
+    updateTimeTo?: string
+  }>({})
+
   useEffect(() => {
     let ignore = false
     async function run() {
       try {
         const [bindingRes, typeRes, designRes] = await Promise.all([
-          fetchBusinessBindings(),
+          fetchBusinessBindings(filters),
           fetchRegisteredBusinessTypes(),
           fetchProcessDesigns(),
         ])
@@ -90,7 +121,7 @@ export default function BusinessBindingAdmin() {
     return () => {
       ignore = true
     }
-  }, [refreshKey])
+  }, [filters, refreshKey])
 
   /** 事件路径刷新：亮 loading 并触发 effect 重新拉取 */
   const reload = useCallback(() => {
@@ -165,6 +196,23 @@ export default function BusinessBindingAdmin() {
         loading={loading}
         pagination={false}
         rowKey="id"
+        onSearch={(data) => {
+          setLoading(true)
+          const range = data.updateTime as string[] | undefined
+          setFilters({
+            businessName: (data.businessName as string) || undefined,
+            businessType: (data.businessType as string) || undefined,
+            processKey: (data.processKey as string) || undefined,
+            approvalMode: (data.approvalMode as string) || undefined,
+            enabled: (data.enabled as string) || undefined,
+            updateTimeFrom: range?.[0],
+            updateTimeTo: range?.[1],
+          })
+        }}
+        onReset={() => {
+          setLoading(true)
+          setFilters({})
+        }}
         onRefresh={() => reload()}
         titleRightActions={
           <CompanyButton type="primary" onClick={() => openEdit(null)}>

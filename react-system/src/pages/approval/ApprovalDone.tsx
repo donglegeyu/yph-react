@@ -6,11 +6,24 @@ import { InstanceDetailDrawer } from './InstanceDetailDrawer'
 
 /** myAction 是业务数据列（record.action）；SmartListTemplate 保留 'action' 为操作列保留名，需避开 */
 const fields: FieldDefinition[] = [
-  { key: 'processName', label: '流程', type: 'item', width: 140, hideInFilter: true },
-  { key: 'title', label: '申请标题', type: 'item', hideInFilter: true },
-  { key: 'myAction', label: '我的处理', type: 'item', width: 120, hideInFilter: true },
-  { key: 'comment', label: '处理意见', type: 'item', hideInFilter: true },
-  { key: 'handleTime', label: '处理时间', type: 'item', width: 180, hideInFilter: true },
+  { key: 'processName', label: '流程', type: 'input', width: 140 },
+  { key: 'title', label: '申请标题', type: 'input' },
+  {
+    key: 'myAction',
+    label: '我的处理',
+    type: 'select',
+    width: 120,
+    options: [
+      { label: '全部', value: '' },
+      { label: '同意', value: 'approve' },
+      { label: '驳回', value: 'reject' },
+      { label: '转办', value: 'transfer' },
+      { label: '加签', value: 'add_sign' },
+      { label: '撤回', value: 'withdraw' },
+    ],
+  },
+  { key: 'comment', label: '处理意见', type: 'input' },
+  { key: 'handleTime', label: '处理时间', type: 'daterange', width: 180 },
   { key: 'action', label: '操作', type: 'item', width: 100, fixed: 'right', hideInFilter: true },
 ]
 
@@ -38,11 +51,21 @@ export default function ApprovalDone() {
   const [activeInstanceId, setActiveInstanceId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
+  /** 筛选状态：onSearch/onReset 驱动，effect 依赖变化即重新拉取 */
+  const [filters, setFilters] = useState<{
+    processName?: string
+    title?: string
+    myAction?: string
+    comment?: string
+    handleTimeFrom?: string
+    handleTimeTo?: string
+  }>({})
+
   useEffect(() => {
     let ignore = false
     async function run() {
       try {
-        const res = await fetchDone({ current, size })
+        const res = await fetchDone({ current, size, ...filters })
         if (ignore) return
         if (res.code === 200 && res.data) {
           setRecords(res.data.records)
@@ -60,7 +83,7 @@ export default function ApprovalDone() {
     return () => {
       ignore = true
     }
-  }, [current, size, refreshKey])
+  }, [current, size, filters, refreshKey])
 
   /** 事件路径刷新：亮 loading 并触发 effect 重新拉取 */
   const reload = useCallback(() => {
@@ -87,6 +110,24 @@ export default function ApprovalDone() {
           setLoading(true)
           setCurrent(page)
           setSize(pageSize)
+        }}
+        onSearch={(data) => {
+          setLoading(true)
+          setCurrent(1)
+          const range = data.handleTime as string[] | undefined
+          setFilters({
+            processName: (data.processName as string) || undefined,
+            title: (data.title as string) || undefined,
+            myAction: (data.myAction as string) || undefined,
+            comment: (data.comment as string) || undefined,
+            handleTimeFrom: range?.[0],
+            handleTimeTo: range?.[1],
+          })
+        }}
+        onReset={() => {
+          setLoading(true)
+          setCurrent(1)
+          setFilters({})
         }}
         onRefresh={() => reload()}
         bodyCell={(column, record) => {

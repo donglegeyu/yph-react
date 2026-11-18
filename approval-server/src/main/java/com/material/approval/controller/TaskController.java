@@ -32,8 +32,9 @@ public class TaskController {
     public ApiResult<PageData<TaskVO>> todo(
             @RequestParam(defaultValue = "1") long current,
             @RequestParam(defaultValue = "10") long size,
-            @RequestParam(required = false) String keyword) {
-        return ApiResult.ok(approvalService.todo(UserContext.require(), keyword, current, size));
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String applicantName) {
+        return ApiResult.ok(approvalService.todo(UserContext.require(), keyword, applicantName, current, size));
     }
 
     @GetMapping("/{taskId}")

@@ -18,3 +18,4 @@
 | type:'item' 仍进筛选区 | SmartListTemplate 的 item 字段必须显式 hideInFilter:true，否则筛选区出现裸标签无控件 | [smartlist-item-type-still-in-filter.md](./smartlist-item-type-still-in-filter.md) |
 | Lombok 构建随机跳类 | approval-server 本机 mvn 构建时 Lombok 跳过第一个用注解的类且错误随修复转移；已彻底去 Lombok | [lombok-skip-class-on-build.md](./lombok-skip-class-on-build.md) |
 | Flyway 建表 collation 不一致 | 新建表未显式 COLLATE 用了 MySQL8 默认值，跨表 join 报 Illegal mix of collations | [flyway-table-collation-mismatch.md](./flyway-table-collation-mismatch.md) |
+| 菜单图标空白 | nav_menu.icon 名不在 MENU_ICON_MAP 映射表，sprite 无对应 symbol；已收敛为共享 menuIconMap.ts | [menu-icon-blank.md](./menu-icon-blank.md) |
